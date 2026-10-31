@@ -5,10 +5,12 @@ on:
     branches:
       - feature/prompt-full-implementation
       - fix/player-layout-kids-ui-2026-10
+      - feat/oatec-online-activation
   pull_request:
     branches:
       - feature/prompt-full-implementation
       - fix/tvi-catalog-first-page-performance
+      - fix/xtream-category-loading-2026-10
   workflow_dispatch:
 
 permissions:

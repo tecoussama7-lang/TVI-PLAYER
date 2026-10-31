@@ -83,6 +83,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.rememberCoroutineScope
@@ -205,7 +206,7 @@ private fun activateOatecCode(context: Context, code: String): PlayerSource {
             throw IOException(when {
                 status == 401 -> "كود التفعيل غير صحيح أو سالات الصلاحية ديالو."
                 status == 403 -> "الاشتراك ديالك ماشي فعّال أو سالات المدة ديالو."
-                status == 409 -> "هاد الكود مربوط بجهاز آخر."
+                status == 409 -> serverError.ifBlank { "هاد الكود مربوط بجهاز آخر." }
                 serverError.isNotBlank() -> serverError
                 else -> "تعذر التحقق من كود التفعيل (HTTP " + status + ")."
             })
@@ -231,7 +232,7 @@ private fun activateOatecCode(context: Context, code: String): PlayerSource {
         val validGetPhpXtream = isXtreamGetPhp && validM3u &&
             urlUsername.isNotBlank() && urlPassword.isNotBlank()
         val getPhpBase = if (isXtreamGetPhp) m3uUrl.substringBefore('?').substringBeforeLast('/') else ""
-        when {
+        val source = when {
             sourceType == "xtream" && validXtream -> PlayerSource(
                 id = UUID.randomUUID().toString(),
                 name = "OATEC Subscription",
@@ -272,8 +273,33 @@ private fun activateOatecCode(context: Context, code: String): PlayerSource {
                 "كود التفعيل صحيح، ولكن نوع المصدر أو بياناته فلوحة الأدمن غير متطابقة. تأكد أن الحساب مضبوط على M3U مع رابط صالح، أو Xtream مع Server وUsername وPassword."
             )
         }
+        val playerToken = response.optString("token").trim()
+        if (playerToken.isBlank()) throw IOException("السيرفر ما رجعش رمز جلسة صالح.")
+        SecureSourceStore(context).savePlayerToken(playerToken)
+        source
     } finally { connection.disconnect() }
 }
+
+private fun verifyPlayerToken(context: Context): Boolean {
+    val token = SecureSourceStore(context).loadPlayerToken().orEmpty()
+    if (token.isBlank()) return false
+    val connection = (URL(PLAYER_API_BASE_URL + "/me").openConnection() as HttpURLConnection).apply {
+        requestMethod = "GET"
+        connectTimeout = 10000
+        readTimeout = 12000
+        setRequestProperty("Accept", "application/json")
+        setRequestProperty("Authorization", "Bearer $token")
+    }
+    return try {
+        val status = connection.responseCode
+        if (status == 401 || status == 403) return false
+        val stream = if (status in 200..299) connection.inputStream else connection.errorStream
+        val body = stream?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }.orEmpty()
+        if (status !in 200..299) throw IOException("تعذر التحقق من الترخيص (HTTP $status).")
+        JSONObject(body).optBoolean("ok")
+    } finally { connection.disconnect() }
+}
+
 private enum class Section(val label: String) {
     HOME("Home"), LIVE("Live TV"), MOVIES("Movies"), SERIES("Series"), TRAILERS("Trailers"), DOWNLOADS("Downloads"), SOURCES("Sources"), SETTINGS("Settings"),
 }
@@ -283,6 +309,52 @@ fun PlayerTvApp() {
     val context = androidx.compose.ui.platform.LocalContext.current
     var availableUpdate by remember { mutableStateOf<store.oatec.playertv.data.AppUpdate?>(null) }
     var dismissedVersion by rememberSaveable { mutableStateOf("") }
+    var entitlementState by remember { mutableStateOf("checking") }
+    var entitlementError by remember { mutableStateOf("") }
+    var retryEntitlement by remember { mutableIntStateOf(0) }
+
+    LaunchedEffect(retryEntitlement) {
+        val token = SecureSourceStore(context).loadPlayerToken().orEmpty()
+        if (token.isBlank()) {
+            entitlementState = "activation"
+        } else {
+            entitlementState = "checking"
+            try {
+                val valid = withContext(Dispatchers.IO) { verifyPlayerToken(context) }
+                if (valid) {
+                    entitlementState = "active"
+                } else {
+                    SecureSourceStore(context).savePlayerToken("")
+                    SecureSourceStore(context).save(emptyList())
+                    entitlementState = "activation"
+                }
+            } catch (error: Exception) {
+                entitlementError = error.message ?: "خاص الاتصال بالإنترنت للتحقق من الترخيص."
+                entitlementState = "offline"
+            }
+        }
+    }
+
+    LaunchedEffect(entitlementState) {
+        if (entitlementState == "active") {
+            while (true) {
+                delay(30_000L)
+                try {
+                    val valid = withContext(Dispatchers.IO) { verifyPlayerToken(context) }
+                    if (!valid) {
+                        SecureSourceStore(context).savePlayerToken("")
+                        SecureSourceStore(context).save(emptyList())
+                        entitlementState = "activation"
+                        break
+                    }
+                } catch (error: Exception) {
+                    entitlementError = error.message ?: "انقطع الاتصال بالسيرفر. خاص الإنترنت باش يبقى التطبيق خدام."
+                    entitlementState = "offline"
+                    break
+                }
+            }
+        }
+    }
 
     LaunchedEffect(Unit) {
         availableUpdate = runCatching {
@@ -290,7 +362,26 @@ fun PlayerTvApp() {
         }.getOrNull()
     }
 
-    PlayerTvAppContent()
+    when (entitlementState) {
+        "checking" -> Surface(Modifier.fillMaxSize(), color = Ink) {
+            Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+                CircularProgressIndicator(color = Lime)
+                Spacer(Modifier.height(14.dp))
+                Text("كنتحققو من ترخيص OATEC...", color = TextMain)
+            }
+        }
+        "offline" -> Surface(Modifier.fillMaxSize(), color = Ink) {
+            Column(Modifier.fillMaxSize().padding(28.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+                Text("الاتصال بالإنترنت ضروري", color = GoldLight, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+                Text(entitlementError, color = TextMuted, fontSize = 14.sp)
+                Spacer(Modifier.height(12.dp))
+                Button(onClick = { retryEntitlement++ }, colors = ButtonDefaults.buttonColors(containerColor = Lime, contentColor = Ink)) {
+                    Text("إعادة المحاولة")
+                }
+            }
+        }
+        else -> PlayerTvAppContent(onActivated = { entitlementState = "active" })
+    }
 
     val update = availableUpdate
     if (update != null && dismissedVersion != update.versionName) {
@@ -320,7 +411,7 @@ fun PlayerTvApp() {
 }
 
 @Composable
-private fun PlayerTvAppContent() {
+private fun PlayerTvAppContent(onActivated: () -> Unit = {}) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val configuration = LocalConfiguration.current
     val compactLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE && configuration.screenWidthDp < 900
@@ -716,7 +807,7 @@ private fun PlayerTvAppContent() {
         }
     }
 
-    val needsInitialSetup = sources.isEmpty()
+    val needsInitialSetup = sources.isEmpty() || sourceStore.loadPlayerToken().isNullOrBlank()
 
     MaterialTheme(
         colorScheme = darkColorScheme(
@@ -751,6 +842,7 @@ private fun PlayerTvAppContent() {
                     sourceStore.save(sources)
                     activeSourceId = source.id
                     section = Section.HOME.name
+                    if (source.name == "OATEC Subscription") onActivated()
                 },
             )
         } else {
@@ -980,11 +1072,6 @@ private fun PlayerTvAppContent() {
                             },
                             aboutRepository = aboutRepository,
                             onManageSources = { navigateTo(Section.SOURCES) },
-                            premiumCode = premiumCode,
-                            onSavePremiumCode = { code ->
-                                sourceStore.savePremiumCode(code)
-                                premiumCode = code
-                            },
                             onExit = { (context as? Activity)?.finishAndRemoveTask() },
                         )
                     }
@@ -1427,8 +1514,6 @@ private fun SettingsScreen(
     onKidsModeChanged: (Boolean) -> Unit,
     aboutRepository: OatecAboutRepository,
     onManageSources: () -> Unit,
-    premiumCode: String,
-    onSavePremiumCode: (String) -> Unit,
     onExit: () -> Unit,
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -1438,8 +1523,6 @@ private fun SettingsScreen(
     var loadingAbout by remember { mutableStateOf(false) }
     var aboutError by remember { mutableStateOf("") }
     var confirmClearHistory by remember { mutableStateOf(false) }
-    var premiumCodeInput by remember(premiumCode) { mutableStateOf(premiumCode) }
-    var premiumCodeSaved by remember { mutableStateOf(false) }
     var kidsEnabled by remember { mutableStateOf(preferences.kidsModeEnabled()) }
     var showKidsPinDialog by remember { mutableStateOf(false) }
     var kidsPinInput by remember { mutableStateOf("") }
@@ -1739,25 +1822,14 @@ private fun SettingsScreen(
         Surface(color = Panel, shape = RoundedCornerShape(10.dp), modifier = Modifier.fillMaxWidth()) {
             Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text("OATEC PREMIUM", color = GoldLight, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
-                OutlinedTextField(
-                    value = premiumCodeInput,
-                    onValueChange = { premiumCodeInput = it; premiumCodeSaved = false },
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Premium code (optional)") },
-                    singleLine = true,
-                    visualTransformation = PasswordVisualTransformation(),
+                Text(
+                    "Device activation is managed by OATEC Service. Your license is checked online at startup and every 30 seconds. Offline use is disabled.",
+                    color = TextMuted,
+                    fontSize = 11.sp,
                 )
-                Text("The code is stored securely. Online verification is not available until OATEC provides an activation API.", color = TextMuted, fontSize = 10.sp)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Button(
-                        onClick = { onSavePremiumCode(premiumCodeInput.trim()); premiumCodeSaved = true },
-                        colors = ButtonDefaults.buttonColors(containerColor = Lime, contentColor = Ink),
-                    ) { Text("Save code") }
-                    OutlinedButton(
-                        onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://oatec.store/"))) },
-                    ) { Text("Open OATEC website") }
-                    if (premiumCodeSaved) Text("Saved", color = GoldLight, fontSize = 11.sp)
-                }
+                OutlinedButton(
+                    onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://oatec.store/"))) },
+                ) { Text("Open OATEC website") }
             }
         }
         Surface(color = Panel, shape = RoundedCornerShape(10.dp), modifier = Modifier.fillMaxWidth()) {

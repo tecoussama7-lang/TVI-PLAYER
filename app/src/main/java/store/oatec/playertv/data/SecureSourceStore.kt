@@ -59,6 +59,16 @@ class SecureSourceStore(context: Context) {
 
     fun loadPremiumCode(): String? = preferences.getString(PREMIUM_CODE_KEY, null)?.let(::decrypt)
 
+    fun loadPlayerToken(): String? = preferences.getString(PLAYER_TOKEN_KEY, null)?.let(::decrypt)
+
+    fun savePlayerToken(token: String) {
+        if (token.isBlank()) {
+            preferences.edit().remove(PLAYER_TOKEN_KEY).apply()
+        } else {
+            preferences.edit().putString(PLAYER_TOKEN_KEY, encrypt(token.trim())).apply()
+        }
+    }
+
     fun savePremiumCode(code: String) {
         if (code.isBlank()) {
             preferences.edit().remove(PREMIUM_CODE_KEY).apply()
@@ -103,6 +113,7 @@ class SecureSourceStore(context: Context) {
     private companion object {
         const val SOURCES_KEY = "encrypted_sources"
         const val PREMIUM_CODE_KEY = "encrypted_premium_code"
+        const val PLAYER_TOKEN_KEY = "encrypted_player_token"
         const val KEY_ALIAS = "oatec.player.sources"
         const val ANDROID_KEY_STORE = "AndroidKeyStore"
         const val TRANSFORMATION = "AES/GCM/NoPadding"

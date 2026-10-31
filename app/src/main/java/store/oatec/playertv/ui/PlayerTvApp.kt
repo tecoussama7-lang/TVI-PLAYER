@@ -11,6 +11,7 @@ import android.net.Uri
 import java.net.HttpURLConnection
 import java.net.URL
 import org.json.JSONObject
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -135,6 +136,9 @@ import java.io.IOException
 import java.util.UUID
 import org.json.JSONArray
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.runInterruptible
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.flow.collectLatest
@@ -277,6 +281,47 @@ private enum class Section(val label: String) {
 @Composable
 fun PlayerTvApp() {
     val context = androidx.compose.ui.platform.LocalContext.current
+    var availableUpdate by remember { mutableStateOf<store.oatec.playertv.data.AppUpdate?>(null) }
+    var dismissedVersion by rememberSaveable { mutableStateOf("") }
+
+    LaunchedEffect(Unit) {
+        availableUpdate = runCatching {
+            store.oatec.playertv.data.AppUpdateRepository().checkForUpdate(context)
+        }.getOrNull()
+    }
+
+    PlayerTvAppContent()
+
+    val update = availableUpdate
+    if (update != null && dismissedVersion != update.versionName) {
+        AlertDialog(
+            onDismissRequest = { dismissedVersion = update.versionName },
+            title = { Text("تحديث جديد متوفر") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("OATEC PlayerTv ${update.versionName}")
+                    if (update.releaseNotes.isNotBlank()) Text(update.releaseNotes)
+                    Text("غادي يتحل رابط تحميل APK. من بعد التحميل ثبّت التحديث يدوياً.")
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    dismissedVersion = update.versionName
+                    runCatching {
+                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(update.apkDownloadUrl)))
+                    }
+                }) { Text("تحميل التحديث") }
+            },
+            dismissButton = {
+                TextButton(onClick = { dismissedVersion = update.versionName }) { Text("لاحقاً") }
+            },
+        )
+    }
+}
+
+@Composable
+private fun PlayerTvAppContent() {
+    val context = androidx.compose.ui.platform.LocalContext.current
     val configuration = LocalConfiguration.current
     val compactLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE && configuration.screenWidthDp < 900
     val repository = remember { SourceRepository() }
@@ -287,7 +332,8 @@ fun PlayerTvApp() {
     val offlineDownloadStore = remember { OfflineDownloadStore(context) }
     var premiumCode by remember { mutableStateOf(runCatching { sourceStore.loadPremiumCode() }.getOrNull().orEmpty()) }
     var kidsModeActive by remember { mutableStateOf(preferences.kidsModeEnabled()) }
-    val catalogLoadMutex = remember { Mutex() }
+    // Use a separate lock per source/section so a slow LIVE import cannot block Movies.
+    val catalogLoadMutexes = remember { mutableMapOf<String, Mutex>() }
     val sources = remember {
         mutableStateListOf<PlayerSource>().apply {
             addAll(runCatching { sourceStore.load() }.getOrDefault(emptyList()))
@@ -300,7 +346,7 @@ fun PlayerTvApp() {
     // DB pagination offset must count raw rows, before Kids Mode filtering.
     var catalogPageOffsets by remember { mutableStateOf<Map<String, Int>>(emptyMap()) }
     // Open directly on the live channel list; users can switch straight to Movies, Series, or Settings.
-    var section by remember { mutableStateOf(Section.LIVE.name) }
+    var section by remember { mutableStateOf(if (kidsModeActive) Section.HOME.name else Section.LIVE.name) }
     var selectedCategory by rememberSaveable { mutableStateOf("All") }
     var liveCategoryNames by remember(activeSourceId) { mutableStateOf<List<String>>(emptyList()) }
     var search by rememberSaveable { mutableStateOf("") }
@@ -315,6 +361,7 @@ fun PlayerTvApp() {
     var episodesBusy by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
     var activeLoadCount by remember { mutableStateOf(0) }
+    var loadingCatalogKeys by remember { mutableStateOf<Set<String>>(emptySet()) }
     var catalogProgress by remember { mutableStateOf(0f) }
     var catalogLoadedItems by remember { mutableStateOf(0) }
     var loadingMore by remember { mutableStateOf(false) }
@@ -413,6 +460,7 @@ fun PlayerTvApp() {
         catalogProgress = 0f
         catalogLoadedItems = 0
         activeLoadCount++
+        loadingCatalogKeys = loadingCatalogKeys + loadKey
         busy = true
         scope.launch {
             try {
@@ -444,7 +492,7 @@ fun PlayerTvApp() {
                         return@launch
                     }
                 }
-                catalogLoadMutex.withLock {
+                catalogLoadMutexes.getOrPut(loadKey) { Mutex() }.withLock {
                     runCatching {
                         withContext(Dispatchers.IO) {
                             // Stream bounded batches directly into one SQLite transaction.
@@ -497,6 +545,7 @@ fun PlayerTvApp() {
                         .onFailure { if (source.id == activeSourceId) message = it.message ?: "Could not load this source." }
                     }
             } finally {
+                loadingCatalogKeys = loadingCatalogKeys - loadKey
                 activeLoadCount = (activeLoadCount - 1).coerceAtLeast(0)
                 busy = activeLoadCount > 0
             }
@@ -878,7 +927,7 @@ fun PlayerTvApp() {
                             onSearch = { search = it },
                             entries = catalog.movies,
                             search = search,
-                            busy = busy,
+                            busy = "${activeSourceId}:MOVIES" in loadingCatalogKeys,
                             message = message,
                             catalogProgress = catalogProgress,
                             catalogLoadedItems = catalogLoadedItems,
@@ -2110,7 +2159,6 @@ private fun LiveScreen(
     val configuration = LocalConfiguration.current
     val screenWidthDp = configuration.screenWidthDp
     val isWideScreen = (configuration.uiMode and Configuration.UI_MODE_TYPE_MASK) == Configuration.UI_MODE_TYPE_TELEVISION || screenWidthDp >= 800
-    var channelDialogOpen by remember { mutableStateOf(false) }
     Column(Modifier.fillMaxSize().background(Ink).padding(horizontal = when { screenWidthDp >= 1400 -> 32.dp; screenWidthDp >= 700 -> 20.dp; else -> 8.dp }, vertical = 3.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedButton(onClick = onHome, modifier = Modifier.heightIn(min = 36.dp).widthIn(min = 72.dp).onPreviewKeyEvent { event ->
@@ -2133,9 +2181,10 @@ private fun LiveScreen(
         when {
             busy && catalog.liveChannels.isEmpty() -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { LoadingState("Loading channels", catalogProgress, catalogLoadedItems) }
             channels.isEmpty() -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { EmptyState("No channels available", message.ifBlank { "Add or refresh an IPTV source to load channels." }) }
-            else -> LazyVerticalGrid(
+            else -> Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                LazyVerticalGrid(
                 columns = GridCells.Adaptive(minSize = when { screenWidthDp >= 1500 -> 230.dp; screenWidthDp >= 1000 -> 190.dp; screenWidthDp >= 700 -> 155.dp; screenWidthDp <= 360 -> 118.dp; else -> 132.dp }),
-                state = listState, modifier = Modifier.fillMaxSize(),
+                state = listState, modifier = Modifier.weight(1f),
                 contentPadding = PaddingValues(top = 3.dp, bottom = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(if (isWideScreen) 10.dp else 6.dp),
                 verticalArrangement = Arrangement.spacedBy(if (isWideScreen) 10.dp else 6.dp),
@@ -2146,7 +2195,7 @@ private fun LiveScreen(
                         color = if (selected) Raised else Panel, shape = RoundedCornerShape(10.dp),
                         border = BorderStroke(if (selected) 2.dp else 1.dp, if (selected) Lime else Color.White.copy(alpha = 0.08f)),
                         modifier = Modifier.fillMaxWidth().height(if (isWideScreen) 104.dp else 78.dp).combinedClickable(
-                            onClick = { selectedChannel = item; previewRequested = false; channelDialogOpen = true },
+                            onClick = { selectedChannel = item; previewRequested = false },
                             onDoubleClick = { onPlay(item.copy(title = preferences.channelTitle(item.id, item.title))) },
                         ),
                     ) {
@@ -2166,31 +2215,38 @@ private fun LiveScreen(
                     }
                 }
             }
-        }
-    }
-    if (channelDialogOpen && selectedChannel != null) {
-        val item = selectedChannel!!
-        Dialog(onDismissRequest = { channelDialogOpen = false }) {
-            Surface(color = Panel, shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth().widthIn(max = 620.dp)) {
-                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text(preferences.channelTitle(item.id, item.title), color = TextMain, fontSize = if (isWideScreen) 22.sp else 18.sp, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                    Box(Modifier.fillMaxWidth().heightIn(min = 160.dp, max = 300.dp).background(Color.Black, RoundedCornerShape(10.dp)), contentAlignment = Alignment.Center) {
-                        ChannelMiniPreview(entry = item, playing = previewRequested)
+                if (isWideScreen && selectedChannel != null) {
+                    val detail = selectedChannel!!
+                    val current = EpgRepository.currentProgram(epgPrograms, detail.epgChannelId, epgClock)
+                    val next = EpgRepository.nextProgram(epgPrograms, detail.epgChannelId, epgClock)
+                    Surface(
+                        modifier = Modifier.width((screenWidthDp * 0.30f).dp.coerceIn(300.dp, 440.dp)).fillMaxHeight(),
+                        color = Panel,
+                        shape = RoundedCornerShape(14.dp),
+                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.10f)),
+                    ) {
+                        Column(Modifier.fillMaxSize().padding(14.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(9.dp)) {
+                            Text("تفاصيل القناة", color = Lime, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            Text(preferences.channelTitle(detail.id, detail.title), color = TextMain, fontSize = 20.sp, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                            Box(Modifier.fillMaxWidth().height(190.dp).background(Color.Black, RoundedCornerShape(10.dp)), contentAlignment = Alignment.Center) {
+                                ChannelMiniPreview(entry = detail, playing = previewRequested)
+                            }
+                            Text(current?.title?.let { "دابا · $it" } ?: "دابا · معلومات البرنامج غير متوفرة", color = GoldLight, fontSize = 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                            if (next != null) Text("من بعد · ${next.title}", color = TextMuted, fontSize = 11.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Button(onClick = { onPlay(detail.copy(title = preferences.channelTitle(detail.id, detail.title))) }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = Lime, contentColor = Ink)) { Text("▶ مشاهدة") }
+                                OutlinedButton(onClick = { previewRequested = !previewRequested }, modifier = Modifier.weight(1f)) { Text(if (previewRequested) "إيقاف" else "معاينة") }
+                            }
+                            Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                                TextButton(onClick = { onFavorite(detail) }) { Text(if (detail.id in preferences.favorites()) "★ محفوظة" else "☆ المفضلة", color = Lime) }
+                                TextButton(onClick = { onOrganize(detail) }) { Text("تنظيم", color = TextMuted) }
+                            }
+                            Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                                TextButton(onClick = { onHide(detail) }) { Text(if (detail.id in preferences.hiddenChannels()) "إظهار" else "إخفاء", color = TextMuted) }
+                                TextButton(onClick = { pendingDeleteChannel = detail }) { Text("حذف", color = ErrorRed) }
+                            }
+                        }
                     }
-                    val current = EpgRepository.currentProgram(epgPrograms, item.epgChannelId, epgClock)
-                    val next = EpgRepository.nextProgram(epgPrograms, item.epgChannelId, epgClock)
-                    Text(current?.title?.let { "NOW  $it" } ?: next?.title?.let { "NEXT  $it" } ?: "Programme information unavailable", color = GoldLight, fontSize = 12.sp, maxLines = 2)
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Button(onClick = { onPlay(item.copy(title = preferences.channelTitle(item.id, item.title))); channelDialogOpen = false }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = Lime, contentColor = Ink)) { Text("مشاهدة") }
-                        OutlinedButton(onClick = { previewRequested = !previewRequested }, modifier = Modifier.weight(1f)) { Text(if (previewRequested) "إيقاف المعاينة" else "معاينة") }
-                    }
-                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                        TextButton(onClick = { onFavorite(item) }) { Text(if (item.id in preferences.favorites()) "★ محفوظة" else "☆ المفضلة", color = Lime) }
-                        TextButton(onClick = { onOrganize(item); channelDialogOpen = false }) { Text("تنظيم", color = TextMuted) }
-                        TextButton(onClick = { onHide(item); channelDialogOpen = false }) { Text(if (item.id in preferences.hiddenChannels()) "إظهار" else "إخفاء", color = TextMuted) }
-                        TextButton(onClick = { pendingDeleteChannel = item; channelDialogOpen = false }) { Text("حذف", color = ErrorRed) }
-                    }
-                    TextButton(onClick = { channelDialogOpen = false }, modifier = Modifier.align(Alignment.End)) { Text("إغلاق") }
                 }
             }
         }
@@ -3117,6 +3173,8 @@ private fun PlaybackDialog(
     var onlineSubtitleLanguage by remember { mutableStateOf("ar") }
     var onlineSubtitleLoading by remember { mutableStateOf(false) }
     val playbackScope = rememberCoroutineScope()
+    // Serialize MPV native preparation/playback with AndroidView release to avoid destroying a core mid-prepare.
+    val mpvLifecycleMutex = remember(entry.id) { Mutex() }
     val externalAudioPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null && activeEngine == "exoplayer") {
             runCatching {
@@ -3278,38 +3336,45 @@ private fun PlaybackDialog(
             player.stop()
             player.clearMediaItems()
             val view = mpvView ?: return@LaunchedEffect
-            runCatching {
-                // MPV initialization is expensive on some TV boxes, so prepare its native core off the UI thread.
-                val prepared: PreparedCore = withContext(Dispatchers.IO) {
-                    view.prepare(
-                        MpvOptions(
-                            tlsCaFile = mpvCaBundle,
-                            // Prefer Arabic subtitles, then English/French when the stream provides them.
-                            subtitleLanguages = listOf("ar", "ara", "en", "eng", "fr", "fre"),
-                            // Automatically discover adjacent external subtitle files where supported.
-                            // Prefer hardware decoding where available for high-resolution HEVC streams.
-                            extra = mapOf(
-                                "sub-auto" to "all",
-                                // Use hardware decoding when safe, but automatically fall back to FFmpeg software decoding
-                                // when a codec/profile is unsupported by the device decoder.
-                                "hwdec" to if (mpvAttempt > 0) "no" else "auto-safe",
-                                "vd-lavc-software-fallback" to "yes",
+            try {
+                mpvLifecycleMutex.withLock {
+                    currentCoroutineContext().ensureActive()
+                    // MPV initialization is expensive on some TV boxes, so prepare its native core off the UI thread.
+                    // Keep the lifecycle lock until preparation completes; AndroidView release waits on the same lock.
+                    val prepared: PreparedCore = withContext(Dispatchers.IO) {
+                        view.prepare(
+                            MpvOptions(
+                                tlsCaFile = mpvCaBundle,
+                                // Prefer Arabic subtitles, then English/French when the stream provides them.
+                                subtitleLanguages = listOf("ar", "ara", "en", "eng", "fr", "fre"),
+                                // Automatically discover adjacent external subtitle files where supported.
+                                // Prefer hardware decoding where available for high-resolution HEVC streams.
+                                extra = mapOf(
+                                    "sub-auto" to "all",
+                                    // Keep hardware decoding as the first choice; retry in software only after failure.
+                                    "hwdec" to if (mpvAttempt > 0) "no" else "auto-safe",
+                                    "vd-lavc-software-fallback" to "yes",
+                                ),
                             ),
-                        ),
-                    )
-                }
-                view.attach(prepared)
-                view.playFile(entry.streamUrl).getOrThrow()
-                if (entry.kind != MediaKind.LIVE && preferences.resumePlayback()) {
-                    val resumePosition = preferences.progress(entry.id)
-                    if (resumePosition > 5_000L) {
-                        // MPV reports positions in seconds; the shared progress store uses milliseconds.
-                        view.timePos = resumePosition / 1_000.0
+                        )
+                    }
+                    currentCoroutineContext().ensureActive()
+                    view.attach(prepared)
+                    currentCoroutineContext().ensureActive()
+                    view.playFile(entry.streamUrl).getOrThrow()
+                    currentCoroutineContext().ensureActive()
+                    if (entry.kind != MediaKind.LIVE && preferences.resumePlayback()) {
+                        val resumePosition = preferences.progress(entry.id)
+                        if (resumePosition > 5_000L) {
+                            // MPV reports positions in seconds; the shared progress store uses milliseconds.
+                            view.timePos = resumePosition / 1_000.0
+                        }
                     }
                 }
-            }.onSuccess {
                 loading = false
-            }.onFailure { failure ->
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (failure: Exception) {
                 if (mpvAttempt == 0) {
                     // Some TV boxes fail with their hardware decoder on specific codecs/streams.
                     // Recreate MPV once with software decoding before showing a terminal error.
@@ -3379,7 +3444,16 @@ private fun PlaybackDialog(
                             }.also { mpvView = it }
                         },
                         modifier = Modifier.fillMaxSize(),
-                        onRelease = { it.destroy() },
+                        onRelease = { releasedView ->
+                            // This cleanup must outlive the composition: rememberCoroutineScope is cancelled
+                            // as the dialog leaves composition and could otherwise skip native destroy().
+                            // Serialize release with prepare()/playFile() so the native core is never torn down mid-call.
+                            kotlinx.coroutines.CoroutineScope(
+                                kotlinx.coroutines.SupervisorJob() + Dispatchers.IO,
+                            ).launch {
+                                mpvLifecycleMutex.withLock { releasedView.destroy() }
+                            }
+                        },
                     )
                 }
             } else {
@@ -3822,6 +3896,64 @@ private fun visibleChannels(
 }
 
 @Composable
+private fun KidsPosterShelf(
+    title: String,
+    entries: List<MediaEntry>,
+    section: Section,
+    compact: Boolean,
+    accent: Color,
+    onPlay: (MediaEntry) -> Unit,
+    onPlayYoutube: (String) -> Unit,
+    onMovieDetails: (MediaEntry) -> Unit,
+) {
+    if (entries.isEmpty()) return
+    Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
+        Text(title, color = accent, fontSize = if (compact) 15.sp else 19.sp, fontWeight = FontWeight.Black)
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(end = 10.dp)) {
+            items(entries.distinctBy { it.id }, key = { "kids-shelf:" + section.name + ":" + it.id }) { entry ->
+                Column(
+                    Modifier.width(if (compact) 112.dp else 148.dp).clickable {
+                        if (entry.id.startsWith("youtube:")) onPlayYoutube(entry.id.removePrefix("youtube:"))
+                        else if (section == Section.MOVIES) onMovieDetails(entry) else onPlay(entry)
+                    },
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Surface(
+                        color = Color(0xFF24456B),
+                        shape = RoundedCornerShape(13.dp),
+                        border = BorderStroke(1.5.dp, accent.copy(alpha = 0.75f)),
+                        modifier = Modifier.fillMaxWidth().aspectRatio(0.70f),
+                    ) {
+                        Box {
+                            if (entry.logoUrl.isNotBlank()) {
+                                AsyncImage(
+                                    model = entry.logoUrl,
+                                    contentDescription = entry.title,
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentScale = ContentScale.Crop,
+                                )
+                            } else {
+                                Box(
+                                    Modifier.fillMaxSize().background(Brush.linearGradient(listOf(Color(0xFF7256D8), Color(0xFF22A9B8)))),
+                                    contentAlignment = Alignment.Center,
+                                ) { Text("🧸\n⭐", fontSize = if (compact) 28.sp else 36.sp, lineHeight = 40.sp) }
+                            }
+                            Box(
+                                Modifier.align(Alignment.BottomEnd).padding(5.dp)
+                                    .background(Color(0xCC151B3B), RoundedCornerShape(50))
+                                    .padding(horizontal = 7.dp, vertical = 3.dp)
+                            ) { Text("▶ شاهد", color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.Bold) }
+                        }
+                    }
+                    Text(entry.title, color = Color.White, fontWeight = FontWeight.Bold, fontSize = if (compact) 11.sp else 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    if (entry.year.isNotBlank()) Text(entry.year, color = Color(0xFFB6D5E5), fontSize = 10.sp, maxLines = 1)
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun KidsDashboard(
     compact: Boolean,
     section: Section,
@@ -3838,220 +3970,230 @@ private fun KidsDashboard(
     onLoadMore: () -> Unit,
 ) {
     var youtubeResults by remember { mutableStateOf<List<MediaEntry>>(emptyList()) }
+    var youtubeResultsForQuery by remember { mutableStateOf("") }
+    var youtubeResultsForSection by remember { mutableStateOf<Section?>(null) }
     var youtubeLoading by remember { mutableStateOf(false) }
     var youtubeError by remember { mutableStateOf("") }
-    var selectedKidCategory by remember(section) { mutableStateOf("الكل") }
+
     LaunchedEffect(search, section) {
         val query = search.trim()
         if (query.length < 2 || section == Section.LIVE) {
             youtubeResults = emptyList()
+            youtubeResultsForQuery = ""
+            youtubeResultsForSection = null
             youtubeError = ""
             youtubeLoading = false
         } else {
             delay(450)
             youtubeLoading = true
             youtubeError = ""
-            runCatching { withContext(Dispatchers.IO) { searchYouTubeKids(query, section) } }
-                .onSuccess { youtubeResults = it }
-                .onFailure { youtubeResults = emptyList(); youtubeError = it.message ?: "تعذر تحميل نتائج YouTube" }
-            youtubeLoading = false
+            try {
+                val results = withContext(Dispatchers.IO) { runInterruptible { searchYouTubeKids(query, section) } }
+                currentCoroutineContext().ensureActive()
+                youtubeResults = results
+                youtubeResultsForQuery = query
+                youtubeResultsForSection = section
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (failure: Exception) {
+                youtubeResults = emptyList()
+                youtubeError = failure.message ?: "تعذر تحميل نتائج YouTube"
+            } finally {
+                youtubeLoading = false
+            }
         }
     }
-    val allVisible = remember(section, movies, series, channels, search, youtubeResults) {
-        val source = when (section) {
-            Section.LIVE -> channels
-            Section.SERIES -> series
-            else -> movies
-        }
-        val catalogueResults = source.filter {
+
+    val source = when (section) {
+        Section.LIVE -> channels
+        Section.SERIES -> series.filter { it.kind == MediaKind.SERIES }
+        else -> movies.filter { it.kind == MediaKind.MOVIE }
+    }
+    val activeYoutubeResults = remember(youtubeResults, youtubeResultsForQuery, youtubeResultsForSection, search, section) {
+        if (search.trim().length >= 2 && youtubeResultsForQuery == search.trim() && youtubeResultsForSection == section) {
+            youtubeResults.filter { result ->
+                when (section) {
+                    Section.SERIES -> result.kind == MediaKind.SERIES
+                    Section.MOVIES -> result.kind == MediaKind.MOVIE
+                    else -> false
+                }
+            }
+        } else emptyList()
+    }
+    val visible = remember(source, search, activeYoutubeResults, section) {
+        val local = source.filter {
             search.isBlank() || it.title.contains(search, ignoreCase = true) ||
                 it.category.contains(search, ignoreCase = true) || it.genre.contains(search, ignoreCase = true)
         }
-        if (search.isBlank() || section == Section.LIVE) catalogueResults
-        else (catalogueResults + youtubeResults).distinctBy { it.id }
-    }
-    val kidCategories = remember(allVisible) {
-        allVisible.map { it.category.trim() }.filter { it.isNotBlank() }.distinctBy { it.lowercase() }.sortedBy { it.lowercase() }.take(18)
-    }
-    val visible = remember(allVisible, selectedKidCategory) {
-        if (selectedKidCategory == "الكل") allVisible
-        else allVisible.filter { it.category.equals(selectedKidCategory, ignoreCase = true) }
-    }
-    val kidShelves = remember(visible, section, search) {
-        if (search.isNotBlank()) listOf("نتائج البحث 🔎" to visible)
-        else {
-            val result = linkedMapOf<String, List<MediaEntry>>()
-            if (visible.isNotEmpty()) result["✨ اختياراتنا ليك"] = visible.take(14)
-            listOf("Animation", "Kids", "Children", "Educational", "Family", "Cartoon", "Anime").forEach { category ->
-                val matches = visible.filter { entry ->
-                    entry.category.contains(category, true) || entry.genre.contains(category, true) || entry.title.contains(category, true)
-                }
-                if (matches.isNotEmpty() && result.keys.none { it.contains(category, true) }) result[when(category) {
-                    "Educational" -> "🧠 تعلم والعب"
-                    "Family" -> "👨‍👩‍👧‍👦 وقت العائلة"
-                    "Animation", "Cartoon" -> "🎨 عالم الكرتون"
-                    "Anime" -> "🌟 مغامرات الأنيمي"
-                    else -> "🧸 عالم الصغار"
-                }] = matches
-            }
-            val hasCategoryShelves = result.keys.any { it != "✨ اختياراتنا ليك" }
-            if (!hasCategoryShelves) {
-                result.clear()
-                result["🌈 اكتشف المحتوى"] = visible
-            }
-            result.entries.map { it.key to it.value }
-        }
+        if (search.isBlank() || section == Section.LIVE) local else (local + activeYoutubeResults).distinctBy { it.id }
     }
     val kidAccent = when (section) {
         Section.SERIES -> Color(0xFFB99AFF)
         Section.LIVE -> Color(0xFF73E0FF)
         else -> Color(0xFFFFC857)
     }
+
     Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xFF102E50), Color(0xFF151B3B), Color(0xFF301D4D))))) {
         KidsBackgroundDoodles(compact = compact)
-        Column(
-            Modifier.fillMaxSize().padding(if (compact) 8.dp else 14.dp),
-            verticalArrangement = Arrangement.spacedBy(if (compact) 5.dp else 8.dp),
-        ) {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Column(Modifier.weight(1f)) {
-                    Text("🌈 TVI KIDS 🦄", color = Color(0xFFFFD76A), fontSize = if (compact) 23.sp else 34.sp, fontWeight = FontWeight.Black)
-                    Text(
-                        when (section) {
-                            Section.LIVE -> "قنوات الأطفال المباشرة 📺"
-                            Section.SERIES -> "مسلسلات وحلقات للصغار 🦸"
-                            else -> "أفلام وكرتون ومغامرات 🎨"
-                        },
-                        color = Color(0xFFE5F4FF),
-                        fontSize = if (compact) 11.sp else 14.sp,
-                    )
-                }
-                OutlinedButton(onClick = onExit, contentPadding = PaddingValues(horizontal = 12.dp, vertical = 5.dp)) {
-                    Text("👨 Parent / PIN", fontSize = 11.sp, maxLines = 1)
-                }
-            }
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                listOf(Section.LIVE to "📺 قنوات", Section.MOVIES to "🎨 كرتون وأفلام", Section.SERIES to "🦸 مسلسلات").forEach { (target, label) ->
-                    Button(
-                        onClick = { onSection(target) },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = if (section == target) Color(0xFF7657D7) else Color(0xFF24456B),
-                            contentColor = Color.White,
-                        ),
-                        modifier = Modifier.weight(1f),
-                        contentPadding = PaddingValues(horizontal = 6.dp, vertical = if (compact) 3.dp else 5.dp),
-                    ) { Text(label, fontSize = if (compact) 10.sp else 13.sp, maxLines = 1) }
-                }
-            }
-            OutlinedTextField(
-                value = search,
-                onValueChange = onSearch,
-                modifier = Modifier.fillMaxWidth().heightIn(max = 58.dp),
-                singleLine = true,
-                label = { Text("🔎 قلب على الكرتون أو البرنامج", fontSize = 11.sp) },
-            )
-            if (kidCategories.isNotEmpty()) {
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp), contentPadding = PaddingValues(end = 8.dp)) {
-                    item(key = "kids-category-all") {
-                        OutlinedButton(
-                            onClick = { selectedKidCategory = "الكل" },
-                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 3.dp),
-                            border = BorderStroke(1.dp, if (selectedKidCategory == "الكل") Color(0xFFFFD76A) else Color.White.copy(alpha = 0.35f)),
-                        ) { Text("الكل", color = Color.White, fontSize = 11.sp) }
-                    }
-                    items(kidCategories, key = { "kids-category:$it" }) { category ->
-                        OutlinedButton(
-                            onClick = { selectedKidCategory = category },
-                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 3.dp),
-                            border = BorderStroke(1.dp, if (selectedKidCategory == category) Color(0xFFFFD76A) else Color.White.copy(alpha = 0.35f)),
-                        ) { Text(category, color = Color.White, fontSize = 11.sp, maxLines = 1) }
+        when (section) {
+            Section.LIVE -> {
+                val gridState = rememberLazyGridState()
+                LaunchedEffect(gridState, channels.size) {
+                    snapshotFlow {
+                        val info = gridState.layoutInfo
+                        Pair(info.visibleItemsInfo.lastOrNull()?.index ?: -1, info.totalItemsCount)
+                    }.distinctUntilChanged().collectLatest { (lastVisible, total) ->
+                        if (total > 0 && lastVisible >= total - 6) onLoadMore()
                     }
                 }
-            }
-            if (visible.isEmpty()) {
-                LaunchedEffect(section, movies.size, series.size, channels.size, search) {
-                    // Continue paging when a raw catalogue page contains no child-safe items.
-                    onLoadMore()
-                }
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("🧸 🌟 🚀", fontSize = if (compact) 30.sp else 44.sp)
-                        Text(when {
-                            youtubeLoading -> "كنقلبو ليك على فيديوهات مناسبة... 🔎"
-                            search.isNotBlank() && youtubeError.isNotBlank() -> "ما لقيناش نتائج محلية، وYouTube ما تجاوبش دابا."
-                            search.isBlank() -> "مازال ما كاين حتى محتوى أطفال مصنّف هنا."
-                            else -> "ما لقيناش هاد الشي، جرّب كلمة أخرى 😊"
-                        }, color = Color(0xFFE5F4FF))
-                    }
-                }
-            } else {
-                val kidsListState = rememberLazyListState()
-                LaunchedEffect(kidsListState, section, visible.size) {
-                    snapshotFlow { kidsListState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0 }
-                        .distinctUntilChanged()
-                        .collectLatest { lastVisible ->
-                            val totalItems = kidsListState.layoutInfo.totalItemsCount
-                            if (totalItems > 0 && lastVisible >= totalItems - 3) onLoadMore()
-                        }
-                }
-                LazyColumn(
-                    state = kidsListState,
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(bottom = 12.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    item(key = "kids-welcome-banner") {
-                        Surface(
-                            color = Color(0xFF6546B8),
-                            shape = RoundedCornerShape(14.dp),
-                            border = BorderStroke(1.dp, Color(0xFFFFD76A).copy(alpha = 0.65f)),
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Row(Modifier.padding(horizontal = 12.dp, vertical = if (compact) 5.dp else 7.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
-                                    Text("أهلاً بالأبطال الصغار! ⭐", color = Color.White, fontSize = if (compact) 13.sp else 16.sp, fontWeight = FontWeight.Black, maxLines = 1)
-                                    Text("اختار مغامرتك الجاية وتعلّم 🎉", color = Color(0xFFFFEAB0), fontSize = if (compact) 9.sp else 11.sp, maxLines = 1)
-                                }
-                                Text("🦄 🚀 🐻", fontSize = if (compact) 16.sp else 20.sp, maxLines = 1)
-                            }
+                if (channels.isEmpty()) {
+                    LaunchedEffect(section, channels.size) { onLoadMore() }
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text("📺", fontSize = 42.sp)
+                            Text("كنحمّلو قنوات الأطفال…", color = Color.White, fontSize = 15.sp)
                         }
                     }
-                    kidShelves.forEachIndexed { shelfIndex, (shelfTitle, itemsForShelf) ->
-                        if (itemsForShelf.isNotEmpty()) {
-                            item(key = "kids-heading:$shelfIndex") {
-                                Text(shelfTitle, color = kidAccent, fontSize = if (compact) 13.sp else 16.sp, fontWeight = FontWeight.Black)
-                            }
-                            item(key = "kids-row:$shelfIndex") {
-                                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(end = 8.dp)) {
-                                    items(itemsForShelf.distinctBy { it.id }, key = { "kids:${shelfIndex}:${it.id}" }) { entry ->
-                                        Column(Modifier.width(if (compact) 104.dp else 132.dp).clickable {
-                                            if (entry.id.startsWith("youtube:")) onPlayYoutube(entry.id.removePrefix("youtube:"))
-                                            else if (section == Section.MOVIES) onMovieDetails(entry) else onPlay(entry)
-                                        }) {
-                                            Surface(
-                                                color = Color(0xFF24456B),
-                                                shape = RoundedCornerShape(16.dp),
-                                                border = BorderStroke(2.dp, kidAccent.copy(alpha = 0.75f)),
-                                                modifier = Modifier.fillMaxWidth().aspectRatio(0.72f),
-                                            ) {
-                                                Box {
-                                                    if (entry.logoUrl.isNotBlank()) AsyncImage(
-                                                        model = entry.logoUrl,
-                                                        contentDescription = entry.title,
-                                                        modifier = Modifier.fillMaxSize(),
-                                                        contentScale = ContentScale.Crop,
-                                                    ) else Box(Modifier.fillMaxSize().background(Brush.linearGradient(listOf(Color(0xFF7256D8), Color(0xFF22A9B8)))), contentAlignment = Alignment.Center) {
-                                                        Text("🧸\n⭐", fontSize = if (compact) 28.sp else 36.sp, lineHeight = 40.sp)
-                                                    }
-                                                    Box(Modifier.align(Alignment.BottomEnd).padding(6.dp).background(Color(0xCC151B3B), RoundedCornerShape(50)).padding(horizontal = 8.dp, vertical = 3.dp)) {
-                                                        Text(if (section == Section.LIVE) "▶ شاهد" else "✨ اكتشف", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                                                    }
-                                                }
-                                            }
-                                            Text(entry.title, color = Color.White, fontWeight = FontWeight.Bold, fontSize = if (compact) 11.sp else 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.dp))
-                                            if (entry.category.isNotBlank()) Text(entry.category, color = Color(0xFFB6D5E5), fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                } else {
+                    LazyVerticalGrid(
+                        columns = GridCells.Adaptive(minSize = if (compact) 112.dp else 148.dp),
+                        state = gridState,
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(horizontal = if (compact) 7.dp else 14.dp, vertical = if (compact) 7.dp else 12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(if (compact) 7.dp else 12.dp),
+                        verticalArrangement = Arrangement.spacedBy(if (compact) 7.dp else 12.dp),
+                    ) {
+                        gridItems(channels.distinctBy { it.id }, key = { "kids-live:" + it.id }) { channel ->
+                            Column(Modifier.fillMaxWidth().clickable { onPlay(channel) }, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Surface(
+                                    color = Color(0xFF24456B), shape = RoundedCornerShape(12.dp),
+                                    border = BorderStroke(1.5.dp, kidAccent.copy(alpha = 0.75f)),
+                                    modifier = Modifier.fillMaxWidth().aspectRatio(0.82f),
+                                ) {
+                                    Box {
+                                        if (channel.logoUrl.isNotBlank()) {
+                                            AsyncImage(model = channel.logoUrl, contentDescription = channel.title, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
+                                        } else Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("📺", fontSize = 42.sp) }
+                                        Box(Modifier.align(Alignment.BottomStart).fillMaxWidth().background(Color(0xD9151B3B)).padding(horizontal = 7.dp, vertical = 5.dp)) {
+                                            Text(channel.title, color = Color.White, fontSize = if (compact) 10.sp else 12.sp, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
                                         }
                                     }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            Section.MOVIES, Section.SERIES -> {
+                val listState = rememberLazyListState()
+                val newestFirst = remember(source) {
+                    source.sortedByDescending { (it.year.ifBlank { it.releaseDate.take(4) }).toIntOrNull() ?: 0 }
+                }
+                val trending = remember(newestFirst) { newestFirst.take(16) }
+                val trendingIds = remember(trending) { trending.mapTo(mutableSetOf()) { it.id } }
+                val recommended = remember(source, trendingIds, trending) {
+                    source.filterNot { it.id in trendingIds }
+                        .sortedWith(compareBy<MediaEntry> { it.category.lowercase() }.thenBy { it.title.lowercase() })
+                        .take(16).ifEmpty { trending.take(10) }
+                }
+                LaunchedEffect(listState, section, visible.size, search) {
+                    snapshotFlow { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0 }
+                        .distinctUntilChanged().collectLatest { lastVisible ->
+                            val total = listState.layoutInfo.totalItemsCount
+                            if (total > 0 && lastVisible >= total - 3) onLoadMore()
+                        }
+                }
+                Column(Modifier.fillMaxSize().padding(horizontal = if (compact) 7.dp else 14.dp, vertical = if (compact) 6.dp else 10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = search, onValueChange = onSearch,
+                        modifier = Modifier.fillMaxWidth().heightIn(max = 58.dp),
+                        singleLine = true, label = { Text("🔎 قلب على فيلم أو كرتون أو مسلسل", fontSize = 11.sp) },
+                    )
+                    if (youtubeLoading || youtubeError.isNotBlank()) {
+                        Text(
+                            if (youtubeLoading) "كنقلبو فـ YouTube…" else "تعذر بحث YouTube: $youtubeError",
+                            color = if (youtubeError.isNotBlank()) Color(0xFFFFC0B0) else Color(0xFFE5F4FF),
+                            fontSize = 10.sp, maxLines = 2, overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                    if (visible.isEmpty()) {
+                        if (source.isEmpty()) LaunchedEffect(section, source.size) { onLoadMore() }
+                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Text(
+                                if (youtubeLoading) "كنقلبو ليك على محتوى مناسب…"
+                                else if (search.isBlank()) "كنحمّلو المحتوى…"
+                                else "ما لقيناش نتائج، جرّب كلمة أخرى 😊",
+                                color = Color(0xFFE5F4FF),
+                            )
+                        }
+                    } else {
+                        LazyColumn(state = listState, modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 14.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                            if (search.isNotBlank()) {
+                                item(key = "kids-search-results") {
+                                    KidsPosterShelf("نتائج البحث", visible, section, compact, kidAccent, onPlay, onPlayYoutube, onMovieDetails)
+                                }
+                            } else {
+                                item(key = "kids-trending") {
+                                    KidsPosterShelf("🔥 Trending", trending, section, compact, kidAccent, onPlay, onPlayYoutube, onMovieDetails)
+                                }
+                                item(key = "kids-recommended") {
+                                    KidsPosterShelf("⭐ Recommended", recommended, section, compact, kidAccent, onPlay, onPlayYoutube, onMovieDetails)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            else -> {
+                Column(Modifier.fillMaxSize().padding(if (compact) 8.dp else 16.dp), verticalArrangement = Arrangement.spacedBy(if (compact) 8.dp else 14.dp)) {
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text("🌈 TVI KIDS", color = Color(0xFFFFD76A), fontSize = if (compact) 23.sp else 34.sp, fontWeight = FontWeight.Black)
+                            Text("اختار شنو بغيتي تتفرج اليوم ⭐", color = Color(0xFFE5F4FF), fontSize = if (compact) 11.sp else 14.sp)
+                        }
+                        OutlinedButton(onClick = onExit, contentPadding = PaddingValues(horizontal = 12.dp, vertical = 5.dp)) {
+                            Text("👨 Parent / PIN", fontSize = 11.sp, maxLines = 1)
+                        }
+                    }
+                    Surface(
+                        color = Color(0xFF193B62), shape = RoundedCornerShape(18.dp),
+                        border = BorderStroke(2.dp, Color(0xFF73E0FF)),
+                        modifier = Modifier.fillMaxWidth().weight(1.05f).clickable { onSection(Section.LIVE) },
+                    ) {
+                        Box(Modifier.fillMaxSize().padding(16.dp), contentAlignment = Alignment.Center) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                                Text("📺", fontSize = if (compact) 42.sp else 64.sp)
+                                Text("TV LIVE", color = Color.White, fontSize = if (compact) 25.sp else 36.sp, fontWeight = FontWeight.Black)
+                                Text("قنوات الأطفال مباشرة", color = Color(0xFFD7F4FF), fontSize = if (compact) 11.sp else 15.sp)
+                            }
+                        }
+                    }
+                    Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(if (compact) 8.dp else 14.dp)) {
+                        Surface(
+                            color = Color(0xFF6546B8), shape = RoundedCornerShape(18.dp),
+                            border = BorderStroke(2.dp, Color(0xFFFFC857)),
+                            modifier = Modifier.weight(1f).fillMaxHeight().clickable { onSection(Section.MOVIES) },
+                        ) {
+                            Box(Modifier.fillMaxSize().padding(10.dp), contentAlignment = Alignment.Center) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    Text("🎨", fontSize = if (compact) 34.sp else 52.sp)
+                                    Text("الأفلام", color = Color.White, fontSize = if (compact) 20.sp else 28.sp, fontWeight = FontWeight.Black)
+                                    Text("Movies", color = Color(0xFFFFEAB0), fontSize = 12.sp)
+                                }
+                            }
+                        }
+                        Surface(
+                            color = Color(0xFF24456B), shape = RoundedCornerShape(18.dp),
+                            border = BorderStroke(2.dp, Color(0xFFB99AFF)),
+                            modifier = Modifier.weight(1f).fillMaxHeight().clickable { onSection(Section.SERIES) },
+                        ) {
+                            Box(Modifier.fillMaxSize().padding(10.dp), contentAlignment = Alignment.Center) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    Text("🦸", fontSize = if (compact) 34.sp else 52.sp)
+                                    Text("المسلسلات", color = Color.White, fontSize = if (compact) 20.sp else 28.sp, fontWeight = FontWeight.Black)
+                                    Text("Series", color = Color(0xFFE8DFFF), fontSize = 12.sp)
                                 }
                             }
                         }
@@ -4061,7 +4203,6 @@ private fun KidsDashboard(
         }
     }
 }
-
 
 private fun searchYouTubeTrailer(entry: MediaEntry): String? {
     val apiKey = BuildConfig.YOUTUBE_API_KEY.trim()
@@ -4318,6 +4459,17 @@ private fun searchYouTubeKids(query: String, section: Section): List<MediaEntry>
             val snippet = item.optJSONObject("snippet") ?: continue
             val title = snippet.optString("title").trim()
             if (videoId.isBlank() || title.isBlank()) continue
+
+            // Search snippets do not expose a reliable movie/series type, so reject only
+            // strong cross-format signals instead of guessing from broad genre labels.
+            val normalizedTitle = title.lowercase()
+            val episodeMarker = Regex("""\b(?:s\d{1,2}\s*e\d{1,2}|season\s*\d+|episode\s*\d+|ep\s*\d+)\b""")
+                .containsMatchIn(normalizedTitle) ||
+                listOf("الحلقة", "الحلقات", "الموسم", "مسلسل").any { it in normalizedTitle }
+            val movieMarker = Regex("""\b(?:full\s+movie|movie|film)\b""").containsMatchIn(normalizedTitle) ||
+                listOf("فيلم", "أفلام", "افلام").any { it in normalizedTitle }
+            if (section == Section.MOVIES && episodeMarker && !movieMarker) continue
+            if (section == Section.SERIES && movieMarker) continue
 
             val thumbnails = snippet.optJSONObject("thumbnails")
             val thumbnail = thumbnails?.optJSONObject("high")?.optString("url").orEmpty()

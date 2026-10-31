@@ -206,7 +206,7 @@ private fun activateOatecCode(context: Context, code: String): PlayerSource {
             throw IOException(when {
                 status == 401 -> "كود التفعيل غير صحيح أو سالات الصلاحية ديالو."
                 status == 403 -> "الاشتراك ديالك ماشي فعّال أو سالات المدة ديالو."
-                status == 409 -> "هاد الكود مربوط بجهاز آخر."
+                status == 409 -> serverError.ifBlank { "هاد الكود مربوط بجهاز آخر." }
                 serverError.isNotBlank() -> serverError
                 else -> "تعذر التحقق من كود التفعيل (HTTP " + status + ")."
             })

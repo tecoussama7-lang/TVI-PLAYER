@@ -231,7 +231,7 @@ private fun activateOatecCode(context: Context, code: String): PlayerSource {
         val validGetPhpXtream = isXtreamGetPhp && validM3u &&
             urlUsername.isNotBlank() && urlPassword.isNotBlank()
         val getPhpBase = if (isXtreamGetPhp) m3uUrl.substringBefore('?').substringBeforeLast('/') else ""
-        when {
+        val source = when {
             sourceType == "xtream" && validXtream -> PlayerSource(
                 id = UUID.randomUUID().toString(),
                 name = "OATEC Subscription",
@@ -272,8 +272,33 @@ private fun activateOatecCode(context: Context, code: String): PlayerSource {
                 "كود التفعيل صحيح، ولكن نوع المصدر أو بياناته فلوحة الأدمن غير متطابقة. تأكد أن الحساب مضبوط على M3U مع رابط صالح، أو Xtream مع Server وUsername وPassword."
             )
         }
+        val playerToken = response.optString("token").trim()
+        if (playerToken.isBlank()) throw IOException("السيرفر ما رجعش رمز جلسة صالح.")
+        SecureSourceStore(context).savePlayerToken(playerToken)
+        source
     } finally { connection.disconnect() }
 }
+
+private fun verifyPlayerToken(context: Context): Boolean {
+    val token = SecureSourceStore(context).loadPlayerToken().orEmpty()
+    if (token.isBlank()) return false
+    val connection = (URL(PLAYER_API_BASE_URL + "/me").openConnection() as HttpURLConnection).apply {
+        requestMethod = "GET"
+        connectTimeout = 10000
+        readTimeout = 12000
+        setRequestProperty("Accept", "application/json")
+        setRequestProperty("Authorization", "Bearer $token")
+    }
+    return try {
+        val status = connection.responseCode
+        if (status == 401 || status == 403) return false
+        val stream = if (status in 200..299) connection.inputStream else connection.errorStream
+        val body = stream?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }.orEmpty()
+        if (status !in 200..299) throw IOException("تعذر التحقق من الترخيص (HTTP $status).")
+        JSONObject(body).optBoolean("ok")
+    } finally { connection.disconnect() }
+}
+
 private enum class Section(val label: String) {
     HOME("Home"), LIVE("Live TV"), MOVIES("Movies"), SERIES("Series"), TRAILERS("Trailers"), DOWNLOADS("Downloads"), SOURCES("Sources"), SETTINGS("Settings"),
 }
@@ -283,6 +308,31 @@ fun PlayerTvApp() {
     val context = androidx.compose.ui.platform.LocalContext.current
     var availableUpdate by remember { mutableStateOf<store.oatec.playertv.data.AppUpdate?>(null) }
     var dismissedVersion by rememberSaveable { mutableStateOf("") }
+    var entitlementState by remember { mutableStateOf("checking") }
+    var entitlementError by remember { mutableStateOf("") }
+    var retryEntitlement by remember { mutableIntStateOf(0) }
+
+    LaunchedEffect(retryEntitlement) {
+        val token = SecureSourceStore(context).loadPlayerToken().orEmpty()
+        if (token.isBlank()) {
+            entitlementState = "activation"
+        } else {
+            entitlementState = "checking"
+            try {
+                val valid = withContext(Dispatchers.IO) { verifyPlayerToken(context) }
+                if (valid) {
+                    entitlementState = "active"
+                } else {
+                    SecureSourceStore(context).savePlayerToken("")
+                    SecureSourceStore(context).save(emptyList())
+                    entitlementState = "activation"
+                }
+            } catch (error: Exception) {
+                entitlementError = error.message ?: "خاص الاتصال بالإنترنت للتحقق من الترخيص."
+                entitlementState = "offline"
+            }
+        }
+    }
 
     LaunchedEffect(Unit) {
         availableUpdate = runCatching {
@@ -290,7 +340,26 @@ fun PlayerTvApp() {
         }.getOrNull()
     }
 
-    PlayerTvAppContent()
+    when (entitlementState) {
+        "checking" -> Surface(Modifier.fillMaxSize(), color = Ink) {
+            Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+                CircularProgressIndicator(color = Lime)
+                Spacer(Modifier.height(14.dp))
+                Text("كنتحققو من ترخيص OATEC...", color = TextMain)
+            }
+        }
+        "offline" -> Surface(Modifier.fillMaxSize(), color = Ink) {
+            Column(Modifier.fillMaxSize().padding(28.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+                Text("الاتصال بالإنترنت ضروري", color = GoldLight, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+                Text(entitlementError, color = TextMuted, fontSize = 14.sp)
+                Spacer(Modifier.height(12.dp))
+                Button(onClick = { retryEntitlement++ }, colors = ButtonDefaults.buttonColors(containerColor = Lime, contentColor = Ink)) {
+                    Text("إعادة المحاولة")
+                }
+            }
+        }
+        else -> PlayerTvAppContent()
+    }
 
     val update = availableUpdate
     if (update != null && dismissedVersion != update.versionName) {
@@ -716,7 +785,7 @@ private fun PlayerTvAppContent() {
         }
     }
 
-    val needsInitialSetup = sources.isEmpty()
+    val needsInitialSetup = sources.isEmpty() || sourceStore.loadPlayerToken().isNullOrBlank()
 
     MaterialTheme(
         colorScheme = darkColorScheme(
@@ -1747,7 +1816,7 @@ private fun SettingsScreen(
                     singleLine = true,
                     visualTransformation = PasswordVisualTransformation(),
                 )
-                Text("The code is stored securely. Online verification is not available until OATEC provides an activation API.", color = TextMuted, fontSize = 10.sp)
+                Text("This device is checked online with OATEC. An internet connection is required whenever the app starts.", color = TextMuted, fontSize = 10.sp)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                     Button(
                         onClick = { onSavePremiumCode(premiumCodeInput.trim()); premiumCodeSaved = true },

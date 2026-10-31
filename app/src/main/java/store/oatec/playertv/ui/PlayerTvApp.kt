@@ -304,7 +304,7 @@ fun PlayerTvApp() {
     // DB pagination offset must count raw rows, before Kids Mode filtering.
     var catalogPageOffsets by remember { mutableStateOf<Map<String, Int>>(emptyMap()) }
     // Open directly on the live channel list; users can switch straight to Movies, Series, or Settings.
-    var section by remember { mutableStateOf(Section.LIVE.name) }
+    var section by remember { mutableStateOf(if (kidsModeActive) Section.HOME.name else Section.LIVE.name) }
     var selectedCategory by rememberSaveable { mutableStateOf("All") }
     var liveCategoryNames by remember(activeSourceId) { mutableStateOf<List<String>>(emptyList()) }
     var search by rememberSaveable { mutableStateOf("") }
@@ -3851,6 +3851,64 @@ private fun visibleChannels(
 }
 
 @Composable
+private fun KidsPosterShelf(
+    title: String,
+    entries: List<MediaEntry>,
+    section: Section,
+    compact: Boolean,
+    accent: Color,
+    onPlay: (MediaEntry) -> Unit,
+    onPlayYoutube: (String) -> Unit,
+    onMovieDetails: (MediaEntry) -> Unit,
+) {
+    if (entries.isEmpty()) return
+    Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
+        Text(title, color = accent, fontSize = if (compact) 15.sp else 19.sp, fontWeight = FontWeight.Black)
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(end = 10.dp)) {
+            items(entries.distinctBy { it.id }, key = { "kids-shelf:\${section.name}:\${it.id}" }) { entry ->
+                Column(
+                    Modifier.width(if (compact) 112.dp else 148.dp).clickable {
+                        if (entry.id.startsWith("youtube:")) onPlayYoutube(entry.id.removePrefix("youtube:"))
+                        else if (section == Section.MOVIES) onMovieDetails(entry) else onPlay(entry)
+                    },
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Surface(
+                        color = Color(0xFF24456B),
+                        shape = RoundedCornerShape(13.dp),
+                        border = BorderStroke(1.5.dp, accent.copy(alpha = 0.75f)),
+                        modifier = Modifier.fillMaxWidth().aspectRatio(0.70f),
+                    ) {
+                        Box {
+                            if (entry.logoUrl.isNotBlank()) {
+                                AsyncImage(
+                                    model = entry.logoUrl,
+                                    contentDescription = entry.title,
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentScale = ContentScale.Crop,
+                                )
+                            } else {
+                                Box(
+                                    Modifier.fillMaxSize().background(Brush.linearGradient(listOf(Color(0xFF7256D8), Color(0xFF22A9B8)))),
+                                    contentAlignment = Alignment.Center,
+                                ) { Text("🧸\n⭐", fontSize = if (compact) 28.sp else 36.sp, lineHeight = 40.sp) }
+                            }
+                            Box(
+                                Modifier.align(Alignment.BottomEnd).padding(5.dp)
+                                    .background(Color(0xCC151B3B), RoundedCornerShape(50))
+                                    .padding(horizontal = 7.dp, vertical = 3.dp)
+                            ) { Text("▶ شاهد", color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.Bold) }
+                        }
+                    }
+                    Text(entry.title, color = Color.White, fontWeight = FontWeight.Bold, fontSize = if (compact) 11.sp else 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    if (entry.year.isNotBlank()) Text(entry.year, color = Color(0xFFB6D5E5), fontSize = 10.sp, maxLines = 1)
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun KidsDashboard(
     compact: Boolean,
     section: Section,
@@ -3871,7 +3929,7 @@ private fun KidsDashboard(
     var youtubeResultsForSection by remember { mutableStateOf<Section?>(null) }
     var youtubeLoading by remember { mutableStateOf(false) }
     var youtubeError by remember { mutableStateOf("") }
-    var selectedKidCategory by remember(section) { mutableStateOf("الكل") }
+
     LaunchedEffect(search, section) {
         val query = search.trim()
         if (query.length < 2 || section == Section.LIVE) {
@@ -3885,10 +3943,7 @@ private fun KidsDashboard(
             youtubeLoading = true
             youtubeError = ""
             try {
-                // A new query/section cancels this effect; runInterruptible interrupts the blocking HTTP call.
-                val results = withContext(Dispatchers.IO) {
-                    runInterruptible { searchYouTubeKids(query, section) }
-                }
+                val results = withContext(Dispatchers.IO) { runInterruptible { searchYouTubeKids(query, section) } }
                 currentCoroutineContext().ensureActive()
                 youtubeResults = results
                 youtubeResultsForQuery = query
@@ -3903,230 +3958,197 @@ private fun KidsDashboard(
             }
         }
     }
+
+    val source = when (section) {
+        Section.LIVE -> channels
+        Section.SERIES -> series.filter { it.kind == MediaKind.SERIES }
+        else -> movies.filter { it.kind == MediaKind.MOVIE }
+    }
     val activeYoutubeResults = remember(youtubeResults, youtubeResultsForQuery, youtubeResultsForSection, search, section) {
         if (search.trim().length >= 2 && youtubeResultsForQuery == search.trim() && youtubeResultsForSection == section) {
             youtubeResults.filter { result ->
                 when (section) {
                     Section.SERIES -> result.kind == MediaKind.SERIES
                     Section.MOVIES -> result.kind == MediaKind.MOVIE
-                    Section.LIVE -> false
                     else -> false
                 }
             }
         } else emptyList()
     }
-    val allVisible = remember(section, movies, series, channels, search, activeYoutubeResults) {
-        val source = when (section) {
-            Section.LIVE -> channels
-            Section.SERIES -> series.filter { it.kind == MediaKind.SERIES }
-            else -> movies.filter { it.kind == MediaKind.MOVIE }
-        }
-        val catalogueResults = source.filter {
+    val visible = remember(source, search, activeYoutubeResults, section) {
+        val local = source.filter {
             search.isBlank() || it.title.contains(search, ignoreCase = true) ||
                 it.category.contains(search, ignoreCase = true) || it.genre.contains(search, ignoreCase = true)
         }
-        if (search.isBlank() || section == Section.LIVE) catalogueResults
-        else (catalogueResults + activeYoutubeResults).distinctBy { it.id }
-    }
-    val kidCategories = remember(allVisible) {
-        allVisible.map { it.category.trim() }.filter { it.isNotBlank() }.distinctBy { it.lowercase() }.sortedBy { it.lowercase() }.take(18)
-    }
-    val visible = remember(allVisible, selectedKidCategory) {
-        if (selectedKidCategory == "الكل") allVisible
-        else allVisible.filter { it.category.equals(selectedKidCategory, ignoreCase = true) }
-    }
-    val kidShelves = remember(visible, section, search) {
-        if (search.isNotBlank()) listOf("نتائج البحث 🔎" to visible)
-        else {
-            val result = linkedMapOf<String, List<MediaEntry>>()
-            if (visible.isNotEmpty()) result["✨ اختياراتنا ليك"] = visible.take(14)
-            listOf("Animation", "Kids", "Children", "Educational", "Family", "Cartoon", "Anime").forEach { category ->
-                val matches = visible.filter { entry ->
-                    entry.category.contains(category, true) || entry.genre.contains(category, true) || entry.title.contains(category, true)
-                }
-                if (matches.isNotEmpty() && result.keys.none { it.contains(category, true) }) result[when(category) {
-                    "Educational" -> "🧠 تعلم والعب"
-                    "Family" -> "👨‍👩‍👧‍👦 وقت العائلة"
-                    "Animation", "Cartoon" -> "🎨 عالم الكرتون"
-                    "Anime" -> "🌟 مغامرات الأنيمي"
-                    else -> "🧸 عالم الصغار"
-                }] = matches
-            }
-            val hasCategoryShelves = result.keys.any { it != "✨ اختياراتنا ليك" }
-            if (!hasCategoryShelves) {
-                result.clear()
-                result["🌈 اكتشف المحتوى"] = visible
-            }
-            result.entries.map { it.key to it.value }
-        }
+        if (search.isBlank() || section == Section.LIVE) local else (local + activeYoutubeResults).distinctBy { it.id }
     }
     val kidAccent = when (section) {
         Section.SERIES -> Color(0xFFB99AFF)
         Section.LIVE -> Color(0xFF73E0FF)
         else -> Color(0xFFFFC857)
     }
+
     Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xFF102E50), Color(0xFF151B3B), Color(0xFF301D4D))))) {
         KidsBackgroundDoodles(compact = compact)
-        Column(
-            Modifier.fillMaxSize().padding(if (compact) 8.dp else 14.dp),
-            verticalArrangement = Arrangement.spacedBy(if (compact) 5.dp else 8.dp),
-        ) {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Column(Modifier.weight(1f)) {
-                    Text("🌈 TVI KIDS 🦄", color = Color(0xFFFFD76A), fontSize = if (compact) 23.sp else 34.sp, fontWeight = FontWeight.Black)
-                    Text(
-                        when (section) {
-                            Section.LIVE -> "قنوات الأطفال المباشرة 📺"
-                            Section.SERIES -> "مسلسلات وحلقات للصغار 🦸"
-                            else -> "أفلام وكرتون ومغامرات 🎨"
-                        },
-                        color = Color(0xFFE5F4FF),
-                        fontSize = if (compact) 11.sp else 14.sp,
-                    )
-                }
-                OutlinedButton(onClick = onExit, contentPadding = PaddingValues(horizontal = 12.dp, vertical = 5.dp)) {
-                    Text("👨 Parent / PIN", fontSize = 11.sp, maxLines = 1)
-                }
-            }
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                listOf(Section.LIVE to "📺 قنوات", Section.MOVIES to "🎨 كرتون وأفلام", Section.SERIES to "🦸 مسلسلات").forEach { (target, label) ->
-                    Button(
-                        onClick = { onSection(target) },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = if (section == target) Color(0xFF7657D7) else Color(0xFF24456B),
-                            contentColor = Color.White,
-                        ),
-                        modifier = Modifier.weight(1f),
-                        contentPadding = PaddingValues(horizontal = 6.dp, vertical = if (compact) 3.dp else 5.dp),
-                    ) { Text(label, fontSize = if (compact) 10.sp else 13.sp, maxLines = 1) }
-                }
-            }
-            OutlinedTextField(
-                value = search,
-                onValueChange = onSearch,
-                modifier = Modifier.fillMaxWidth().heightIn(max = 58.dp),
-                singleLine = true,
-                label = { Text("🔎 قلب على الكرتون أو البرنامج", fontSize = 11.sp) },
-            )
-            if (search.trim().length >= 2 && (youtubeLoading || youtubeError.isNotBlank())) {
-                Surface(
-                    color = Color(0xCC152D4C),
-                    shape = RoundedCornerShape(10.dp),
-                    border = BorderStroke(1.dp, if (youtubeError.isNotBlank()) Color(0xFFFFA18A) else kidAccent.copy(alpha = 0.6f)),
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text(
-                        text = if (youtubeLoading) "كنقلبو فـ YouTube على " + (if (section == Section.SERIES) "المسلسلات" else "الأفلام والكرتون") + "…" else "تعذر بحث YouTube: $youtubeError",
-                        color = if (youtubeError.isNotBlank()) Color(0xFFFFC0B0) else Color(0xFFE5F4FF),
-                        fontSize = 10.sp,
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-            }
-            if (kidCategories.isNotEmpty()) {
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp), contentPadding = PaddingValues(end = 8.dp)) {
-                    item(key = "kids-category-all") {
-                        OutlinedButton(
-                            onClick = { selectedKidCategory = "الكل" },
-                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 3.dp),
-                            border = BorderStroke(1.dp, if (selectedKidCategory == "الكل") Color(0xFFFFD76A) else Color.White.copy(alpha = 0.35f)),
-                        ) { Text("الكل", color = Color.White, fontSize = 11.sp) }
-                    }
-                    items(kidCategories, key = { "kids-category:$it" }) { category ->
-                        OutlinedButton(
-                            onClick = { selectedKidCategory = category },
-                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 3.dp),
-                            border = BorderStroke(1.dp, if (selectedKidCategory == category) Color(0xFFFFD76A) else Color.White.copy(alpha = 0.35f)),
-                        ) { Text(category, color = Color.White, fontSize = 11.sp, maxLines = 1) }
+        when (section) {
+            Section.LIVE -> {
+                val gridState = rememberLazyGridState()
+                LaunchedEffect(gridState, channels.size) {
+                    snapshotFlow {
+                        val info = gridState.layoutInfo
+                        Pair(info.visibleItemsInfo.lastOrNull()?.index ?: -1, info.totalItemsCount)
+                    }.distinctUntilChanged().collectLatest { (lastVisible, total) ->
+                        if (total > 0 && lastVisible >= total - 6) onLoadMore()
                     }
                 }
-            }
-            if (visible.isEmpty()) {
-                LaunchedEffect(section, movies.size, series.size, channels.size, search) {
-                    // Continue paging when a raw catalogue page contains no child-safe items.
-                    onLoadMore()
-                }
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("🧸 🌟 🚀", fontSize = if (compact) 30.sp else 44.sp)
-                        Text(when {
-                            youtubeLoading -> "كنقلبو ليك على فيديوهات مناسبة... 🔎"
-                            search.isNotBlank() && youtubeError.isNotBlank() -> "ما لقيناش نتائج محلية، وYouTube ما تجاوبش دابا."
-                            search.isBlank() -> "مازال ما كاين حتى محتوى أطفال مصنّف هنا."
-                            else -> "ما لقيناش هاد الشي، جرّب كلمة أخرى 😊"
-                        }, color = Color(0xFFE5F4FF))
-                    }
-                }
-            } else {
-                val kidsListState = rememberLazyListState()
-                LaunchedEffect(kidsListState, section, visible.size) {
-                    snapshotFlow { kidsListState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0 }
-                        .distinctUntilChanged()
-                        .collectLatest { lastVisible ->
-                            val totalItems = kidsListState.layoutInfo.totalItemsCount
-                            if (totalItems > 0 && lastVisible >= totalItems - 3) onLoadMore()
-                        }
-                }
-                LazyColumn(
-                    state = kidsListState,
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(bottom = 12.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    item(key = "kids-welcome-banner") {
-                        Surface(
-                            color = Color(0xFF6546B8),
-                            shape = RoundedCornerShape(14.dp),
-                            border = BorderStroke(1.dp, Color(0xFFFFD76A).copy(alpha = 0.65f)),
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Row(Modifier.padding(horizontal = 12.dp, vertical = if (compact) 5.dp else 7.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
-                                    Text("أهلاً بالأبطال الصغار! ⭐", color = Color.White, fontSize = if (compact) 13.sp else 16.sp, fontWeight = FontWeight.Black, maxLines = 1)
-                                    Text("اختار مغامرتك الجاية وتعلّم 🎉", color = Color(0xFFFFEAB0), fontSize = if (compact) 9.sp else 11.sp, maxLines = 1)
-                                }
-                                Text("🦄 🚀 🐻", fontSize = if (compact) 16.sp else 20.sp, maxLines = 1)
-                            }
+                if (channels.isEmpty()) {
+                    LaunchedEffect(section, channels.size) { onLoadMore() }
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text("📺", fontSize = 42.sp)
+                            Text("كنحمّلو قنوات الأطفال…", color = Color.White, fontSize = 15.sp)
                         }
                     }
-                    kidShelves.forEachIndexed { shelfIndex, (shelfTitle, itemsForShelf) ->
-                        if (itemsForShelf.isNotEmpty()) {
-                            item(key = "kids-heading:$shelfIndex") {
-                                Text(shelfTitle, color = kidAccent, fontSize = if (compact) 13.sp else 16.sp, fontWeight = FontWeight.Black)
-                            }
-                            item(key = "kids-row:$shelfIndex") {
-                                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(end = 8.dp)) {
-                                    items(itemsForShelf.distinctBy { it.id }, key = { "kids:${shelfIndex}:${it.id}" }) { entry ->
-                                        Column(Modifier.width(if (compact) 104.dp else 132.dp).clickable {
-                                            if (entry.id.startsWith("youtube:")) onPlayYoutube(entry.id.removePrefix("youtube:"))
-                                            else if (section == Section.MOVIES) onMovieDetails(entry) else onPlay(entry)
-                                        }) {
-                                            Surface(
-                                                color = Color(0xFF24456B),
-                                                shape = RoundedCornerShape(16.dp),
-                                                border = BorderStroke(2.dp, kidAccent.copy(alpha = 0.75f)),
-                                                modifier = Modifier.fillMaxWidth().aspectRatio(0.72f),
-                                            ) {
-                                                Box {
-                                                    if (entry.logoUrl.isNotBlank()) AsyncImage(
-                                                        model = entry.logoUrl,
-                                                        contentDescription = entry.title,
-                                                        modifier = Modifier.fillMaxSize(),
-                                                        contentScale = ContentScale.Crop,
-                                                    ) else Box(Modifier.fillMaxSize().background(Brush.linearGradient(listOf(Color(0xFF7256D8), Color(0xFF22A9B8)))), contentAlignment = Alignment.Center) {
-                                                        Text("🧸\n⭐", fontSize = if (compact) 28.sp else 36.sp, lineHeight = 40.sp)
-                                                    }
-                                                    Box(Modifier.align(Alignment.BottomEnd).padding(6.dp).background(Color(0xCC151B3B), RoundedCornerShape(50)).padding(horizontal = 8.dp, vertical = 3.dp)) {
-                                                        Text(if (section == Section.LIVE) "▶ شاهد" else "✨ اكتشف", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                                                    }
-                                                }
-                                            }
-                                            Text(entry.title, color = Color.White, fontWeight = FontWeight.Bold, fontSize = if (compact) 11.sp else 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.dp))
-                                            if (entry.category.isNotBlank()) Text(entry.category, color = Color(0xFFB6D5E5), fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                } else {
+                    LazyVerticalGrid(
+                        columns = GridCells.Adaptive(minSize = if (compact) 112.dp else 148.dp),
+                        state = gridState,
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(horizontal = if (compact) 7.dp else 14.dp, vertical = if (compact) 7.dp else 12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(if (compact) 7.dp else 12.dp),
+                        verticalArrangement = Arrangement.spacedBy(if (compact) 7.dp else 12.dp),
+                    ) {
+                        items(channels.distinctBy { it.id }, key = { "kids-live:\${it.id}" }) { channel ->
+                            Column(Modifier.fillMaxWidth().clickable { onPlay(channel) }, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Surface(
+                                    color = Color(0xFF24456B), shape = RoundedCornerShape(12.dp),
+                                    border = BorderStroke(1.5.dp, kidAccent.copy(alpha = 0.75f)),
+                                    modifier = Modifier.fillMaxWidth().aspectRatio(0.82f),
+                                ) {
+                                    Box {
+                                        if (channel.logoUrl.isNotBlank()) {
+                                            AsyncImage(model = channel.logoUrl, contentDescription = channel.title, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
+                                        } else Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("📺", fontSize = 42.sp) }
+                                        Box(Modifier.align(Alignment.BottomStart).fillMaxWidth().background(Color(0xD9151B3B)).padding(horizontal = 7.dp, vertical = 5.dp)) {
+                                            Text(channel.title, color = Color.White, fontSize = if (compact) 10.sp else 12.sp, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
                                         }
                                     }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            Section.MOVIES, Section.SERIES -> {
+                val listState = rememberLazyListState()
+                val newestFirst = remember(source) {
+                    source.sortedByDescending { (it.year.ifBlank { it.releaseDate.take(4) }).toIntOrNull() ?: 0 }
+                }
+                val trending = remember(newestFirst) { newestFirst.take(16) }
+                val trendingIds = remember(trending) { trending.mapTo(mutableSetOf()) { it.id } }
+                val recommended = remember(source, trendingIds, trending) {
+                    source.filterNot { it.id in trendingIds }
+                        .sortedWith(compareBy<MediaEntry> { it.category.lowercase() }.thenBy { it.title.lowercase() })
+                        .take(16).ifEmpty { trending.take(10) }
+                }
+                LaunchedEffect(listState, section, visible.size, search) {
+                    snapshotFlow { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0 }
+                        .distinctUntilChanged().collectLatest { lastVisible ->
+                            val total = listState.layoutInfo.totalItemsCount
+                            if (total > 0 && lastVisible >= total - 3) onLoadMore()
+                        }
+                }
+                Column(Modifier.fillMaxSize().padding(horizontal = if (compact) 7.dp else 14.dp, vertical = if (compact) 6.dp else 10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = search, onValueChange = onSearch,
+                        modifier = Modifier.fillMaxWidth().heightIn(max = 58.dp),
+                        singleLine = true, label = { Text("🔎 قلب على فيلم أو كرتون أو مسلسل", fontSize = 11.sp) },
+                    )
+                    if (youtubeLoading || youtubeError.isNotBlank()) {
+                        Text(
+                            if (youtubeLoading) "كنقلبو فـ YouTube…" else "تعذر بحث YouTube: $youtubeError",
+                            color = if (youtubeError.isNotBlank()) Color(0xFFFFC0B0) else Color(0xFFE5F4FF),
+                            fontSize = 10.sp, maxLines = 2, overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                    if (visible.isEmpty()) {
+                        if (source.isEmpty()) LaunchedEffect(section, source.size) { onLoadMore() }
+                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Text(
+                                if (youtubeLoading) "كنقلبو ليك على محتوى مناسب…"
+                                else if (search.isBlank()) "كنحمّلو المحتوى…"
+                                else "ما لقيناش نتائج، جرّب كلمة أخرى 😊",
+                                color = Color(0xFFE5F4FF),
+                            )
+                        }
+                    } else {
+                        LazyColumn(state = listState, modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 14.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                            if (search.isNotBlank()) {
+                                item(key = "kids-search-results") {
+                                    KidsPosterShelf("نتائج البحث", visible, section, compact, kidAccent, onPlay, onPlayYoutube, onMovieDetails)
+                                }
+                            } else {
+                                item(key = "kids-trending") {
+                                    KidsPosterShelf("🔥 Trending", trending, section, compact, kidAccent, onPlay, onPlayYoutube, onMovieDetails)
+                                }
+                                item(key = "kids-recommended") {
+                                    KidsPosterShelf("⭐ Recommended", recommended, section, compact, kidAccent, onPlay, onPlayYoutube, onMovieDetails)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            else -> {
+                Column(Modifier.fillMaxSize().padding(if (compact) 8.dp else 16.dp), verticalArrangement = Arrangement.spacedBy(if (compact) 8.dp else 14.dp)) {
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text("🌈 TVI KIDS", color = Color(0xFFFFD76A), fontSize = if (compact) 23.sp else 34.sp, fontWeight = FontWeight.Black)
+                            Text("اختار شنو بغيتي تتفرج اليوم ⭐", color = Color(0xFFE5F4FF), fontSize = if (compact) 11.sp else 14.sp)
+                        }
+                        OutlinedButton(onClick = onExit, contentPadding = PaddingValues(horizontal = 12.dp, vertical = 5.dp)) {
+                            Text("👨 Parent / PIN", fontSize = 11.sp, maxLines = 1)
+                        }
+                    }
+                    Surface(
+                        color = Color(0xFF193B62), shape = RoundedCornerShape(18.dp),
+                        border = BorderStroke(2.dp, Color(0xFF73E0FF)),
+                        modifier = Modifier.fillMaxWidth().weight(1.05f).clickable { onSection(Section.LIVE) },
+                    ) {
+                        Box(Modifier.fillMaxSize().padding(16.dp), contentAlignment = Alignment.Center) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                                Text("📺", fontSize = if (compact) 42.sp else 64.sp)
+                                Text("TV LIVE", color = Color.White, fontSize = if (compact) 25.sp else 36.sp, fontWeight = FontWeight.Black)
+                                Text("قنوات الأطفال مباشرة", color = Color(0xFFD7F4FF), fontSize = if (compact) 11.sp else 15.sp)
+                            }
+                        }
+                    }
+                    Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(if (compact) 8.dp else 14.dp)) {
+                        Surface(
+                            color = Color(0xFF6546B8), shape = RoundedCornerShape(18.dp),
+                            border = BorderStroke(2.dp, Color(0xFFFFC857)),
+                            modifier = Modifier.weight(1f).fillMaxHeight().clickable { onSection(Section.MOVIES) },
+                        ) {
+                            Box(Modifier.fillMaxSize().padding(10.dp), contentAlignment = Alignment.Center) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    Text("🎨", fontSize = if (compact) 34.sp else 52.sp)
+                                    Text("الأفلام", color = Color.White, fontSize = if (compact) 20.sp else 28.sp, fontWeight = FontWeight.Black)
+                                    Text("Movies", color = Color(0xFFFFEAB0), fontSize = 12.sp)
+                                }
+                            }
+                        }
+                        Surface(
+                            color = Color(0xFF24456B), shape = RoundedCornerShape(18.dp),
+                            border = BorderStroke(2.dp, Color(0xFFB99AFF)),
+                            modifier = Modifier.weight(1f).fillMaxHeight().clickable { onSection(Section.SERIES) },
+                        ) {
+                            Box(Modifier.fillMaxSize().padding(10.dp), contentAlignment = Alignment.Center) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    Text("🦸", fontSize = if (compact) 34.sp else 52.sp)
+                                    Text("المسلسلات", color = Color.White, fontSize = if (compact) 20.sp else 28.sp, fontWeight = FontWeight.Black)
+                                    Text("Series", color = Color(0xFFE8DFFF), fontSize = 12.sp)
                                 }
                             }
                         }
@@ -4136,7 +4158,6 @@ private fun KidsDashboard(
         }
     }
 }
-
 
 private fun searchYouTubeTrailer(entry: MediaEntry): String? {
     val apiKey = BuildConfig.YOUTUBE_API_KEY.trim()

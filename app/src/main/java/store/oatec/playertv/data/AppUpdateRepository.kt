@@ -38,20 +38,23 @@ class AppUpdateRepository {
             if (tag.isBlank() || compareVersions(tag, installedVersion) <= 0) return@withContext null
 
             val assets = release.optJSONArray("assets") ?: return@withContext null
-            var apkUrl = ""
-            for (index in 0 until assets.length()) {
-                val asset = assets.optJSONObject(index) ?: continue
-                val name = asset.optString("name")
-                val url = asset.optString("browser_download_url")
-                if (name.endsWith(".apk", ignoreCase = true) && url.startsWith("https://")) {
-                    // Prefer a universal APK if one is ever published; otherwise use arm64.
-                    if (name.contains("universal", ignoreCase = true)) {
-                        apkUrl = url
-                        break
+            val apkAssets = buildList {
+                for (index in 0 until assets.length()) {
+                    val asset = assets.optJSONObject(index) ?: continue
+                    val name = asset.optString("name")
+                    val url = asset.optString("browser_download_url")
+                    if (name.endsWith(".apk", ignoreCase = true) && url.startsWith("https://")) {
+                        add(name to url)
                     }
-                    if (apkUrl.isBlank() && name.contains("arm64", ignoreCase = true)) apkUrl = url
                 }
             }
+            val supportedAbis = Build.SUPPORTED_ABIS.toList()
+            val matchingAsset = supportedAbis.firstNotNullOfOrNull { abi ->
+                apkAssets.firstOrNull { (name, _) -> name.contains(abi, ignoreCase = true) }
+            }
+            val apkUrl = matchingAsset?.second
+                ?: apkAssets.firstOrNull { (name, _) -> name.contains("universal", ignoreCase = true) }?.second
+                ?: "";
             if (apkUrl.isBlank()) return@withContext null
             AppUpdate(
                 versionName = tag,

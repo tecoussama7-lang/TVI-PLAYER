@@ -1072,11 +1072,6 @@ private fun PlayerTvAppContent(onActivated: () -> Unit = {}) {
                             },
                             aboutRepository = aboutRepository,
                             onManageSources = { navigateTo(Section.SOURCES) },
-                            premiumCode = premiumCode,
-                            onSavePremiumCode = { code ->
-                                sourceStore.savePremiumCode(code)
-                                premiumCode = code
-                            },
                             onExit = { (context as? Activity)?.finishAndRemoveTask() },
                         )
                     }
@@ -1519,8 +1514,6 @@ private fun SettingsScreen(
     onKidsModeChanged: (Boolean) -> Unit,
     aboutRepository: OatecAboutRepository,
     onManageSources: () -> Unit,
-    premiumCode: String,
-    onSavePremiumCode: (String) -> Unit,
     onExit: () -> Unit,
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -1530,8 +1523,6 @@ private fun SettingsScreen(
     var loadingAbout by remember { mutableStateOf(false) }
     var aboutError by remember { mutableStateOf("") }
     var confirmClearHistory by remember { mutableStateOf(false) }
-    var premiumCodeInput by remember(premiumCode) { mutableStateOf(premiumCode) }
-    var premiumCodeSaved by remember { mutableStateOf(false) }
     var kidsEnabled by remember { mutableStateOf(preferences.kidsModeEnabled()) }
     var showKidsPinDialog by remember { mutableStateOf(false) }
     var kidsPinInput by remember { mutableStateOf("") }
@@ -1831,25 +1822,14 @@ private fun SettingsScreen(
         Surface(color = Panel, shape = RoundedCornerShape(10.dp), modifier = Modifier.fillMaxWidth()) {
             Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text("OATEC PREMIUM", color = GoldLight, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
-                OutlinedTextField(
-                    value = premiumCodeInput,
-                    onValueChange = { premiumCodeInput = it; premiumCodeSaved = false },
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Premium code (optional)") },
-                    singleLine = true,
-                    visualTransformation = PasswordVisualTransformation(),
+                Text(
+                    "Device activation is managed by OATEC Service. Your license is checked online at startup and every 30 seconds. Offline use is disabled.",
+                    color = TextMuted,
+                    fontSize = 11.sp,
                 )
-                Text("This device is checked online with OATEC. An internet connection is required whenever the app starts.", color = TextMuted, fontSize = 10.sp)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Button(
-                        onClick = { onSavePremiumCode(premiumCodeInput.trim()); premiumCodeSaved = true },
-                        colors = ButtonDefaults.buttonColors(containerColor = Lime, contentColor = Ink),
-                    ) { Text("Save code") }
-                    OutlinedButton(
-                        onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://oatec.store/"))) },
-                    ) { Text("Open OATEC website") }
-                    if (premiumCodeSaved) Text("Saved", color = GoldLight, fontSize = 11.sp)
-                }
+                OutlinedButton(
+                    onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://oatec.store/"))) },
+                ) { Text("Open OATEC website") }
             }
         }
         Surface(color = Panel, shape = RoundedCornerShape(10.dp), modifier = Modifier.fillMaxWidth()) {

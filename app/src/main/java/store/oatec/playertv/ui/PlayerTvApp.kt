@@ -3408,8 +3408,12 @@ private fun PlaybackDialog(
                         },
                         modifier = Modifier.fillMaxSize(),
                         onRelease = { releasedView ->
-                            // Do not destroy the native core while prepare()/playFile() is still running.
-                            playbackScope.launch {
+                            // This cleanup must outlive the composition: rememberCoroutineScope is cancelled
+                            // as the dialog leaves composition and could otherwise skip native destroy().
+                            // Serialize release with prepare()/playFile() so the native core is never torn down mid-call.
+                            kotlinx.coroutines.CoroutineScope(
+                                kotlinx.coroutines.SupervisorJob() + Dispatchers.IO,
+                            ).launch {
                                 mpvLifecycleMutex.withLock { releasedView.destroy() }
                             }
                         },

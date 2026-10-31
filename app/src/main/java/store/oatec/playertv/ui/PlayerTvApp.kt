@@ -3865,7 +3865,7 @@ private fun KidsPosterShelf(
     Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
         Text(title, color = accent, fontSize = if (compact) 15.sp else 19.sp, fontWeight = FontWeight.Black)
         LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(end = 10.dp)) {
-            items(entries.distinctBy { it.id }, key = { "kids-shelf:\${section.name}:\${it.id}" }) { entry ->
+            items(entries.distinctBy { it.id }, key = { "kids-shelf:" + section.name + ":" + it.id }) { entry ->
                 Column(
                     Modifier.width(if (compact) 112.dp else 148.dp).clickable {
                         if (entry.id.startsWith("youtube:")) onPlayYoutube(entry.id.removePrefix("youtube:"))
@@ -4018,7 +4018,7 @@ private fun KidsDashboard(
                         horizontalArrangement = Arrangement.spacedBy(if (compact) 7.dp else 12.dp),
                         verticalArrangement = Arrangement.spacedBy(if (compact) 7.dp else 12.dp),
                     ) {
-                        items(channels.distinctBy { it.id }, key = { "kids-live:\${it.id}" }) { channel ->
+                        items(channels.distinctBy { it.id }, key = { "kids-live:" + it.id }) { channel ->
                             Column(Modifier.fillMaxWidth().clickable { onPlay(channel) }, verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                 Surface(
                                     color = Color(0xFF24456B), shape = RoundedCornerShape(12.dp),

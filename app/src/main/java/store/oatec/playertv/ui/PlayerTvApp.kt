@@ -291,7 +291,8 @@ fun PlayerTvApp() {
     val offlineDownloadStore = remember { OfflineDownloadStore(context) }
     var premiumCode by remember { mutableStateOf(runCatching { sourceStore.loadPremiumCode() }.getOrNull().orEmpty()) }
     var kidsModeActive by remember { mutableStateOf(preferences.kidsModeEnabled()) }
-    val catalogLoadMutex = remember { Mutex() }
+    // Use a separate lock per source/section so a slow LIVE import cannot block Movies.
+    val catalogLoadMutexes = remember { mutableMapOf<String, Mutex>() }
     val sources = remember {
         mutableStateListOf<PlayerSource>().apply {
             addAll(runCatching { sourceStore.load() }.getOrDefault(emptyList()))
@@ -319,6 +320,7 @@ fun PlayerTvApp() {
     var episodesBusy by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
     var activeLoadCount by remember { mutableStateOf(0) }
+    var loadingCatalogKeys by remember { mutableStateOf<Set<String>>(emptySet()) }
     var catalogProgress by remember { mutableStateOf(0f) }
     var catalogLoadedItems by remember { mutableStateOf(0) }
     var loadingMore by remember { mutableStateOf(false) }
@@ -417,6 +419,7 @@ fun PlayerTvApp() {
         catalogProgress = 0f
         catalogLoadedItems = 0
         activeLoadCount++
+        loadingCatalogKeys = loadingCatalogKeys + loadKey
         busy = true
         scope.launch {
             try {
@@ -448,7 +451,7 @@ fun PlayerTvApp() {
                         return@launch
                     }
                 }
-                catalogLoadMutex.withLock {
+                catalogLoadMutexes.getOrPut(loadKey) { Mutex() }.withLock {
                     runCatching {
                         withContext(Dispatchers.IO) {
                             // Stream bounded batches directly into one SQLite transaction.
@@ -501,6 +504,7 @@ fun PlayerTvApp() {
                         .onFailure { if (source.id == activeSourceId) message = it.message ?: "Could not load this source." }
                     }
             } finally {
+                loadingCatalogKeys = loadingCatalogKeys - loadKey
                 activeLoadCount = (activeLoadCount - 1).coerceAtLeast(0)
                 busy = activeLoadCount > 0
             }
@@ -882,7 +886,7 @@ fun PlayerTvApp() {
                             onSearch = { search = it },
                             entries = catalog.movies,
                             search = search,
-                            busy = busy,
+                            busy = "${activeSourceId}:MOVIES" in loadingCatalogKeys,
                             message = message,
                             catalogProgress = catalogProgress,
                             catalogLoadedItems = catalogLoadedItems,

@@ -3910,6 +3910,7 @@ private fun KidsDashboard(
                     Section.SERIES -> result.kind == MediaKind.SERIES
                     Section.MOVIES -> result.kind == MediaKind.MOVIE
                     Section.LIVE -> false
+                    else -> false
                 }
             }
         } else emptyList()

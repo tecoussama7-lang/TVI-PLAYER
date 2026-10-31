@@ -279,7 +279,49 @@ private enum class Section(val label: String) {
 }
 
 @Composable
+@Composable
 fun PlayerTvApp() {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    var availableUpdate by remember { mutableStateOf<store.oatec.playertv.data.AppUpdate?>(null) }
+    var dismissedVersion by rememberSaveable { mutableStateOf("") }
+
+    LaunchedEffect(Unit) {
+        availableUpdate = runCatching {
+            store.oatec.playertv.data.AppUpdateRepository().checkForUpdate(context)
+        }.getOrNull()
+    }
+
+    PlayerTvAppContent()
+
+    val update = availableUpdate
+    if (update != null && dismissedVersion != update.versionName) {
+        AlertDialog(
+            onDismissRequest = { dismissedVersion = update.versionName },
+            title = { Text("تحديث جديد متوفر") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("OATEC PlayerTv ${update.versionName}")
+                    if (update.releaseNotes.isNotBlank()) Text(update.releaseNotes)
+                    Text("غادي يتحل رابط تحميل APK. من بعد التحميل ثبّت التحديث يدوياً.")
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    dismissedVersion = update.versionName
+                    runCatching {
+                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(update.apkDownloadUrl)))
+                    }
+                }) { Text("تحميل التحديث") }
+            },
+            dismissButton = {
+                TextButton(onClick = { dismissedVersion = update.versionName }) { Text("لاحقاً") }
+            },
+        )
+    }
+}
+
+@Composable
+private fun PlayerTvAppContent() {
     val context = androidx.compose.ui.platform.LocalContext.current
     val configuration = LocalConfiguration.current
     val compactLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE && configuration.screenWidthDp < 900

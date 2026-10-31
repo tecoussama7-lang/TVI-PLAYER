@@ -4,9 +4,11 @@ on:
   push:
     branches:
       - feature/prompt-full-implementation
+      - fix/player-layout-kids-ui-2026-10
   pull_request:
     branches:
       - feature/prompt-full-implementation
+      - fix/tvi-catalog-first-page-performance
   workflow_dispatch:
 
 permissions:

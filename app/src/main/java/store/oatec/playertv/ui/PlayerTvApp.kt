@@ -2190,7 +2190,7 @@ private fun LiveScreen(
                         .fillMaxWidth(if (isWideScreen) 0.42f else 1f)
                         .widthIn(max = 620.dp),
                 ) {
-                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Column(Modifier.padding(16.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text(preferences.channelTitle(item.id, item.title), color = TextMain, fontSize = if (isWideScreen) 22.sp else 18.sp, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
                     Box(Modifier.fillMaxWidth().heightIn(min = 160.dp, max = 300.dp).background(Color.Black, RoundedCornerShape(10.dp)), contentAlignment = Alignment.Center) {
                         ChannelMiniPreview(entry = item, playing = previewRequested)

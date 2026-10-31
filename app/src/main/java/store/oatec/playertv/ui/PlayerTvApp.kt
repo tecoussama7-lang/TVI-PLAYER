@@ -2197,7 +2197,10 @@ private fun LiveScreen(
                     }
                     val current = EpgRepository.currentProgram(epgPrograms, item.epgChannelId, epgClock)
                     val next = EpgRepository.nextProgram(epgPrograms, item.epgChannelId, epgClock)
-                    Text(current?.title?.let { "NOW  $it" } ?: next?.title?.let { "NEXT  $it" } ?: "Programme information unavailable", color = GoldLight, fontSize = 12.sp, maxLines = 2)
+                    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(current?.title?.let { "NOW  ·  $it" } ?: "NOW  ·  Programme information unavailable", color = GoldLight, fontSize = 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        if (next != null) Text("NEXT  ·  ${next.title}", color = TextMuted, fontSize = 11.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    }
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         Button(onClick = { onPlay(item.copy(title = preferences.channelTitle(item.id, item.title))); channelDialogOpen = false }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = Lime, contentColor = Ink)) { Text("مشاهدة") }
                         OutlinedButton(onClick = { previewRequested = !previewRequested }, modifier = Modifier.weight(1f)) { Text(if (previewRequested) "إيقاف المعاينة" else "معاينة") }

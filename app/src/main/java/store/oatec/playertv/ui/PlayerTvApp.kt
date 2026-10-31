@@ -4015,6 +4015,23 @@ private fun KidsDashboard(
                 singleLine = true,
                 label = { Text("🔎 قلب على الكرتون أو البرنامج", fontSize = 11.sp) },
             )
+            if (search.trim().length >= 2 && (youtubeLoading || youtubeError.isNotBlank())) {
+                Surface(
+                    color = Color(0xCC152D4C),
+                    shape = RoundedCornerShape(10.dp),
+                    border = BorderStroke(1.dp, if (youtubeError.isNotBlank()) Color(0xFFFFA18A) else kidAccent.copy(alpha = 0.6f)),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(
+                        text = if (youtubeLoading) "كنقلبو فـ YouTube على " + (if (section == Section.SERIES) "المسلسلات" else "الأفلام والكرتون") + "…" else "تعذر بحث YouTube: $youtubeError",
+                        color = if (youtubeError.isNotBlank()) Color(0xFFFFC0B0) else Color(0xFFE5F4FF),
+                        fontSize = 10.sp,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
             if (kidCategories.isNotEmpty()) {
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp), contentPadding = PaddingValues(end = 8.dp)) {
                     item(key = "kids-category-all") {

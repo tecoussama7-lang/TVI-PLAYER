@@ -3875,6 +3875,8 @@ private fun KidsDashboard(
     onLoadMore: () -> Unit,
 ) {
     var youtubeResults by remember { mutableStateOf<List<MediaEntry>>(emptyList()) }
+    var youtubeResultsForQuery by remember { mutableStateOf("") }
+    var youtubeResultsForSection by remember { mutableStateOf<Section?>(null) }
     var youtubeLoading by remember { mutableStateOf(false) }
     var youtubeError by remember { mutableStateOf("") }
     var selectedKidCategory by remember(section) { mutableStateOf("الكل") }
@@ -3882,6 +3884,8 @@ private fun KidsDashboard(
         val query = search.trim()
         if (query.length < 2 || section == Section.LIVE) {
             youtubeResults = emptyList()
+            youtubeResultsForQuery = ""
+            youtubeResultsForSection = null
             youtubeError = ""
             youtubeLoading = false
         } else {
@@ -3895,6 +3899,8 @@ private fun KidsDashboard(
                 }
                 currentCoroutineContext().ensureActive()
                 youtubeResults = results
+                youtubeResultsForQuery = query
+                youtubeResultsForSection = section
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (failure: Exception) {
@@ -3905,18 +3911,29 @@ private fun KidsDashboard(
             }
         }
     }
-    val allVisible = remember(section, movies, series, channels, search, youtubeResults) {
+    val activeYoutubeResults = remember(youtubeResults, youtubeResultsForQuery, youtubeResultsForSection, search, section) {
+        if (search.trim().length >= 2 && youtubeResultsForQuery == search.trim() && youtubeResultsForSection == section) {
+            youtubeResults.filter { result ->
+                when (section) {
+                    Section.SERIES -> result.kind == MediaKind.SERIES
+                    Section.MOVIES -> result.kind == MediaKind.MOVIE
+                    Section.LIVE -> false
+                }
+            }
+        } else emptyList()
+    }
+    val allVisible = remember(section, movies, series, channels, search, activeYoutubeResults) {
         val source = when (section) {
             Section.LIVE -> channels
-            Section.SERIES -> series
-            else -> movies
+            Section.SERIES -> series.filter { it.kind == MediaKind.SERIES }
+            else -> movies.filter { it.kind == MediaKind.MOVIE }
         }
         val catalogueResults = source.filter {
             search.isBlank() || it.title.contains(search, ignoreCase = true) ||
                 it.category.contains(search, ignoreCase = true) || it.genre.contains(search, ignoreCase = true)
         }
         if (search.isBlank() || section == Section.LIVE) catalogueResults
-        else (catalogueResults + youtubeResults).distinctBy { it.id }
+        else (catalogueResults + activeYoutubeResults).distinctBy { it.id }
     }
     val kidCategories = remember(allVisible) {
         allVisible.map { it.category.trim() }.filter { it.isNotBlank() }.distinctBy { it.lowercase() }.sortedBy { it.lowercase() }.take(18)

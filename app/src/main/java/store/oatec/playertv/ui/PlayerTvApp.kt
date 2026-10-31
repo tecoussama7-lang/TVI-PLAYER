@@ -279,7 +279,6 @@ private enum class Section(val label: String) {
 }
 
 @Composable
-@Composable
 fun PlayerTvApp() {
     val context = androidx.compose.ui.platform.LocalContext.current
     var availableUpdate by remember { mutableStateOf<store.oatec.playertv.data.AppUpdate?>(null) }

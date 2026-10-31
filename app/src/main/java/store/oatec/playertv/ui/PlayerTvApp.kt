@@ -2174,8 +2174,22 @@ private fun LiveScreen(
     }
     if (channelDialogOpen && selectedChannel != null) {
         val item = selectedChannel!!
-        Dialog(onDismissRequest = { channelDialogOpen = false }) {
-            Surface(color = Panel, shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth().widthIn(max = 620.dp)) {
+        Dialog(
+            onDismissRequest = { channelDialogOpen = false },
+            properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
+        ) {
+            Box(
+                Modifier.fillMaxSize().padding(if (isWideScreen) 18.dp else 0.dp),
+                contentAlignment = if (isWideScreen) Alignment.CenterEnd else Alignment.Center,
+            ) {
+                Surface(
+                    color = Panel,
+                    shape = RoundedCornerShape(16.dp),
+                    modifier = Modifier
+                        .fillMaxHeight(if (isWideScreen) 0.94f else 0.9f)
+                        .fillMaxWidth(if (isWideScreen) 0.42f else 1f)
+                        .widthIn(max = 620.dp),
+                ) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text(preferences.channelTitle(item.id, item.title), color = TextMain, fontSize = if (isWideScreen) 22.sp else 18.sp, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
                     Box(Modifier.fillMaxWidth().heightIn(min = 160.dp, max = 300.dp).background(Color.Black, RoundedCornerShape(10.dp)), contentAlignment = Alignment.Center) {
@@ -2197,6 +2211,7 @@ private fun LiveScreen(
                     TextButton(onClick = { channelDialogOpen = false }, modifier = Modifier.align(Alignment.End)) { Text("إغلاق") }
                 }
             }
+        }
         }
     }
     pendingDeleteChannel?.let { item ->
@@ -4347,6 +4362,17 @@ private fun searchYouTubeKids(query: String, section: Section): List<MediaEntry>
             val snippet = item.optJSONObject("snippet") ?: continue
             val title = snippet.optString("title").trim()
             if (videoId.isBlank() || title.isBlank()) continue
+
+            // Search snippets do not expose a reliable movie/series type, so reject only
+            // strong cross-format signals instead of guessing from broad genre labels.
+            val normalizedTitle = title.lowercase()
+            val episodeMarker = Regex("""\\b(?:s\\d{1,2}\\s*e\\d{1,2}|season\\s*\\d+|episode\\s*\\d+|ep\\s*\\d+)\\b""")
+                .containsMatchIn(normalizedTitle) ||
+                listOf("الحلقة", "الحلقات", "الموسم", "مسلسل").any { it in normalizedTitle }
+            val movieMarker = Regex("""\\b(?:full\\s+movie|movie|film)\\b""").containsMatchIn(normalizedTitle) ||
+                listOf("فيلم", "أفلام", "افلام").any { it in normalizedTitle }
+            if (section == Section.MOVIES && episodeMarker && !movieMarker) continue
+            if (section == Section.SERIES && movieMarker) continue
 
             val thumbnails = snippet.optJSONObject("thumbnails")
             val thumbnail = thumbnails?.optJSONObject("high")?.optString("url").orEmpty()

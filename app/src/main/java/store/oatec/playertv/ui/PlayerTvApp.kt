@@ -83,6 +83,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.rememberCoroutineScope
@@ -334,6 +335,27 @@ fun PlayerTvApp() {
         }
     }
 
+    LaunchedEffect(entitlementState) {
+        if (entitlementState == "active") {
+            while (true) {
+                delay(30_000L)
+                try {
+                    val valid = withContext(Dispatchers.IO) { verifyPlayerToken(context) }
+                    if (!valid) {
+                        SecureSourceStore(context).savePlayerToken("")
+                        SecureSourceStore(context).save(emptyList())
+                        entitlementState = "activation"
+                        break
+                    }
+                } catch (error: Exception) {
+                    entitlementError = error.message ?: "انقطع الاتصال بالسيرفر. خاص الإنترنت باش يبقى التطبيق خدام."
+                    entitlementState = "offline"
+                    break
+                }
+            }
+        }
+    }
+
     LaunchedEffect(Unit) {
         availableUpdate = runCatching {
             store.oatec.playertv.data.AppUpdateRepository().checkForUpdate(context)
@@ -358,7 +380,7 @@ fun PlayerTvApp() {
                 }
             }
         }
-        else -> PlayerTvAppContent()
+        else -> PlayerTvAppContent(onActivated = { entitlementState = "active" })
     }
 
     val update = availableUpdate
@@ -389,7 +411,7 @@ fun PlayerTvApp() {
 }
 
 @Composable
-private fun PlayerTvAppContent() {
+private fun PlayerTvAppContent(onActivated: () -> Unit = {}) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val configuration = LocalConfiguration.current
     val compactLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE && configuration.screenWidthDp < 900
@@ -820,6 +842,7 @@ private fun PlayerTvAppContent() {
                     sourceStore.save(sources)
                     activeSourceId = source.id
                     section = Section.HOME.name
+                    if (source.name == "OATEC Subscription") onActivated()
                 },
             )
         } else {

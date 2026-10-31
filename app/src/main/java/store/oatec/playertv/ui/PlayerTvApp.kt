@@ -2114,7 +2114,6 @@ private fun LiveScreen(
     val configuration = LocalConfiguration.current
     val screenWidthDp = configuration.screenWidthDp
     val isWideScreen = (configuration.uiMode and Configuration.UI_MODE_TYPE_MASK) == Configuration.UI_MODE_TYPE_TELEVISION || screenWidthDp >= 800
-    var channelDialogOpen by remember { mutableStateOf(false) }
     Column(Modifier.fillMaxSize().background(Ink).padding(horizontal = when { screenWidthDp >= 1400 -> 32.dp; screenWidthDp >= 700 -> 20.dp; else -> 8.dp }, vertical = 3.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedButton(onClick = onHome, modifier = Modifier.heightIn(min = 36.dp).widthIn(min = 72.dp).onPreviewKeyEvent { event ->
@@ -2137,9 +2136,10 @@ private fun LiveScreen(
         when {
             busy && catalog.liveChannels.isEmpty() -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { LoadingState("Loading channels", catalogProgress, catalogLoadedItems) }
             channels.isEmpty() -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { EmptyState("No channels available", message.ifBlank { "Add or refresh an IPTV source to load channels." }) }
-            else -> LazyVerticalGrid(
+            else -> Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                LazyVerticalGrid(
                 columns = GridCells.Adaptive(minSize = when { screenWidthDp >= 1500 -> 230.dp; screenWidthDp >= 1000 -> 190.dp; screenWidthDp >= 700 -> 155.dp; screenWidthDp <= 360 -> 118.dp; else -> 132.dp }),
-                state = listState, modifier = Modifier.fillMaxSize(),
+                state = listState, modifier = Modifier.weight(1f),
                 contentPadding = PaddingValues(top = 3.dp, bottom = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(if (isWideScreen) 10.dp else 6.dp),
                 verticalArrangement = Arrangement.spacedBy(if (isWideScreen) 10.dp else 6.dp),
@@ -2150,7 +2150,7 @@ private fun LiveScreen(
                         color = if (selected) Raised else Panel, shape = RoundedCornerShape(10.dp),
                         border = BorderStroke(if (selected) 2.dp else 1.dp, if (selected) Lime else Color.White.copy(alpha = 0.08f)),
                         modifier = Modifier.fillMaxWidth().height(if (isWideScreen) 104.dp else 78.dp).combinedClickable(
-                            onClick = { selectedChannel = item; previewRequested = false; channelDialogOpen = true },
+                            onClick = { selectedChannel = item; previewRequested = false },
                             onDoubleClick = { onPlay(item.copy(title = preferences.channelTitle(item.id, item.title))) },
                         ),
                     ) {
@@ -2170,51 +2170,40 @@ private fun LiveScreen(
                     }
                 }
             }
-        }
-    }
-    if (channelDialogOpen && selectedChannel != null) {
-        val item = selectedChannel!!
-        Dialog(
-            onDismissRequest = { channelDialogOpen = false },
-            properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
-        ) {
-            Box(
-                Modifier.fillMaxSize().padding(if (isWideScreen) 18.dp else 0.dp),
-                contentAlignment = if (isWideScreen) Alignment.CenterEnd else Alignment.Center,
-            ) {
-                Surface(
-                    color = Panel,
-                    shape = RoundedCornerShape(16.dp),
-                    modifier = Modifier
-                        .fillMaxHeight(if (isWideScreen) 0.94f else 0.9f)
-                        .fillMaxWidth(if (isWideScreen) 0.42f else 1f)
-                        .widthIn(max = 620.dp),
-                ) {
-                Column(Modifier.padding(16.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text(preferences.channelTitle(item.id, item.title), color = TextMain, fontSize = if (isWideScreen) 22.sp else 18.sp, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                    Box(Modifier.fillMaxWidth().heightIn(min = 160.dp, max = 300.dp).background(Color.Black, RoundedCornerShape(10.dp)), contentAlignment = Alignment.Center) {
-                        ChannelMiniPreview(entry = item, playing = previewRequested)
+                if (isWideScreen && selectedChannel != null) {
+                    val detail = selectedChannel!!
+                    val current = EpgRepository.currentProgram(epgPrograms, detail.epgChannelId, epgClock)
+                    val next = EpgRepository.nextProgram(epgPrograms, detail.epgChannelId, epgClock)
+                    Surface(
+                        modifier = Modifier.width((screenWidthDp * 0.30f).dp.coerceIn(300.dp, 440.dp)).fillMaxHeight(),
+                        color = Panel,
+                        shape = RoundedCornerShape(14.dp),
+                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.10f)),
+                    ) {
+                        Column(Modifier.fillMaxSize().padding(14.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(9.dp)) {
+                            Text("تفاصيل القناة", color = Lime, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            Text(preferences.channelTitle(detail.id, detail.title), color = TextMain, fontSize = 20.sp, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                            Box(Modifier.fillMaxWidth().height(190.dp).background(Color.Black, RoundedCornerShape(10.dp)), contentAlignment = Alignment.Center) {
+                                ChannelMiniPreview(entry = detail, playing = previewRequested)
+                            }
+                            Text(current?.title?.let { "دابا · $it" } ?: "دابا · معلومات البرنامج غير متوفرة", color = GoldLight, fontSize = 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                            if (next != null) Text("من بعد · ${next.title}", color = TextMuted, fontSize = 11.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Button(onClick = { onPlay(detail.copy(title = preferences.channelTitle(detail.id, detail.title))) }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = Lime, contentColor = Ink)) { Text("▶ مشاهدة") }
+                                OutlinedButton(onClick = { previewRequested = !previewRequested }, modifier = Modifier.weight(1f)) { Text(if (previewRequested) "إيقاف" else "معاينة") }
+                            }
+                            Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                                TextButton(onClick = { onFavorite(detail) }) { Text(if (detail.id in preferences.favorites()) "★ محفوظة" else "☆ المفضلة", color = Lime) }
+                                TextButton(onClick = { onOrganize(detail) }) { Text("تنظيم", color = TextMuted) }
+                            }
+                            Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                                TextButton(onClick = { onHide(detail) }) { Text(if (detail.id in preferences.hiddenChannels()) "إظهار" else "إخفاء", color = TextMuted) }
+                                TextButton(onClick = { pendingDeleteChannel = detail }) { Text("حذف", color = ErrorRed) }
+                            }
+                        }
                     }
-                    val current = EpgRepository.currentProgram(epgPrograms, item.epgChannelId, epgClock)
-                    val next = EpgRepository.nextProgram(epgPrograms, item.epgChannelId, epgClock)
-                    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text(current?.title?.let { "NOW  ·  $it" } ?: "NOW  ·  Programme information unavailable", color = GoldLight, fontSize = 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                        if (next != null) Text("NEXT  ·  ${next.title}", color = TextMuted, fontSize = 11.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                    }
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Button(onClick = { onPlay(item.copy(title = preferences.channelTitle(item.id, item.title))); channelDialogOpen = false }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = Lime, contentColor = Ink)) { Text("مشاهدة") }
-                        OutlinedButton(onClick = { previewRequested = !previewRequested }, modifier = Modifier.weight(1f)) { Text(if (previewRequested) "إيقاف المعاينة" else "معاينة") }
-                    }
-                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                        TextButton(onClick = { onFavorite(item) }) { Text(if (item.id in preferences.favorites()) "★ محفوظة" else "☆ المفضلة", color = Lime) }
-                        TextButton(onClick = { onOrganize(item); channelDialogOpen = false }) { Text("تنظيم", color = TextMuted) }
-                        TextButton(onClick = { onHide(item); channelDialogOpen = false }) { Text(if (item.id in preferences.hiddenChannels()) "إظهار" else "إخفاء", color = TextMuted) }
-                        TextButton(onClick = { pendingDeleteChannel = item; channelDialogOpen = false }) { Text("حذف", color = ErrorRed) }
-                    }
-                    TextButton(onClick = { channelDialogOpen = false }, modifier = Modifier.align(Alignment.End)) { Text("إغلاق") }
                 }
             }
-        }
         }
     }
     pendingDeleteChannel?.let { item ->

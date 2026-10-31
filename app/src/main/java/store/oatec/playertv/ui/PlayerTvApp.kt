@@ -4018,7 +4018,7 @@ private fun KidsDashboard(
                         horizontalArrangement = Arrangement.spacedBy(if (compact) 7.dp else 12.dp),
                         verticalArrangement = Arrangement.spacedBy(if (compact) 7.dp else 12.dp),
                     ) {
-                        items(channels.distinctBy { it.id }, key = { "kids-live:" + it.id }) { channel ->
+                        gridItems(channels.distinctBy { it.id }, key = { "kids-live:" + it.id }) { channel ->
                             Column(Modifier.fillMaxWidth().clickable { onPlay(channel) }, verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                 Surface(
                                     color = Color(0xFF24456B), shape = RoundedCornerShape(12.dp),

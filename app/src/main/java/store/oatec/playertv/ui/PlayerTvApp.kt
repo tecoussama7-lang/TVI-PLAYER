@@ -11,6 +11,7 @@ import android.net.Uri
 import java.net.HttpURLConnection
 import java.net.URL
 import org.json.JSONObject
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -135,6 +136,9 @@ import java.io.IOException
 import java.util.UUID
 import org.json.JSONArray
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.runInterruptible
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.flow.collectLatest
@@ -3117,6 +3121,8 @@ private fun PlaybackDialog(
     var onlineSubtitleLanguage by remember { mutableStateOf("ar") }
     var onlineSubtitleLoading by remember { mutableStateOf(false) }
     val playbackScope = rememberCoroutineScope()
+    // Serialize MPV native preparation/playback with AndroidView release to avoid destroying a core mid-prepare.
+    val mpvLifecycleMutex = remember(entry.id) { Mutex() }
     val externalAudioPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null && activeEngine == "exoplayer") {
             runCatching {
@@ -3278,38 +3284,45 @@ private fun PlaybackDialog(
             player.stop()
             player.clearMediaItems()
             val view = mpvView ?: return@LaunchedEffect
-            runCatching {
-                // MPV initialization is expensive on some TV boxes, so prepare its native core off the UI thread.
-                val prepared: PreparedCore = withContext(Dispatchers.IO) {
-                    view.prepare(
-                        MpvOptions(
-                            tlsCaFile = mpvCaBundle,
-                            // Prefer Arabic subtitles, then English/French when the stream provides them.
-                            subtitleLanguages = listOf("ar", "ara", "en", "eng", "fr", "fre"),
-                            // Automatically discover adjacent external subtitle files where supported.
-                            // Prefer hardware decoding where available for high-resolution HEVC streams.
-                            extra = mapOf(
-                                "sub-auto" to "all",
-                                // Use hardware decoding when safe, but automatically fall back to FFmpeg software decoding
-                                // when a codec/profile is unsupported by the device decoder.
-                                "hwdec" to if (mpvAttempt > 0) "no" else "auto-safe",
-                                "vd-lavc-software-fallback" to "yes",
+            try {
+                mpvLifecycleMutex.withLock {
+                    currentCoroutineContext().ensureActive()
+                    // MPV initialization is expensive on some TV boxes, so prepare its native core off the UI thread.
+                    // Keep the lifecycle lock until preparation completes; AndroidView release waits on the same lock.
+                    val prepared: PreparedCore = withContext(Dispatchers.IO) {
+                        view.prepare(
+                            MpvOptions(
+                                tlsCaFile = mpvCaBundle,
+                                // Prefer Arabic subtitles, then English/French when the stream provides them.
+                                subtitleLanguages = listOf("ar", "ara", "en", "eng", "fr", "fre"),
+                                // Automatically discover adjacent external subtitle files where supported.
+                                // Prefer hardware decoding where available for high-resolution HEVC streams.
+                                extra = mapOf(
+                                    "sub-auto" to "all",
+                                    // Keep hardware decoding as the first choice; retry in software only after failure.
+                                    "hwdec" to if (mpvAttempt > 0) "no" else "auto-safe",
+                                    "vd-lavc-software-fallback" to "yes",
+                                ),
                             ),
-                        ),
-                    )
-                }
-                view.attach(prepared)
-                view.playFile(entry.streamUrl).getOrThrow()
-                if (entry.kind != MediaKind.LIVE && preferences.resumePlayback()) {
-                    val resumePosition = preferences.progress(entry.id)
-                    if (resumePosition > 5_000L) {
-                        // MPV reports positions in seconds; the shared progress store uses milliseconds.
-                        view.timePos = resumePosition / 1_000.0
+                        )
+                    }
+                    currentCoroutineContext().ensureActive()
+                    view.attach(prepared)
+                    currentCoroutineContext().ensureActive()
+                    view.playFile(entry.streamUrl).getOrThrow()
+                    currentCoroutineContext().ensureActive()
+                    if (entry.kind != MediaKind.LIVE && preferences.resumePlayback()) {
+                        val resumePosition = preferences.progress(entry.id)
+                        if (resumePosition > 5_000L) {
+                            // MPV reports positions in seconds; the shared progress store uses milliseconds.
+                            view.timePos = resumePosition / 1_000.0
+                        }
                     }
                 }
-            }.onSuccess {
                 loading = false
-            }.onFailure { failure ->
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (failure: Exception) {
                 if (mpvAttempt == 0) {
                     // Some TV boxes fail with their hardware decoder on specific codecs/streams.
                     // Recreate MPV once with software decoding before showing a terminal error.
@@ -3379,7 +3392,12 @@ private fun PlaybackDialog(
                             }.also { mpvView = it }
                         },
                         modifier = Modifier.fillMaxSize(),
-                        onRelease = { it.destroy() },
+                        onRelease = { releasedView ->
+                            // Do not destroy the native core while prepare()/playFile() is still running.
+                            playbackScope.launch {
+                                mpvLifecycleMutex.withLock { releasedView.destroy() }
+                            }
+                        },
                     )
                 }
             } else {
@@ -3851,10 +3869,21 @@ private fun KidsDashboard(
             delay(450)
             youtubeLoading = true
             youtubeError = ""
-            runCatching { withContext(Dispatchers.IO) { searchYouTubeKids(query, section) } }
-                .onSuccess { youtubeResults = it }
-                .onFailure { youtubeResults = emptyList(); youtubeError = it.message ?: "تعذر تحميل نتائج YouTube" }
-            youtubeLoading = false
+            try {
+                // A new query/section cancels this effect; runInterruptible interrupts the blocking HTTP call.
+                val results = withContext(Dispatchers.IO) {
+                    runInterruptible { searchYouTubeKids(query, section) }
+                }
+                currentCoroutineContext().ensureActive()
+                youtubeResults = results
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (failure: Exception) {
+                youtubeResults = emptyList()
+                youtubeError = failure.message ?: "تعذر تحميل نتائج YouTube"
+            } finally {
+                youtubeLoading = false
+            }
         }
     }
     val allVisible = remember(section, movies, series, channels, search, youtubeResults) {

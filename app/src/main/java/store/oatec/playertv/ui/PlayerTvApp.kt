@@ -4366,10 +4366,10 @@ private fun searchYouTubeKids(query: String, section: Section): List<MediaEntry>
             // Search snippets do not expose a reliable movie/series type, so reject only
             // strong cross-format signals instead of guessing from broad genre labels.
             val normalizedTitle = title.lowercase()
-            val episodeMarker = Regex("""\\b(?:s\\d{1,2}\\s*e\\d{1,2}|season\\s*\\d+|episode\\s*\\d+|ep\\s*\\d+)\\b""")
+            val episodeMarker = Regex("""\b(?:s\d{1,2}\s*e\d{1,2}|season\s*\d+|episode\s*\d+|ep\s*\d+)\b""")
                 .containsMatchIn(normalizedTitle) ||
                 listOf("الحلقة", "الحلقات", "الموسم", "مسلسل").any { it in normalizedTitle }
-            val movieMarker = Regex("""\\b(?:full\\s+movie|movie|film)\\b""").containsMatchIn(normalizedTitle) ||
+            val movieMarker = Regex("""\b(?:full\s+movie|movie|film)\b""").containsMatchIn(normalizedTitle) ||
                 listOf("فيلم", "أفلام", "افلام").any { it in normalizedTitle }
             if (section == Section.MOVIES && episodeMarker && !movieMarker) continue
             if (section == Section.SERIES && movieMarker) continue

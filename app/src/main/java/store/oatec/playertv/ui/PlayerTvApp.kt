@@ -280,6 +280,24 @@ private fun activateOatecCode(context: Context, code: String): PlayerSource {
     } finally { connection.disconnect() }
 }
 
+private fun entitlementConnectionMessage(error: Exception): String {
+    var cause: Throwable = error
+    while (cause.cause != null && cause.cause !== cause) cause = cause.cause!!
+    val detail = cause.message?.takeIf { it.isNotBlank() }
+    return when (cause.javaClass.simpleName) {
+        "UnknownHostException" ->
+            "الإنترنت موجود، ولكن تعذر العثور على عنوان سيرفر التفعيل admin.oatec.store. تحقق من DNS أو إعدادات الشبكة."
+        "ConnectException" ->
+            "الإنترنت موجود، ولكن تعذر فتح اتصال بسيرفر التفعيل. قد يكون السيرفر متوقفاً أو الاتصال محجوباً."
+        "SocketTimeoutException" ->
+            "سيرفر التفعيل لم يجب في الوقت المحدد. تحقق من حالة السيرفر ثم أعد المحاولة."
+        "SSLHandshakeException", "SSLPeerUnverifiedException" ->
+            "تعذر إنشاء اتصال HTTPS آمن مع سيرفر التفعيل. تحقق من شهادة SSL وتاريخ ووقت الجهاز."
+        else ->
+            "تعذر الاتصال بخدمة التفعيل: ${detail ?: cause.javaClass.simpleName}. أعد المحاولة أو تواصل مع الدعم."
+    }
+}
+
 private fun verifyPlayerToken(context: Context): Boolean {
     val token = SecureSourceStore(context).loadPlayerToken().orEmpty()
     if (token.isBlank()) return false
@@ -311,12 +329,22 @@ fun PlayerTvApp() {
     var dismissedVersion by rememberSaveable { mutableStateOf("") }
     var entitlementState by remember { mutableStateOf("checking") }
     var entitlementError by remember { mutableStateOf("") }
+    var standardTrialExpiry by remember { mutableStateOf("") }
+    var standardPaymentUrl by remember { mutableStateOf("") }
     var retryEntitlement by remember { mutableIntStateOf(0) }
 
     LaunchedEffect(retryEntitlement) {
         val token = SecureSourceStore(context).loadPlayerToken().orEmpty()
         if (token.isBlank()) {
-            entitlementState = "activation"
+            try {
+                val access = withContext(Dispatchers.IO) { store.oatec.playertv.data.StandardEntitlementClient(context).register() }
+                standardTrialExpiry = access.trialExpiresAt
+                standardPaymentUrl = access.paymentUrl
+                entitlementState = if (access.status == "trial" || access.status == "active") "active" else "standard_locked"
+            } catch (error: Exception) {
+                entitlementError = entitlementConnectionMessage(error)
+                entitlementState = "offline"
+            }
         } else {
             entitlementState = "checking"
             try {
@@ -329,7 +357,7 @@ fun PlayerTvApp() {
                     entitlementState = "activation"
                 }
             } catch (error: Exception) {
-                entitlementError = error.message ?: "خاص الاتصال بالإنترنت للتحقق من الترخيص."
+                entitlementError = entitlementConnectionMessage(error)
                 entitlementState = "offline"
             }
         }
@@ -340,15 +368,26 @@ fun PlayerTvApp() {
             while (true) {
                 delay(30_000L)
                 try {
-                    val valid = withContext(Dispatchers.IO) { verifyPlayerToken(context) }
-                    if (!valid) {
-                        SecureSourceStore(context).savePlayerToken("")
-                        SecureSourceStore(context).save(emptyList())
-                        entitlementState = "activation"
-                        break
+                    val token = SecureSourceStore(context).loadPlayerToken().orEmpty()
+                    if (token.isBlank()) {
+                        val access = withContext(Dispatchers.IO) { store.oatec.playertv.data.StandardEntitlementClient(context).status() }
+                        standardTrialExpiry = access.trialExpiresAt
+                        if (access.status != "trial" && access.status != "active") {
+                            standardPaymentUrl = access.paymentUrl
+                            entitlementState = "standard_locked"
+                            break
+                        }
+                    } else {
+                        val valid = withContext(Dispatchers.IO) { verifyPlayerToken(context) }
+                        if (!valid) {
+                            SecureSourceStore(context).savePlayerToken("")
+                            SecureSourceStore(context).save(emptyList())
+                            entitlementState = "activation"
+                            break
+                        }
                     }
                 } catch (error: Exception) {
-                    entitlementError = error.message ?: "انقطع الاتصال بالسيرفر. خاص الإنترنت باش يبقى التطبيق خدام."
+                    entitlementError = entitlementConnectionMessage(error)
                     entitlementState = "offline"
                     break
                 }
@@ -370,6 +409,7 @@ fun PlayerTvApp() {
                 Text("كنتحققو من ترخيص OATEC...", color = TextMain)
             }
         }
+        "standard_locked" -> StandardLockedScreen(context, standardTrialExpiry, standardPaymentUrl) { retryEntitlement++ }
         "offline" -> Surface(Modifier.fillMaxSize(), color = Ink) {
             Column(Modifier.fillMaxSize().padding(28.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
                 Text("الاتصال بالإنترنت ضروري", color = GoldLight, fontSize = 22.sp, fontWeight = FontWeight.Bold)

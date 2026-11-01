@@ -350,12 +350,23 @@ fun PlayerTvApp() {
             while (true) {
                 delay(30_000L)
                 try {
-                    val valid = withContext(Dispatchers.IO) { verifyPlayerToken(context) }
-                    if (!valid) {
-                        SecureSourceStore(context).savePlayerToken("")
-                        SecureSourceStore(context).save(emptyList())
-                        entitlementState = "activation"
-                        break
+                    val token = SecureSourceStore(context).loadPlayerToken().orEmpty()
+                    if (token.isBlank()) {
+                        val access = withContext(Dispatchers.IO) { store.oatec.playertv.data.StandardEntitlementClient(context).status() }
+                        standardTrialExpiry = access.trialExpiresAt
+                        if (access.status != "trial" && access.status != "active") {
+                            standardPaymentUrl = access.paymentUrl
+                            entitlementState = "standard_locked"
+                            break
+                        }
+                    } else {
+                        val valid = withContext(Dispatchers.IO) { verifyPlayerToken(context) }
+                        if (!valid) {
+                            SecureSourceStore(context).savePlayerToken("")
+                            SecureSourceStore(context).save(emptyList())
+                            entitlementState = "activation"
+                            break
+                        }
                     }
                 } catch (error: Exception) {
                     entitlementError = error.message ?: "انقطع الاتصال بالسيرفر. خاص الإنترنت باش يبقى التطبيق خدام."

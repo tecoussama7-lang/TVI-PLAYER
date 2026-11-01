@@ -380,6 +380,7 @@ fun PlayerTvApp() {
                 Text("كنتحققو من ترخيص OATEC...", color = TextMain)
             }
         }
+        "standard_locked" -> StandardLockedScreen(context, standardTrialExpiry, standardPaymentUrl) { retryEntitlement++ }
         "offline" -> Surface(Modifier.fillMaxSize(), color = Ink) {
             Column(Modifier.fillMaxSize().padding(28.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
                 Text("الاتصال بالإنترنت ضروري", color = GoldLight, fontSize = 22.sp, fontWeight = FontWeight.Bold)

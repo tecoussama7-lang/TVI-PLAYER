@@ -311,6 +311,8 @@ fun PlayerTvApp() {
     var dismissedVersion by rememberSaveable { mutableStateOf("") }
     var entitlementState by remember { mutableStateOf("checking") }
     var entitlementError by remember { mutableStateOf("") }
+    var standardTrialExpiry by remember { mutableStateOf("") }
+    var standardPaymentUrl by remember { mutableStateOf("") }
     var retryEntitlement by remember { mutableIntStateOf(0) }
 
     LaunchedEffect(retryEntitlement) {

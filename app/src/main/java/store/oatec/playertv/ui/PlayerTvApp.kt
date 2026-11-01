@@ -280,6 +280,24 @@ private fun activateOatecCode(context: Context, code: String): PlayerSource {
     } finally { connection.disconnect() }
 }
 
+private fun entitlementConnectionMessage(error: Exception): String {
+    var cause: Throwable = error
+    while (cause.cause != null && cause.cause !== cause) cause = cause.cause!!
+    val detail = cause.message?.takeIf { it.isNotBlank() }
+    return when (cause.javaClass.simpleName) {
+        "UnknownHostException" ->
+            "الإنترنت موجود، ولكن تعذر العثور على عنوان سيرفر التفعيل admin.oatec.store. تحقق من DNS أو إعدادات الشبكة."
+        "ConnectException" ->
+            "الإنترنت موجود، ولكن تعذر فتح اتصال بسيرفر التفعيل. قد يكون السيرفر متوقفاً أو الاتصال محجوباً."
+        "SocketTimeoutException" ->
+            "سيرفر التفعيل لم يجب في الوقت المحدد. تحقق من حالة السيرفر ثم أعد المحاولة."
+        "SSLHandshakeException", "SSLPeerUnverifiedException" ->
+            "تعذر إنشاء اتصال HTTPS آمن مع سيرفر التفعيل. تحقق من شهادة SSL وتاريخ ووقت الجهاز."
+        else ->
+            "تعذر الاتصال بخدمة التفعيل: ${detail ?: cause.javaClass.simpleName}. أعد المحاولة أو تواصل مع الدعم."
+    }
+}
+
 private fun verifyPlayerToken(context: Context): Boolean {
     val token = SecureSourceStore(context).loadPlayerToken().orEmpty()
     if (token.isBlank()) return false
@@ -324,7 +342,7 @@ fun PlayerTvApp() {
                 standardPaymentUrl = access.paymentUrl
                 entitlementState = if (access.status == "trial" || access.status == "active") "active" else "standard_locked"
             } catch (error: Exception) {
-                entitlementError = error.message ?: "خاص الاتصال بالإنترنت للتحقق من الترخيص."
+                entitlementError = entitlementConnectionMessage(error)
                 entitlementState = "offline"
             }
         } else {
@@ -369,7 +387,7 @@ fun PlayerTvApp() {
                         }
                     }
                 } catch (error: Exception) {
-                    entitlementError = error.message ?: "انقطع الاتصال بالسيرفر. خاص الإنترنت باش يبقى التطبيق خدام."
+                    entitlementError = entitlementConnectionMessage(error)
                     entitlementState = "offline"
                     break
                 }

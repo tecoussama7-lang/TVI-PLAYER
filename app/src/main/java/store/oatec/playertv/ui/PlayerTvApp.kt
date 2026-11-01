@@ -357,7 +357,7 @@ fun PlayerTvApp() {
                     entitlementState = "activation"
                 }
             } catch (error: Exception) {
-                entitlementError = error.message ?: "خاص الاتصال بالإنترنت للتحقق من الترخيص."
+                entitlementError = entitlementConnectionMessage(error)
                 entitlementState = "offline"
             }
         }

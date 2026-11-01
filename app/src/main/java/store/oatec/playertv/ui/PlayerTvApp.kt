@@ -318,7 +318,15 @@ fun PlayerTvApp() {
     LaunchedEffect(retryEntitlement) {
         val token = SecureSourceStore(context).loadPlayerToken().orEmpty()
         if (token.isBlank()) {
-            entitlementState = "activation"
+            try {
+                val access = withContext(Dispatchers.IO) { store.oatec.playertv.data.StandardEntitlementClient(context).register() }
+                standardTrialExpiry = access.trialExpiresAt
+                standardPaymentUrl = access.paymentUrl
+                entitlementState = if (access.status == "trial" || access.status == "active") "active" else "standard_locked"
+            } catch (error: Exception) {
+                entitlementError = error.message ?: "خاص الاتصال بالإنترنت للتحقق من الترخيص."
+                entitlementState = "offline"
+            }
         } else {
             entitlementState = "checking"
             try {

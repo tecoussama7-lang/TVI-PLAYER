@@ -629,30 +629,13 @@ private fun PlayerTvAppContent(onActivated: () -> Unit = {}) {
                             // Stream bounded batches directly into one SQLite transaction.
                             // A failed response rolls back, preserving the last good catalogue.
                             val result = mediaCatalogStore.beginImport(source.id, catalogSection.name).use { session ->
-                                var firstBatchDisplayed = false
+                                // The repository invokes this callback while running on Dispatchers.IO.
+                                // Keep it limited to SQLite writes: mutating Compose state here can
+                                // race the UI snapshot while a provider returns many categories/items.
                                 val loaded = repository.loadCatalogBatched(source, catalogSection) { batch ->
                                     session.insertBatch(batch)
-                                    // Render the first batch immediately instead of waiting for the
-                                    // entire provider catalogue and SQLite import to finish.
-                                    if (!firstBatchDisplayed && batch.isNotEmpty() && source.id == activeSourceId) {
-                                        val firstPage = batch.take(CATALOG_PAGE_SIZE)
-                                        catalogPageOffsets = catalogPageOffsets + (loadKey to firstPage.size)
-                                        val visiblePage = applyKidsModeFilter(firstPage, preferences)
-                                        catalog = when (catalogSection) {
-                                            CatalogSection.LIVE -> catalog.copy(liveChannels = visiblePage)
-                                            CatalogSection.MOVIES -> catalog.copy(movies = visiblePage)
-                                            CatalogSection.SERIES -> catalog.copy(series = visiblePage)
-                                        }
-                                        firstBatchDisplayed = true
-                                    }
-                                    catalogLoadedItems += batch.size
-                                    // Providers often do not expose a reliable total in advance.
-                                    // Progress fills gradually, with the final 8% reserved for completion.
-                                    val count = catalogLoadedItems
-                                    catalogProgress = (1f - kotlin.math.exp(-count / 9000f).toFloat()).coerceAtMost(0.92f)
                                 }
                                 session.commit()
-                                catalogProgress = 1f
                                 loaded
                             }
                             val firstPage = mediaCatalogStore.page(source.id, catalogSection.name, limit = CATALOG_PAGE_SIZE, offset = 0)
@@ -662,6 +645,8 @@ private fun PlayerTvAppContent(onActivated: () -> Unit = {}) {
                     }
                         .onSuccess { (result, firstPage, totalCount) ->
                             if (source.id == activeSourceId) {
+                                catalogLoadedItems = totalCount.coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
+                                catalogProgress = 1f
                                 catalogPageOffsets = catalogPageOffsets + (loadKey to firstPage.size)
                                 catalog = when (catalogSection) {
                                     CatalogSection.LIVE -> catalog.copy(liveChannels = applyKidsModeFilter(firstPage, preferences))

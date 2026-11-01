@@ -6,6 +6,7 @@ on:
       - feature/prompt-full-implementation
       - fix/player-layout-kids-ui-2026-10
       - feat/oatec-online-activation
+      - feat/oatec-standard-trial-payment
   pull_request:
     branches:
       - feature/prompt-full-implementation

@@ -629,11 +629,34 @@ private fun PlayerTvAppContent(onActivated: () -> Unit = {}) {
                             // Stream bounded batches directly into one SQLite transaction.
                             // A failed response rolls back, preserving the last good catalogue.
                             val result = mediaCatalogStore.beginImport(source.id, catalogSection.name).use { session ->
-                                // The repository invokes this callback while running on Dispatchers.IO.
-                                // Keep it limited to SQLite writes: mutating Compose state here can
-                                // race the UI snapshot while a provider returns many categories/items.
+                                // The repository invokes this callback on Dispatchers.IO. Persist each
+                                // batch there, but marshal UI updates to Main so the first results appear
+                                // while later categories are still downloading.
+                                val firstBatchDisplayed = java.util.concurrent.atomic.AtomicBoolean(false)
                                 val loaded = repository.loadCatalogBatched(source, catalogSection) { batch ->
                                     session.insertBatch(batch)
+                                    if (batch.isNotEmpty() && source.id == activeSourceId &&
+                                        firstBatchDisplayed.compareAndSet(false, true)
+                                    ) {
+                                        val firstPage = batch.take(CATALOG_PAGE_SIZE)
+                                        scope.launch(Dispatchers.Main.immediate) {
+                                            if (source.id == activeSourceId) {
+                                                catalogPageOffsets = catalogPageOffsets + (loadKey to firstPage.size)
+                                                val visiblePage = applyKidsModeFilter(firstPage, preferences)
+                                                catalog = when (catalogSection) {
+                                                    CatalogSection.LIVE -> catalog.copy(liveChannels = visiblePage)
+                                                    CatalogSection.MOVIES -> catalog.copy(movies = visiblePage)
+                                                    CatalogSection.SERIES -> catalog.copy(series = visiblePage)
+                                                }
+                                            }
+                                        }
+                                    }
+                                    val count = batch.size
+                                    scope.launch(Dispatchers.Main.immediate) {
+                                        catalogLoadedItems += count
+                                        catalogProgress = (1f - kotlin.math.exp(-catalogLoadedItems / 9000f).toFloat())
+                                            .coerceAtMost(0.92f)
+                                    }
                                 }
                                 session.commit()
                                 loaded

@@ -2,6 +2,7 @@ package store.oatec.playertv.data
 
 import android.content.Context
 import android.os.Build
+import android.provider.Settings
 import org.json.JSONObject
 import java.io.IOException
 import java.net.HttpURLConnection
@@ -20,8 +21,12 @@ class StandardEntitlementClient(context: Context) {
 
     fun deviceId(): String {
         val prefs = app.getSharedPreferences("oatec_activation", Context.MODE_PRIVATE)
-        return prefs.getString("device_id", null) ?: UUID.randomUUID().toString().also {
-            prefs.edit().putString("device_id", it).apply()
+        return prefs.getString("device_id", null) ?: run {
+            val androidId = Settings.Secure.getString(app.contentResolver, Settings.Secure.ANDROID_ID)
+                ?.takeIf { it.isNotBlank() && it != "9774d56d682e549c" }
+            val stableId = androidId?.let { "android-$it" } ?: UUID.randomUUID().toString()
+            prefs.edit().putString("device_id", stableId).apply()
+            stableId
         }
     }
 

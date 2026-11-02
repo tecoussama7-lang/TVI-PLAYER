@@ -2369,7 +2369,7 @@ private fun MediaScreen(
         listOf("All") + (curated + providerCategories + knownGenres).distinct().filterNot { it.equals("All", true) }
     }
     val searched = remember(entries, search) {
-        entries.filter { it.title.contains(search, true) || it.category.contains(search, true) || it.genre.contains(search, true) }
+        if (search.isBlank()) entries else entries.filter { it.title.contains(search, true) || it.category.contains(search, true) || it.genre.contains(search, true) }
     }
     val filtered = if (selectedShelf == "All") searched else if (selectedShelf in listOf("4K", "UHD", "1080p", "HD")) {
         searched.filter { qualityLabel(it).equals(selectedShelf, true) || (selectedShelf == "HD" && qualityLabel(it) == "1080p") }

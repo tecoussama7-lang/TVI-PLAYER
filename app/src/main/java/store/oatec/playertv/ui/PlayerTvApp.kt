@@ -2080,6 +2080,11 @@ private fun LiveScreen(
     val channels = remember(catalog.liveChannels, category, search, preferenceRevision) {
         visibleChannels(catalog, category, search, preferences)
     }
+    // Cache channel numbers once per playlist/preferences update. Calling channelNumber()
+    // inside each visible row sorts and scans the full playlist repeatedly on large lists.
+    val channelNumbers = remember(catalog.liveChannels, preferenceRevision) {
+        numberedChannels(catalog.liveChannels, preferences).associate { (entry, number) -> entry.id to number }
+    }
     var selectedChannel by remember(channels) { mutableStateOf(channels.firstOrNull()) }
     var previewRequested by remember(channels) { mutableStateOf(false) }
     var pendingDeleteChannel by remember { mutableStateOf<MediaEntry?>(null) }
@@ -2135,10 +2140,10 @@ private fun LiveScreen(
                             Row(Modifier.padding(7.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
                                 Box(Modifier.size(40.dp).background(Color.Black, RoundedCornerShape(7.dp)), contentAlignment = Alignment.Center) {
                                     if (item.logoUrl.isNotBlank()) AsyncImage(item.logoUrl, contentDescription = item.title, modifier = Modifier.fillMaxSize().padding(2.dp))
-                                    else Text(channelNumber(item, catalog.liveChannels, preferences).toString(), color = Lime, fontSize = 12.sp, fontWeight = FontWeight.Black)
+                                    else Text((channelNumbers[item.id] ?: 0).toString(), color = Lime, fontSize = 12.sp, fontWeight = FontWeight.Black)
                                 }
                                 Column(Modifier.weight(1f)) {
-                                    Text(channelNumber(item, catalog.liveChannels, preferences).toString().padStart(3, '0'), color = Lime, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                    Text((channelNumbers[item.id] ?: 0).toString().padStart(3, '0'), color = Lime, fontSize = 10.sp, fontWeight = FontWeight.Bold)
                                     Text(preferences.channelTitle(item.id, item.title), color = TextMain, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
                                 }
                                 if (category != "Hidden") {
@@ -2168,7 +2173,7 @@ private fun LiveScreen(
                     }
                     Text(selectedChannel?.let { preferences.channelTitle(it.id, it.title) } ?: "Select a channel", color = TextMain, fontSize = 16.sp, fontWeight = FontWeight.Bold, maxLines = 2)
                     selectedChannel?.let { item ->
-                        Text("CH " + channelNumber(item, catalog.liveChannels, preferences).toString().padStart(3, '0') + " • " + preferences.categoryFor(item.id, item.category), color = TextMuted, fontSize = 10.sp)
+                        Text("CH " + (channelNumbers[item.id] ?: 0).toString().padStart(3, '0') + " • " + preferences.categoryFor(item.id, item.category), color = TextMuted, fontSize = 10.sp)
                         val current = EpgRepository.currentProgram(epgPrograms, item.epgChannelId, epgClock)
                         val next = EpgRepository.nextProgram(epgPrograms, item.epgChannelId, epgClock)
                         Text(current?.title?.let { "NOW  " + it } ?: next?.title?.let { "NEXT  " + it } ?: "Programme information unavailable", color = GoldLight, fontSize = 11.sp, maxLines = 2)
@@ -2287,7 +2292,9 @@ private fun MediaScreen(
             .mapNotNull { raw -> curated.firstOrNull { it.equals(raw, true) } }.distinct()
         listOf("All") + (curated + providerCategories + knownGenres).distinct().filterNot { it.equals("All", true) }
     }
-    val searched = entries.filter { it.title.contains(search, true) || it.category.contains(search, true) || it.genre.contains(search, true) }
+    val searched = remember(entries, search) {
+        entries.filter { it.title.contains(search, true) || it.category.contains(search, true) || it.genre.contains(search, true) }
+    }
     val filtered = if (selectedShelf == "All") searched else if (selectedShelf in listOf("4K", "UHD", "1080p", "HD")) {
         searched.filter { qualityLabel(it).equals(selectedShelf, true) || (selectedShelf == "HD" && qualityLabel(it) == "1080p") }
     } else searched.filter { entry ->
@@ -2787,7 +2794,9 @@ private fun SeriesScreen(
         // Show standard genres even when the source has incomplete metadata.
         listOf("All") + (curated + providerCategories + genres).distinct().filterNot { it.equals("All", true) }
     }
-    val searched = entries.filter { it.title.contains(search, true) || it.category.contains(search, true) || it.genre.contains(search, true) }
+    val searched = remember(entries, search) {
+        entries.filter { it.title.contains(search, true) || it.category.contains(search, true) || it.genre.contains(search, true) }
+    }
     val filtered = if (selectedShelf == "All") searched else searched.filter { entry ->
         entry.category.equals(selectedShelf, true) ||
             entry.genre.split(",", "|", "/", "·").any { it.trim().equals(selectedShelf, true) } ||

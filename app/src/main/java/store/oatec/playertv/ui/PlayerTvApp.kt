@@ -1254,16 +1254,24 @@ private fun LiveScreen(
     val channels = remember(catalog.liveChannels, category, search, preferenceRevision) {
         visibleChannels(catalog, category, search, preferences)
     }
+    // Calculate channel numbers once per catalogue/preferences update. Calculating
+    // channelNumber() inside every visible row sorts the entire catalogue repeatedly
+    // and becomes quadratic for large playlists.
+    val channelNumbers = remember(catalog.liveChannels, preferenceRevision) {
+        numberedChannels(catalog.liveChannels, preferences).associate { (entry, number) -> entry.id to number }
+    }
+    val categories = remember(catalog.liveChannels, preferenceRevision) {
+        (listOf("All", "Favorites", "Hidden") +
+            catalog.liveChannels.map { preferences.categoryFor(it.id, it.category) }.distinct().sorted() +
+            preferences.customCategories()).distinct()
+    }
     var previewChannel by remember { mutableStateOf<MediaEntry?>(null) }
     val channelListState = rememberLazyListState()
     val lastChannelVisible = channelListState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
     LaunchedEffect(lastChannelVisible, channels.size) {
         if (channels.isNotEmpty() && lastChannelVisible >= channels.size - 10) onLoadMore()
     }
-    val categories = listOf("All", "Favorites", "Hidden") +
-        catalog.liveChannels.map { preferences.categoryFor(it.id, it.category) }.distinct().sorted() +
-        preferences.customCategories()
-    val distinctCategories = categories.distinct()
+    val distinctCategories = categories
     Column(Modifier.fillMaxSize().padding(horizontal = 28.dp)) {
         Row(
             Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 2.dp),
@@ -1307,7 +1315,7 @@ private fun LiveScreen(
                     else -> LazyColumn(state = channelListState, verticalArrangement = Arrangement.spacedBy(5.dp), contentPadding = PaddingValues(bottom = 20.dp)) {
                         itemsIndexed(channels, key = { _, item -> item.id }) { _, item ->
                             ChannelRow(
-                                number = channelNumber(item, catalog.liveChannels, preferences),
+                                number = channelNumbers[item.id] ?: 0,
                                 entry = item.copy(title = preferences.channelTitle(item.id, item.title)),
                                 favorite = item.id in preferences.favorites(),
                                 hidden = item.id in preferences.hiddenChannels(),
@@ -1448,7 +1456,9 @@ private fun MediaScreen(
     onPlay: (MediaEntry) -> Unit,
     onFavorite: (MediaEntry) -> Unit,
 ) {
-    val filtered = entries.filter { it.title.contains(search, true) || it.category.contains(search, true) }
+    val filtered = remember(entries, search) {
+        entries.filter { it.title.contains(search, true) || it.category.contains(search, true) }
+    }
     val mediaListState = rememberLazyListState()
     val lastMediaVisible = mediaListState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
     LaunchedEffect(lastMediaVisible, entries.size) {
@@ -1638,7 +1648,9 @@ private fun SeriesScreen(
         Column(Modifier.weight(1f).fillMaxHeight()) {
             Text("SERIES", color = TextMuted, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
             Spacer(Modifier.height(14.dp))
-            val filtered = entries.filter { it.title.contains(search, true) || it.category.contains(search, true) }
+            val filtered = remember(entries, search) {
+                entries.filter { it.title.contains(search, true) || it.category.contains(search, true) }
+            }
             val seriesListState = rememberLazyListState()
             val lastSeriesVisible = seriesListState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
             LaunchedEffect(lastSeriesVisible, entries.size) {

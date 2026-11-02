@@ -553,7 +553,7 @@ fun PlayerTvApp() {
                                 }
                                 if (catalogSection == CatalogSection.LIVE) selectedCategory = "All"
                                 loadedCatalogs = loadedCatalogs + loadKey
-                                message = "$totalCount \${catalogSection.name.lowercase()} items saved locally."
+                                message = "$totalCount ${catalogSection.name.lowercase()} items saved locally."
                                 scope.launch { cachePosterImages(context, posterImageLoader, allEntries) }
                             }
                         }

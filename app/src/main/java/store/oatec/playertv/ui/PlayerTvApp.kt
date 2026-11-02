@@ -129,14 +129,24 @@ import io.github.yuroyami.libmpvkt.getOrThrow
 import io.github.yuroyami.libmpvkt.view.MpvOptions
 import io.github.yuroyami.libmpvkt.view.PreparedCore
 import io.github.yuroyami.libmpvkt.view.MpvView
+import coil.Coil
+import coil.ImageLoader
+import coil.disk.DiskCache
+import coil.request.CachePolicy
+import coil.request.ImageRequest
 import coil.compose.AsyncImage
 import java.io.File
 import java.io.IOException
 import java.util.UUID
 import org.json.JSONArray
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import androidx.compose.runtime.snapshotFlow
@@ -170,6 +180,58 @@ private val ErrorRed = Color(0xFFFF8177)
 private const val CHANNEL_INFO_DURATION_MS = 5_000L
 private const val CATALOG_PAGE_SIZE = 500
 private const val PLAYER_API_BASE_URL = "https://admin.oatec.store/api/player"
+
+private fun readAllCatalogEntries(
+    store: MediaCatalogStore,
+    sourceId: String,
+    section: String,
+    search: String = "",
+    category: String? = null,
+): List<MediaEntry> {
+    val all = ArrayList<MediaEntry>()
+    var offset = 0
+    while (true) {
+        val page = store.page(
+            sourceId, section, limit = CATALOG_PAGE_SIZE, offset = offset,
+            search = search, category = category,
+        )
+        if (page.isEmpty()) break
+        all.addAll(page)
+        offset += page.size
+        if (page.size < CATALOG_PAGE_SIZE) break
+    }
+    return all
+}
+
+private suspend fun cachePosterImages(context: Context, imageLoader: ImageLoader, entries: List<MediaEntry>) {
+    val urls = entries.asSequence()
+        .map { it.logoUrl.trim() }
+        .filter { it.startsWith("https://", true) || it.startsWith("http://", true) }
+        .distinct()
+        .toList()
+    val semaphore = Semaphore(4)
+    // Small batches keep thousands of poster requests from being queued in memory at once.
+    for (batch in urls.chunked(32)) {
+        coroutineScope {
+            batch.map { imageUrl ->
+                async(Dispatchers.IO) {
+                    semaphore.withPermit {
+                        runCatching {
+                            val request = ImageRequest.Builder(context)
+                                .data(imageUrl)
+                                .diskCachePolicy(CachePolicy.ENABLED)
+                                .memoryCachePolicy(CachePolicy.DISABLED)
+                                .networkCachePolicy(CachePolicy.ENABLED)
+                                .allowHardware(false)
+                                .build()
+                            imageLoader.execute(request)
+                        }
+                    }
+                }
+            }.awaitAll()
+        }
+    }
+}
 
 private fun activateOatecCode(context: Context, code: String): PlayerSource {
     val prefs = context.getSharedPreferences("oatec_activation", Context.MODE_PRIVATE)
@@ -277,6 +339,17 @@ private enum class Section(val label: String) {
 @Composable
 fun PlayerTvApp() {
     val context = androidx.compose.ui.platform.LocalContext.current
+    val posterImageLoader = remember(context) {
+        ImageLoader.Builder(context)
+            .diskCache {
+                DiskCache.Builder()
+                    .directory(File(context.filesDir, "poster-cache"))
+                    .maxSizeBytes(512L * 1024L * 1024L)
+                    .build()
+            }
+            .build()
+            .also { Coil.setImageLoader(it) }
+    }
     val configuration = LocalConfiguration.current
     val compactLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE && configuration.screenWidthDp < 900
     val repository = remember { SourceRepository() }
@@ -420,7 +493,7 @@ fun PlayerTvApp() {
                 // Xtream response is being downloaded. Read it in bounded DB pages.
                 if (source.id == activeSourceId) {
                     val cachedState = withContext(Dispatchers.IO) {
-                        mediaCatalogStore.page(source.id, catalogSection.name, limit = CATALOG_PAGE_SIZE, offset = 0) to
+                        readAllCatalogEntries(mediaCatalogStore, source.id, catalogSection.name) to
                             mediaCatalogStore.count(source.id, catalogSection.name)
                     }
                     val cached = cachedState.first
@@ -433,7 +506,9 @@ fun PlayerTvApp() {
                             CatalogSection.MOVIES -> catalog.copy(movies = safeCached)
                             CatalogSection.SERIES -> catalog.copy(series = safeCached)
                         }
+                        catalogPageOffsets = catalogPageOffsets + (loadKey to cached.size)
                         message = "Loaded saved catalogue (" + cachedCount + " items)."
+                        scope.launch { cachePosterImages(context, posterImageLoader, cached) }
                     }
                     // A populated local catalogue is the default on app startup and
                     // section changes. Avoid downloading the full provider catalogue
@@ -463,22 +538,23 @@ fun PlayerTvApp() {
                                 kotlinx.coroutines.delay(450)
                                 loaded
                             }
-                            val firstPage = mediaCatalogStore.page(source.id, catalogSection.name, limit = CATALOG_PAGE_SIZE, offset = 0)
+                            val allEntries = readAllCatalogEntries(mediaCatalogStore, source.id, catalogSection.name)
                             val totalCount = mediaCatalogStore.count(source.id, catalogSection.name)
-                            Triple(result, firstPage, totalCount)
+                            Triple(result, allEntries, totalCount)
                         }
                     }
-                        .onSuccess { (result, firstPage, totalCount) ->
+                        .onSuccess { (result, allEntries, totalCount) ->
                             if (source.id == activeSourceId) {
-                                catalogPageOffsets = catalogPageOffsets + (loadKey to firstPage.size)
+                                catalogPageOffsets = catalogPageOffsets + (loadKey to allEntries.size)
                                 catalog = when (catalogSection) {
-                                    CatalogSection.LIVE -> catalog.copy(liveChannels = applyKidsModeFilter(firstPage, preferences))
-                                    CatalogSection.MOVIES -> catalog.copy(movies = applyKidsModeFilter(firstPage, preferences))
-                                    CatalogSection.SERIES -> catalog.copy(series = applyKidsModeFilter(firstPage, preferences))
+                                    CatalogSection.LIVE -> catalog.copy(liveChannels = applyKidsModeFilter(allEntries, preferences))
+                                    CatalogSection.MOVIES -> catalog.copy(movies = applyKidsModeFilter(allEntries, preferences))
+                                    CatalogSection.SERIES -> catalog.copy(series = applyKidsModeFilter(allEntries, preferences))
                                 }
                                 if (catalogSection == CatalogSection.LIVE) selectedCategory = "All"
                                 loadedCatalogs = loadedCatalogs + loadKey
-                                message = "$totalCount ${catalogSection.name.lowercase()} items saved; loaded into the local catalogue and displayed without a 500-item cap."
+                                message = "$totalCount \${catalogSection.name.lowercase()} items saved locally."
+                                scope.launch { cachePosterImages(context, posterImageLoader, allEntries) }
                             }
                         }
                         .onFailure { if (source.id == activeSourceId) message = it.message ?: "Could not load this source." }
@@ -609,8 +685,8 @@ fun PlayerTvApp() {
             catalogSection == CatalogSection.LIVE && it in liveCategoryNames
         }
         val filteredPage = withContext(Dispatchers.IO) {
-            mediaCatalogStore.page(
-                source.id, catalogSection.name, limit = CATALOG_PAGE_SIZE, offset = 0,
+            readAllCatalogEntries(
+                mediaCatalogStore, source.id, catalogSection.name,
                 search = requestedSearch, category = categoryFilter,
             )
         }

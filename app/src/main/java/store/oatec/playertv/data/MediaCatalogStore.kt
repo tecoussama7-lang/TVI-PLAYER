@@ -129,6 +129,14 @@ class MediaCatalogStore(context: Context) : SQLiteOpenHelper(
         db.beginTransaction()
         try {
             for (category in categories) {
+                val previousName = db.query(
+                    "catalog_categories", arrayOf("category_name"),
+                    "source_id=? AND section=? AND category_id=?",
+                    arrayOf(sourceId, section, category.id), null, null, null, "1",
+                ).use { cursor -> if (cursor.moveToFirst()) cursor.getString(0) else null }
+                if (previousName != null && previousName != category.name) {
+                    db.delete(TABLE, "source_id=? AND section=? AND category=?", arrayOf(sourceId, section, previousName))
+                }
                 val values = ContentValues().apply {
                     put("source_id", sourceId)
                     put("section", section)
@@ -136,12 +144,14 @@ class MediaCatalogStore(context: Context) : SQLiteOpenHelper(
                     put("category_name", category.name)
                 }
                 db.insertWithOnConflict("catalog_categories", null, values, SQLiteDatabase.CONFLICT_IGNORE)
-                db.update(
-                    "catalog_categories",
-                    ContentValues().apply { put("category_name", category.name) },
-                    "source_id=? AND section=? AND category_id=?",
-                    arrayOf(sourceId, section, category.id),
-                )
+                val update = ContentValues().apply {
+                    put("category_name", category.name)
+                    if (previousName != null && previousName != category.name) {
+                        put("loaded", 0)
+                        put("item_count", 0)
+                    }
+                }
+                db.update("catalog_categories", update, "source_id=? AND section=? AND category_id=?", arrayOf(sourceId, section, category.id))
             }
             db.setTransactionSuccessful()
         } finally {

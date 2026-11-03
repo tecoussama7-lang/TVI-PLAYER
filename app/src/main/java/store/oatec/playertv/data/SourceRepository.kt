@@ -23,7 +23,59 @@ import store.oatec.playertv.model.PlayerSource
 import store.oatec.playertv.model.SourceCatalog
 import store.oatec.playertv.model.SourceType
 
+data class SourceCategory(val id: String, val name: String)
+
 class SourceRepository {
+    /** Fetch only the category directory; no media items are downloaded here. */
+    suspend fun loadCategories(source: PlayerSource, section: CatalogSection): List<SourceCategory> =
+        withContext(Dispatchers.IO) {
+            require(source.type == SourceType.XTREAM) { "Provider categories require an Xtream source." }
+            require(source.username.isNotBlank() && source.password.isNotBlank()) {
+                "Enter the username and password for this Xtream source."
+            }
+            val action = when (section) {
+                CatalogSection.LIVE -> "get_live_categories"
+                CatalogSection.MOVIES -> "get_vod_categories"
+                CatalogSection.SERIES -> "get_series_categories"
+            }
+            val categories = readArray(apiUrl(source, action))
+            buildList {
+                for (index in 0 until categories.length()) {
+                    val item = categories.optJSONObject(index) ?: continue
+                    val id = item.optString("category_id").trim()
+                    val name = item.optString("category_name").trim()
+                    if (id.isNotBlank() && name.isNotBlank()) add(SourceCategory(id, name))
+                }
+            }
+        }
+
+    /** Fetch a single selected category and stream its entries in bounded batches. */
+    suspend fun loadCategoryBatched(
+        source: PlayerSource,
+        section: CatalogSection,
+        category: SourceCategory,
+        onBatch: (List<MediaEntry>) -> Unit,
+    ): List<MediaEntry> = withContext(Dispatchers.IO) {
+        require(source.type == SourceType.XTREAM) { "Category requests require an Xtream source." }
+        require(category.id.isNotBlank() && category.name.isNotBlank()) { "Select a valid provider category." }
+        require(source.username.isNotBlank() && source.password.isNotBlank()) {
+            "Enter the username and password for this Xtream source."
+        }
+        val (action, type, maxItems) = when (section) {
+            CatalogSection.LIVE -> Triple("get_live_streams", "live", MAX_CHANNELS)
+            CatalogSection.MOVIES -> Triple("get_vod_streams", "movie", MAX_VOD_ITEMS)
+            CatalogSection.SERIES -> Triple("get_series", "series", MAX_VOD_ITEMS)
+        }
+        readStreamEntries(
+            apiUrl(source, action, "category_id" to category.id),
+            source,
+            mapOf(category.id to category.name),
+            type,
+            maxItems,
+            onBatch,
+        )
+    }
+
     suspend fun loadCatalog(source: PlayerSource, section: CatalogSection): SourceCatalog =
         withContext(Dispatchers.IO) {
             when (source.type) {

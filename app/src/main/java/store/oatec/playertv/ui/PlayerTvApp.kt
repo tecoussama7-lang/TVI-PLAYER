@@ -479,8 +479,13 @@ private fun PlayerTvAppContent() {
                         mediaCatalogStore.beginCategoryImport(source.id, catalogSection.name, category).use { session ->
                             repository.loadCategoryBatched(source, catalogSection, category) { batch ->
                                 session.insertBatch(batch)
-                                catalogLoadedItems += batch.size
-                                catalogProgress = (1f - kotlin.math.exp(-catalogLoadedItems / 9000f).toFloat()).coerceAtMost(0.92f)
+                                val batchSize = batch.size
+                                scope.launch {
+                                    if (source.id == activeSourceId) {
+                                        catalogLoadedItems += batchSize
+                                        catalogProgress = (1f - kotlin.math.exp(-catalogLoadedItems / 9000f).toFloat()).coerceAtMost(0.92f)
+                                    }
+                                }
                             }
                             session.commit()
                         }
@@ -606,24 +611,26 @@ private fun PlayerTvAppContent() {
                                 var firstBatchDisplayed = false
                                 val loaded = repository.loadCatalogBatched(source, catalogSection) { batch ->
                                     session.insertBatch(batch)
-                                    // Render the first batch immediately instead of waiting for the
-                                    // entire provider catalogue and SQLite import to finish.
-                                    if (!firstBatchDisplayed && batch.isNotEmpty() && source.id == activeSourceId) {
-                                        val firstPage = batch.take(CATALOG_PAGE_SIZE)
-                                        catalogPageOffsets = catalogPageOffsets + (loadKey to firstPage.size)
-                                        val visiblePage = applyKidsModeFilter(firstPage, preferences)
-                                        catalog = when (catalogSection) {
-                                            CatalogSection.LIVE -> catalog.copy(liveChannels = visiblePage)
-                                            CatalogSection.MOVIES -> catalog.copy(movies = visiblePage)
-                                            CatalogSection.SERIES -> catalog.copy(series = visiblePage)
+                                    val firstPage = batch.take(CATALOG_PAGE_SIZE)
+                                    val batchSize = batch.size
+                                    // Compose state changes are marshalled back to the main thread.
+                                    scope.launch {
+                                        if (source.id == activeSourceId) {
+                                            if (!firstBatchDisplayed && firstPage.isNotEmpty()) {
+                                                catalogPageOffsets = catalogPageOffsets + (loadKey to firstPage.size)
+                                                val visiblePage = applyKidsModeFilter(firstPage, preferences)
+                                                catalog = when (catalogSection) {
+                                                    CatalogSection.LIVE -> catalog.copy(liveChannels = visiblePage)
+                                                    CatalogSection.MOVIES -> catalog.copy(movies = visiblePage)
+                                                    CatalogSection.SERIES -> catalog.copy(series = visiblePage)
+                                                }
+                                                firstBatchDisplayed = true
+                                            }
+                                            catalogLoadedItems += batchSize
+                                            val count = catalogLoadedItems
+                                            catalogProgress = (1f - kotlin.math.exp(-count / 9000f).toFloat()).coerceAtMost(0.92f)
                                         }
-                                        firstBatchDisplayed = true
                                     }
-                                    catalogLoadedItems += batch.size
-                                    // Providers often do not expose a reliable total in advance.
-                                    // Progress fills gradually, with the final 8% reserved for completion.
-                                    val count = catalogLoadedItems
-                                    catalogProgress = (1f - kotlin.math.exp(-count / 9000f).toFloat()).coerceAtMost(0.92f)
                                 }
                                 session.commit()
                                 catalogProgress = 1f

@@ -789,10 +789,10 @@ private fun PlayerTvAppContent() {
         val source = sources.firstOrNull { it.id == activeSourceId } ?: return@LaunchedEffect
         if ("${source.id}:LIVE" !in loadedCatalogs) return@LaunchedEffect
         val categories = withContext(Dispatchers.IO) {
-            mediaCatalogStore.categories(source.id, CatalogSection.LIVE.name)
+            val providerCategories = mediaCatalogStore.categoryList(source.id, CatalogSection.LIVE.name).map { it.name }
+            if (providerCategories.isNotEmpty()) providerCategories else mediaCatalogStore.categories(source.id, CatalogSection.LIVE.name)
         }
         if (source.id == activeSourceId) {
-            // Provider categories can be used as SQL filters; custom categories are applied locally.
             liveCategoryNames = categories.distinct().sortedBy { it.lowercase() }
         }
     }
@@ -1009,7 +1009,7 @@ private fun PlayerTvAppContent() {
                                     catalog = catalog.copy(liveChannels = emptyList())
                                     val category = liveCategories.firstOrNull { it.name == name }
                                     if (category != null && activeSource != null) loadCategory(activeSource, CatalogSection.LIVE, category)
-                                    else if (name == "All" && activeSource != null) {
+                                    else if (name in setOf("All", "Favorites", "Hidden") && activeSource != null) {
                                         scope.launch {
                                             val allCached = withContext(Dispatchers.IO) { mediaCatalogStore.page(activeSource.id, CatalogSection.LIVE.name, limit = CATALOG_PAGE_SIZE) }
                                             catalog = catalog.copy(liveChannels = applyKidsModeFilter(allCached, preferences))

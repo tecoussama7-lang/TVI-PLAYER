@@ -2455,6 +2455,9 @@ private fun CategoryPill(label: String, selected: Boolean, onClick: () -> Unit) 
 private fun MediaScreen(
     title: String,
     entries: List<MediaEntry>,
+    providerCategories: List<String>,
+    selectedProviderCategory: String,
+    onCategory: (String) -> Unit,
     search: String,
     busy: Boolean,
     message: String,
@@ -2468,13 +2471,16 @@ private fun MediaScreen(
     onPlay: (MediaEntry) -> Unit,
     onFavorite: (MediaEntry) -> Unit,
 ) {
-    var selectedShelf by rememberSaveable(title) { mutableStateOf("All") }
-    val shelves = remember(entries, title) {
+    var selectedShelf by rememberSaveable(title) { mutableStateOf(selectedProviderCategory.ifBlank { "All" }) }
+    LaunchedEffect(selectedProviderCategory) { if (selectedProviderCategory.isNotBlank()) selectedShelf = selectedProviderCategory }
+    val shelves = remember(entries, title, providerCategories) {
+        if (providerCategories.isNotEmpty()) providerCategories else {
         val providerCategories = entries.map { it.category.trim() }.filter { it.isNotBlank() && !it.equals("Other", true) }.distinct().sortedBy { it.lowercase() }
         val curated = listOf("Action", "Adventure", "Animation", "Biography", "Comedy", "Crime", "Documentary", "Drama", "Family", "Fantasy", "History", "Horror", "Music", "Mystery", "Romance", "Sci-Fi", "Sport", "Thriller", "War", "Western")
         val knownGenres = entries.flatMap { entry -> (entry.genre + "," + entry.title).split(",", "|", "/", "·").map { it.trim() } }
             .mapNotNull { raw -> curated.firstOrNull { it.equals(raw, true) } }.distinct()
         listOf("All") + (curated + providerCategories + knownGenres).distinct().filterNot { it.equals("All", true) }
+        }
     }
     val searched = entries.filter { it.title.contains(search, true) || it.category.contains(search, true) || it.genre.contains(search, true) }
     val filtered = if (selectedShelf == "All") searched else if (selectedShelf in listOf("4K", "UHD", "1080p", "HD")) {
@@ -2953,6 +2959,9 @@ private fun MediaDetailsDialog(
 @Composable
 private fun SeriesScreen(
     entries: List<MediaEntry>,
+    providerCategories: List<String>,
+    selectedProviderCategory: String,
+    onCategory: (String) -> Unit,
     episodes: List<MediaEntry>,
     selectedSeries: MediaEntry?,
     search: String,
@@ -2966,14 +2975,17 @@ private fun SeriesScreen(
     onPlay: (MediaEntry) -> Unit,
     onFavorite: (MediaEntry) -> Unit,
 ) {
-    var selectedShelf by rememberSaveable { mutableStateOf("All") }
-    val shelves = remember(entries) {
+    var selectedShelf by rememberSaveable { mutableStateOf(selectedProviderCategory.ifBlank { "All" }) }
+    LaunchedEffect(selectedProviderCategory) { if (selectedProviderCategory.isNotBlank()) selectedShelf = selectedProviderCategory }
+    val shelves = remember(entries, providerCategories) {
+        if (providerCategories.isNotEmpty()) providerCategories else {
         val providerCategories = entries.map { it.category.trim() }.filter { it.isNotBlank() && !it.equals("Other", true) }.distinct().sortedBy { it.lowercase() }
         val curated = listOf("Action", "Adventure", "Animation", "Biography", "Comedy", "Crime", "Documentary", "Drama", "Family", "Fantasy", "History", "Horror", "Mystery", "Reality", "Romance", "Sci-Fi", "Sport", "Thriller", "War", "Western")
         val genres = entries.flatMap { it.genre.split(",", "|", "/", "·").map(String::trim) }
             .mapNotNull { raw -> curated.firstOrNull { it.equals(raw, true) } }.distinct()
         // Show standard genres even when the source has incomplete metadata.
         listOf("All") + (curated + providerCategories + genres).distinct().filterNot { it.equals("All", true) }
+        }
     }
     val searched = entries.filter { it.title.contains(search, true) || it.category.contains(search, true) || it.genre.contains(search, true) }
     val filtered = if (selectedShelf == "All") searched else searched.filter { entry ->

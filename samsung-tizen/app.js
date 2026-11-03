@@ -149,7 +149,7 @@
   function recentHas(key){var i;for(i=0;i<state.recent.length;i++){if(state.recent[i].key===key)return true;}return false;}
   function parentalUnlock(){
     var saved='';try{saved=localStorage.getItem('tvi-parental-pin')||'';}catch(ignore){}
-    if(!saved){var created=window.prompt('Create a 4-digit parental PIN to protect Movies and Series:');if(!created)return false;if(!/^\\d{4}$/.test(created)){window.alert('PIN must contain exactly 4 digits.');return false;}try{localStorage.setItem('tvi-parental-pin',created);}catch(ignore2){}return true;}
+    if(!saved){var created=window.prompt('Create a 4-digit parental PIN to protect Movies and Series:');if(!created)return false;if(!/^\d{4}$/.test(created)){window.alert('PIN must contain exactly 4 digits.');return false;}try{localStorage.setItem('tvi-parental-pin',created);}catch(ignore2){}return true;}
     var entered=window.prompt('Enter parental PIN:');if(entered===saved)return true;window.alert('Incorrect PIN.');return false;
   }
   function showEpg(item){
@@ -193,7 +193,7 @@
   on(byId('catalog-search'),'input',function(){state.favoritesOnly=false;state.recentOnly=false;updateFilterButtons();renderMedia();});
   on(byId('show-favorites'),'click',function(){state.favoritesOnly=!state.favoritesOnly;state.recentOnly=false;updateFilterButtons();renderMedia();});
   on(byId('show-recent'),'click',function(){state.recentOnly=!state.recentOnly;state.favoritesOnly=false;updateFilterButtons();renderMedia();});
-  on(byId('parental-settings'),'click',function(){var old='';try{old=localStorage.getItem('tvi-parental-pin')||'';}catch(ignore){}if(old){var verify=window.prompt('Enter current parental PIN:');if(verify!==old){window.alert('Incorrect PIN.');return;}}var pin=window.prompt(old?'Enter new parental PIN (4 digits):':'Set parental PIN (4 digits):');if(pin===null)return;if(!/^\\d{4}$/.test(pin)){window.alert('PIN must contain exactly 4 digits.');return;}try{localStorage.setItem('tvi-parental-pin',pin);window.alert('Parental PIN saved on this TV.');}catch(ignore2){window.alert('Could not save PIN on this TV.');}});
+  on(byId('parental-settings'),'click',function(){var old='';try{old=localStorage.getItem('tvi-parental-pin')||'';}catch(ignore){}if(old){var verify=window.prompt('Enter current parental PIN:');if(verify!==old){window.alert('Incorrect PIN.');return;}}var pin=window.prompt(old?'Enter new parental PIN (4 digits):':'Set parental PIN (4 digits):');if(pin===null)return;if(!/^\d{4}$/.test(pin)){window.alert('PIN must contain exactly 4 digits.');return;}try{localStorage.setItem('tvi-parental-pin',pin);window.alert('Parental PIN saved on this TV.');}catch(ignore2){window.alert('Could not save PIN on this TV.');}});
   on(document,'keydown',function(event){
     event=event||window.event;var key=event.key||'',code=event.keyCode;
     if(key==='Escape'||key==='Backspace'||code===10009){if(back()){if(event.preventDefault)event.preventDefault();return;}}

@@ -999,11 +999,18 @@ private fun PlayerTvAppContent() {
                             busy = busy,
                             catalogProgress = catalogProgress,
                             catalogLoadedItems = catalogLoadedItems,
-                            onCategory = {
-                                if (selectedCategory != it) {
-                                    selectedCategory = it
-                                    // Clear the previous category while its first page loads.
+                            onCategory = { name ->
+                                if (selectedCategory != name) {
+                                    selectedCategory = name
                                     catalog = catalog.copy(liveChannels = emptyList())
+                                    val category = liveCategories.firstOrNull { it.name == name }
+                                    if (category != null && activeSource != null) loadCategory(activeSource, CatalogSection.LIVE, category)
+                                    else if (name == "All" && activeSource != null) {
+                                        scope.launch {
+                                            val allCached = withContext(Dispatchers.IO) { mediaCatalogStore.page(activeSource.id, CatalogSection.LIVE.name, limit = CATALOG_PAGE_SIZE) }
+                                            catalog = catalog.copy(liveChannels = applyKidsModeFilter(allCached, preferences))
+                                        }
+                                    }
                                 }
                             },
                             onLoadMore = { loadMore(Section.LIVE) },
@@ -1021,6 +1028,16 @@ private fun PlayerTvAppContent() {
                             onHome = { goBack() },
                             onSearch = { search = it },
                             entries = catalog.movies,
+                            providerCategories = movieCategories.map { it.name },
+                            selectedProviderCategory = selectedMovieCategory,
+                            onCategory = { name ->
+                                val category = movieCategories.firstOrNull { it.name == name }
+                                if (category != null && activeSource != null) {
+                                    selectedMovieCategory = name
+                                    catalog = catalog.copy(movies = emptyList())
+                                    loadCategory(activeSource, CatalogSection.MOVIES, category)
+                                }
+                            },
                             search = search,
                             busy = "${activeSourceId}:MOVIES" in loadingCatalogKeys,
                             message = message,
@@ -1036,6 +1053,16 @@ private fun PlayerTvAppContent() {
                             onHome = { goBack() },
                             onSearch = { search = it },
                             entries = catalog.series,
+                            providerCategories = seriesCategories.map { it.name },
+                            selectedProviderCategory = selectedSeriesCategory,
+                            onCategory = { name ->
+                                val category = seriesCategories.firstOrNull { it.name == name }
+                                if (category != null && activeSource != null) {
+                                    selectedSeriesCategory = name
+                                    catalog = catalog.copy(series = emptyList())
+                                    loadCategory(activeSource, CatalogSection.SERIES, category)
+                                }
+                            },
                             episodes = episodes,
                             selectedSeries = pendingSeries,
                             search = search,

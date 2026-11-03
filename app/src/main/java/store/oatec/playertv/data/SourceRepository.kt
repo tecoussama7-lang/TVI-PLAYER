@@ -134,17 +134,14 @@ class SourceRepository {
             "Enter the username and password for this Xtream source."
         }
         val entries = when (section) {
-            CatalogSection.LIVE -> readStreamEntries(
-                apiUrl(source, "get_live_streams"), source,
-                loadCategoriesOrEmpty(apiUrl(source, "get_live_categories")), "live", MAX_CHANNELS, onBatch,
+            CatalogSection.LIVE -> loadXtreamEntriesByCategory(
+                source, "get_live_streams", "get_live_categories", "live", MAX_CHANNELS, onBatch,
             )
-            CatalogSection.MOVIES -> readStreamEntries(
-                apiUrl(source, "get_vod_streams"), source,
-                loadCategoriesOrEmpty(apiUrl(source, "get_vod_categories")), "movie", MAX_VOD_ITEMS, onBatch,
+            CatalogSection.MOVIES -> loadXtreamEntriesByCategory(
+                source, "get_vod_streams", "get_vod_categories", "movie", MAX_VOD_ITEMS, onBatch,
             )
-            CatalogSection.SERIES -> readStreamEntries(
-                apiUrl(source, "get_series"), source,
-                loadCategoriesOrEmpty(apiUrl(source, "get_series_categories")), "series", MAX_VOD_ITEMS, onBatch,
+            CatalogSection.SERIES -> loadXtreamEntriesByCategory(
+                source, "get_series", "get_series_categories", "series", MAX_VOD_ITEMS, onBatch,
             )
         }
         return when (section) {
@@ -227,26 +224,87 @@ class SourceRepository {
             "Enter the username and password for this Xtream source."
         }
         return when (section) {
-            CatalogSection.LIVE -> {
-                val categories = loadCategoriesOrEmpty(apiUrl(source, "get_live_categories"))
-                val channels = readStreamEntries(apiUrl(source, "get_live_streams"), source, categories, "live", MAX_CHANNELS)
-                SourceCatalog(liveChannels = channels)
-            }
-            CatalogSection.MOVIES -> {
-                val categories = loadCategoriesOrEmpty(apiUrl(source, "get_vod_categories"))
-                val movies = readStreamEntries(apiUrl(source, "get_vod_streams"), source, categories, "movie", MAX_VOD_ITEMS)
-                SourceCatalog(movies = movies)
-            }
-            CatalogSection.SERIES -> {
-                val categories = loadCategoriesOrEmpty(apiUrl(source, "get_series_categories"))
-                val series = readStreamEntries(apiUrl(source, "get_series"), source, categories, "series", MAX_VOD_ITEMS)
-                SourceCatalog(series = series)
-            }
+            CatalogSection.LIVE -> SourceCatalog(
+                liveChannels = loadXtreamEntriesByCategory(
+                    source, "get_live_streams", "get_live_categories", "live", MAX_CHANNELS, null,
+                ),
+            )
+            CatalogSection.MOVIES -> SourceCatalog(
+                movies = loadXtreamEntriesByCategory(
+                    source, "get_vod_streams", "get_vod_categories", "movie", MAX_VOD_ITEMS, null,
+                ),
+            )
+            CatalogSection.SERIES -> SourceCatalog(
+                series = loadXtreamEntriesByCategory(
+                    source, "get_series", "get_series_categories", "series", MAX_VOD_ITEMS, null,
+                ),
+            )
         }
     }
 
+    /**
+     * Fetch one Xtream category at a time. This avoids one enormous JSON response,
+     * keeps the three catalogues isolated, and lets the caller persist each bounded
+     * batch while the network stream is still being parsed.
+     *
+     * An actually empty category list falls back to the provider's all-items endpoint
+     * for compatibility. A failed/malformed category request is surfaced instead of
+     * being mistaken for an empty catalogue.
+     */
+    private suspend fun loadXtreamEntriesByCategory(
+        source: PlayerSource,
+        listAction: String,
+        categoriesAction: String,
+        type: String,
+        maxItems: Int,
+        onBatch: ((List<MediaEntry>) -> Unit)?,
+    ): List<MediaEntry> {
+        val categories = loadCategoriesOrEmpty(apiUrl(source, categoriesAction))
+        if (categories.isEmpty()) {
+            return readStreamEntries(apiUrl(source, listAction), source, emptyMap(), type, maxItems, onBatch)
+        }
+
+        val firstPage = ArrayList<MediaEntry>(DISPLAY_PAGE_SIZE)
+        var totalItems = 0
+        for ((categoryId, categoryName) in categories) {
+            if (categoryId.isBlank()) continue
+            // Passing zero is intentional: an empty later category remains valid,
+            // while readStreamEntries rejects the first item beyond the global cap.
+            val remaining = (maxItems - totalItems).coerceAtLeast(0)
+            val categoryBatch: (List<MediaEntry>) -> Unit = { batch ->
+                if (totalItems + batch.size > maxItems) {
+                    throw IOException(
+                        "This catalogue exceeds the safe limit of $maxItems items. The previous saved catalogue was preserved."
+                    )
+                }
+                totalItems += batch.size
+                onBatch?.invoke(batch)
+            }
+            val categoryFirstPage = readStreamEntries(
+                apiUrl(source, listAction, "category_id" to categoryId),
+                source,
+                mapOf(categoryId to categoryName),
+                type,
+                remaining,
+                if (onBatch == null) null else categoryBatch,
+            )
+            if (onBatch == null) {
+                if (totalItems + categoryFirstPage.size > maxItems) {
+                    throw IOException(
+                        "This catalogue exceeds the safe limit of $maxItems items. The previous saved catalogue was preserved."
+                    )
+                }
+                totalItems += categoryFirstPage.size
+            }
+            if (firstPage.size < DISPLAY_PAGE_SIZE) {
+                firstPage.addAll(categoryFirstPage.take(DISPLAY_PAGE_SIZE - firstPage.size))
+            }
+        }
+        return firstPage
+    }
+
     private suspend fun loadCategoriesOrEmpty(url: String): Map<String, String> =
-        runCatching { categoryNames(readArray(url)) }.getOrDefault(emptyMap())
+        categoryNames(readArray(url))
 
     private suspend fun readArray(url: String): JSONArray {
         val response = readText(url, MAX_CATEGORY_RESPONSE_BYTES)

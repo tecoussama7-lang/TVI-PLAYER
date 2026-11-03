@@ -203,33 +203,48 @@ private fun readAllCatalogEntries(
     return all
 }
 
-private suspend fun cachePosterImages(context: Context, imageLoader: ImageLoader, entries: List<MediaEntry>) {
-    val urls = entries.asSequence()
-        .map { it.logoUrl.trim() }
-        .filter { it.startsWith("https://", true) || it.startsWith("http://", true) }
-        .distinct()
-        .toList()
+private suspend fun cachePosterImages(
+    context: Context,
+    imageLoader: ImageLoader,
+    store: MediaCatalogStore,
+    sourceId: String,
+    section: String,
+) {
     val semaphore = Semaphore(4)
-    // Small batches keep thousands of poster requests from being queued in memory at once.
-    for (batch in urls.chunked(32)) {
-        coroutineScope {
-            batch.map { imageUrl ->
-                async(Dispatchers.IO) {
-                    semaphore.withPermit {
-                        runCatching {
-                            val request = ImageRequest.Builder(context)
-                                .data(imageUrl)
-                                .diskCachePolicy(CachePolicy.ENABLED)
-                                .memoryCachePolicy(CachePolicy.DISABLED)
-                                .networkCachePolicy(CachePolicy.ENABLED)
-                                .allowHardware(false)
-                                .build()
-                            imageLoader.execute(request)
+    val seenUrls = HashSet<String>()
+    var offset = 0
+    // Read from SQLite page by page; never materialize the complete catalogue in RAM.
+    while (true) {
+        val entries = withContext(Dispatchers.IO) {
+            store.page(sourceId, section, limit = CATALOG_PAGE_SIZE, offset = offset)
+        }
+        if (entries.isEmpty()) break
+        val urls = entries.asSequence()
+            .map { it.logoUrl.trim() }
+            .filter { (it.startsWith("https://", true) || it.startsWith("http://", true)) && seenUrls.add(it) }
+            .toList()
+        for (batch in urls.chunked(32)) {
+            coroutineScope {
+                batch.map { imageUrl ->
+                    async(Dispatchers.IO) {
+                        semaphore.withPermit {
+                            runCatching {
+                                val request = ImageRequest.Builder(context)
+                                    .data(imageUrl)
+                                    .diskCachePolicy(CachePolicy.ENABLED)
+                                    .memoryCachePolicy(CachePolicy.DISABLED)
+                                    .networkCachePolicy(CachePolicy.ENABLED)
+                                    .allowHardware(false)
+                                    .build()
+                                imageLoader.execute(request)
+                            }
                         }
                     }
-                }
-            }.awaitAll()
+                }.awaitAll()
+            }
         }
+        offset += entries.size
+        if (entries.size < CATALOG_PAGE_SIZE) break
     }
 }
 
@@ -493,7 +508,7 @@ fun PlayerTvApp() {
                 // Xtream response is being downloaded. Read it in bounded DB pages.
                 if (source.id == activeSourceId) {
                     val cachedState = withContext(Dispatchers.IO) {
-                        readAllCatalogEntries(mediaCatalogStore, source.id, catalogSection.name) to
+                        mediaCatalogStore.page(source.id, catalogSection.name, limit = CATALOG_PAGE_SIZE) to
                             mediaCatalogStore.count(source.id, catalogSection.name)
                     }
                     val cached = cachedState.first
@@ -508,7 +523,7 @@ fun PlayerTvApp() {
                         }
                         catalogPageOffsets = catalogPageOffsets + (loadKey to cached.size)
                         message = "Loaded saved catalogue (" + cachedCount + " items)."
-                        scope.launch { cachePosterImages(context, posterImageLoader, cached) }
+                        scope.launch { cachePosterImages(context, posterImageLoader, mediaCatalogStore, source.id, catalogSection.name) }
                     }
                     // A populated local catalogue is the default on app startup and
                     // section changes. Avoid downloading the full provider catalogue
@@ -538,23 +553,25 @@ fun PlayerTvApp() {
                                 kotlinx.coroutines.delay(450)
                                 loaded
                             }
-                            val allEntries = readAllCatalogEntries(mediaCatalogStore, source.id, catalogSection.name)
+                            val firstPage = mediaCatalogStore.page(
+                                source.id, catalogSection.name, limit = CATALOG_PAGE_SIZE, offset = 0,
+                            )
                             val totalCount = mediaCatalogStore.count(source.id, catalogSection.name)
-                            Triple(result, allEntries, totalCount)
+                            Triple(result, firstPage, totalCount)
                         }
                     }
-                        .onSuccess { (result, allEntries, totalCount) ->
+                        .onSuccess { (result, firstPage, totalCount) ->
                             if (source.id == activeSourceId) {
-                                catalogPageOffsets = catalogPageOffsets + (loadKey to allEntries.size)
+                                catalogPageOffsets = catalogPageOffsets + (loadKey to firstPage.size)
                                 catalog = when (catalogSection) {
-                                    CatalogSection.LIVE -> catalog.copy(liveChannels = applyKidsModeFilter(allEntries, preferences))
-                                    CatalogSection.MOVIES -> catalog.copy(movies = applyKidsModeFilter(allEntries, preferences))
-                                    CatalogSection.SERIES -> catalog.copy(series = applyKidsModeFilter(allEntries, preferences))
+                                    CatalogSection.LIVE -> catalog.copy(liveChannels = applyKidsModeFilter(firstPage, preferences))
+                                    CatalogSection.MOVIES -> catalog.copy(movies = applyKidsModeFilter(firstPage, preferences))
+                                    CatalogSection.SERIES -> catalog.copy(series = applyKidsModeFilter(firstPage, preferences))
                                 }
                                 if (catalogSection == CatalogSection.LIVE) selectedCategory = "All"
                                 loadedCatalogs = loadedCatalogs + loadKey
                                 message = "$totalCount ${catalogSection.name.lowercase()} items saved locally."
-                                scope.launch { cachePosterImages(context, posterImageLoader, allEntries) }
+                                scope.launch { cachePosterImages(context, posterImageLoader, mediaCatalogStore, source.id, catalogSection.name) }
                             }
                         }
                         .onFailure { if (source.id == activeSourceId) message = it.message ?: "Could not load this source." }
@@ -685,14 +702,16 @@ fun PlayerTvApp() {
             catalogSection == CatalogSection.LIVE && it in liveCategoryNames
         }
         val filteredPage = withContext(Dispatchers.IO) {
-            readAllCatalogEntries(
-                mediaCatalogStore, source.id, catalogSection.name,
+            mediaCatalogStore.page(
+                source.id, catalogSection.name,
+                limit = CATALOG_PAGE_SIZE, offset = 0,
                 search = requestedSearch, category = categoryFilter,
             )
         }
         if (source.id != activeSourceId || requestedSearch != search || currentSection.name != section ||
             selectedCategory != requestedCategory
         ) return@LaunchedEffect
+        catalogPageOffsets = catalogPageOffsets + (loadKey to filteredPage.size)
         catalog = when (catalogSection) {
             CatalogSection.LIVE -> catalog.copy(liveChannels = applyKidsModeFilter(filteredPage, preferences))
             CatalogSection.MOVIES -> catalog.copy(movies = applyKidsModeFilter(filteredPage, preferences))

@@ -2517,7 +2517,7 @@ private fun MediaScreen(
     val listState = rememberLazyListState()
     val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
     LaunchedEffect(lastVisible, entries.size, selectedShelf, search, title) {
-        if (entries.isNotEmpty() && selectedShelf == "All" && lastVisible >= listState.layoutInfo.totalItemsCount - 3) onLoadMore()
+        if (entries.isNotEmpty() && (selectedShelf == "All" || selectedShelf in providerCategories) && lastVisible >= listState.layoutInfo.totalItemsCount - 3) onLoadMore()
     }
     val isMovies = title.equals("Movies", true)
     val accent = if (isMovies) Color(0xFFE50914) else Color(0xFF8B5CF6)
@@ -2562,7 +2562,7 @@ private fun MediaScreen(
         if (shelves.size > 1) {
             LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(vertical = 10.dp)) {
                 items(shelves, key = { "shelf:$it" }) { shelf ->
-                    CategoryPill(shelf, selectedShelf == shelf) { selectedShelf = shelf }
+                    CategoryPill(shelf, selectedShelf == shelf) { selectedShelf = shelf; if (shelf in providerCategories) onCategory(shelf) }
                 }
             }
         }
@@ -2996,7 +2996,7 @@ private fun SeriesScreen(
     val gridState = rememberLazyGridState()
     val lastVisible = gridState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
     LaunchedEffect(lastVisible, entries.size, selectedShelf, search) {
-        if (entries.isNotEmpty() && selectedShelf == "All" &&
+        if (entries.isNotEmpty() && (selectedShelf == "All" || selectedShelf in providerCategories) &&
             lastVisible >= gridState.layoutInfo.totalItemsCount - 6
         ) onLoadMore()
     }

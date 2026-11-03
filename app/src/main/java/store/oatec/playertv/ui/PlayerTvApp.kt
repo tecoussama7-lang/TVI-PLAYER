@@ -149,6 +149,7 @@ import store.oatec.playertv.data.OatecAboutRepository
 import store.oatec.playertv.data.SecureSourceStore
 import store.oatec.playertv.data.SourceRepository
 import store.oatec.playertv.data.MediaCatalogStore
+import store.oatec.playertv.data.SourceCategory
 import store.oatec.playertv.data.OfflineDownloadStore
 import store.oatec.playertv.data.OfflineItem
 import store.oatec.playertv.data.EpgGuideClient
@@ -349,6 +350,12 @@ private fun PlayerTvAppContent() {
     var section by remember { mutableStateOf(if (kidsModeActive) Section.HOME.name else Section.LIVE.name) }
     var selectedCategory by rememberSaveable { mutableStateOf("All") }
     var liveCategoryNames by remember(activeSourceId) { mutableStateOf<List<String>>(emptyList()) }
+    var movieCategories by remember(activeSourceId) { mutableStateOf<List<SourceCategory>>(emptyList()) }
+    var seriesCategories by remember(activeSourceId) { mutableStateOf<List<SourceCategory>>(emptyList()) }
+    var liveCategories by remember(activeSourceId) { mutableStateOf<List<SourceCategory>>(emptyList()) }
+    var selectedMovieCategory by rememberSaveable { mutableStateOf("") }
+    var selectedSeriesCategory by rememberSaveable { mutableStateOf("") }
+    var loadedCategoryKeys by remember { mutableStateOf<Set<String>>(emptySet()) }
     var search by rememberSaveable { mutableStateOf("") }
     var selectedMedia by remember { mutableStateOf<MediaEntry?>(null) }
     var selectedDetails by remember { mutableStateOf<MediaEntry?>(null) }
@@ -447,6 +454,59 @@ private fun PlayerTvAppContent() {
         } else goBack()
     }
 
+    fun loadCategory(source: PlayerSource, catalogSection: CatalogSection, category: SourceCategory, force: Boolean = false) {
+        val sectionKey = "${source.id}:${catalogSection.name}"
+        val categoryKey = "$sectionKey:${category.id}"
+        if (!force && categoryKey in loadedCategoryKeys) return
+        scope.launch {
+            activeLoadCount++
+            loadingCatalogKeys = loadingCatalogKeys + sectionKey
+            busy = true
+            catalogProgress = 0f
+            catalogLoadedItems = 0
+            try {
+                val cachedState = withContext(Dispatchers.IO) {
+                    Triple(
+                        mediaCatalogStore.isCategoryCached(source.id, catalogSection.name, category.id),
+                        mediaCatalogStore.page(source.id, catalogSection.name, limit = CATALOG_PAGE_SIZE, category = category.name),
+                        mediaCatalogStore.count(source.id, catalogSection.name, category = category.name),
+                    )
+                }
+                val page = if (cachedState.first && !force) cachedState.second else {
+                    withContext(Dispatchers.IO) {
+                        mediaCatalogStore.beginCategoryImport(source.id, catalogSection.name, category).use { session ->
+                            repository.loadCategoryBatched(source, catalogSection, category) { batch ->
+                                session.insertBatch(batch)
+                                catalogLoadedItems += batch.size
+                                catalogProgress = (1f - kotlin.math.exp(-catalogLoadedItems / 9000f).toFloat()).coerceAtMost(0.92f)
+                            }
+                            session.commit()
+                        }
+                        mediaCatalogStore.page(source.id, catalogSection.name, limit = CATALOG_PAGE_SIZE, category = category.name)
+                    }
+                }
+                val total = withContext(Dispatchers.IO) { mediaCatalogStore.count(source.id, catalogSection.name, category = category.name) }
+                if (source.id == activeSourceId) {
+                    loadedCategoryKeys = loadedCategoryKeys + categoryKey
+                    loadedCatalogs = loadedCatalogs + sectionKey
+                    catalogPageOffsets = catalogPageOffsets + (sectionKey to page.size)
+                    when (catalogSection) {
+                        CatalogSection.LIVE -> if (selectedCategory == category.name) catalog = catalog.copy(liveChannels = applyKidsModeFilter(page, preferences))
+                        CatalogSection.MOVIES -> if (selectedMovieCategory == category.name) catalog = catalog.copy(movies = applyKidsModeFilter(page, preferences))
+                        CatalogSection.SERIES -> if (selectedSeriesCategory == category.name) catalog = catalog.copy(series = applyKidsModeFilter(page, preferences))
+                    }
+                    catalogProgress = 1f
+                    message = "$total ${catalogSection.name.lowercase()} items in ${category.name}."
+                }
+            } catch (error: Exception) {
+                if (source.id == activeSourceId) message = error.message ?: "Could not load this category."
+            } finally {
+                loadingCatalogKeys = loadingCatalogKeys - sectionKey
+                activeLoadCount = (activeLoadCount - 1).coerceAtLeast(0)
+                busy = activeLoadCount > 0
+            }
+        }
+    }
     fun refresh(source: PlayerSource, requestedSection: Section = currentSection, force: Boolean = false) {
         val catalogSection = when (requestedSection) {
             Section.LIVE -> CatalogSection.LIVE
@@ -456,6 +516,41 @@ private fun PlayerTvAppContent() {
         }
         val loadKey = "${source.id}:${catalogSection.name}"
         if (!force && loadKey in loadedCatalogs) return
+        if (source.type == SourceType.XTREAM) {
+            scope.launch {
+                try {
+                    val categories = withContext(Dispatchers.IO) {
+                        repository.loadCategories(source, catalogSection).also { mediaCatalogStore.saveCategories(source.id, catalogSection.name, it) }
+                    }
+                    if (source.id != activeSourceId) return@launch
+                    when (catalogSection) {
+                        CatalogSection.LIVE -> { liveCategories = categories; liveCategoryNames = categories.map { it.name } }
+                        CatalogSection.MOVIES -> movieCategories = categories
+                        CatalogSection.SERIES -> seriesCategories = categories
+                    }
+                    val currentName = when (catalogSection) {
+                        CatalogSection.LIVE -> selectedCategory.takeIf { it != "All" && categories.any { c -> c.name == it } }
+                        CatalogSection.MOVIES -> selectedMovieCategory.takeIf { it.isNotBlank() && categories.any { c -> c.name == it } }
+                        CatalogSection.SERIES -> selectedSeriesCategory.takeIf { it.isNotBlank() && categories.any { c -> c.name == it } }
+                    }
+                    val selected = categories.firstOrNull { it.name == currentName } ?: categories.firstOrNull()
+                    if (selected != null) {
+                        when (catalogSection) {
+                            CatalogSection.LIVE -> selectedCategory = selected.name
+                            CatalogSection.MOVIES -> selectedMovieCategory = selected.name
+                            CatalogSection.SERIES -> selectedSeriesCategory = selected.name
+                        }
+                        loadCategory(source, catalogSection, selected, force)
+                    } else {
+                        loadedCatalogs = loadedCatalogs + loadKey
+                        message = "No categories were returned by this provider."
+                    }
+                } catch (error: Exception) {
+                    if (source.id == activeSourceId) message = error.message ?: "Could not load provider categories."
+                }
+            }
+            return
+        }
         message = ""
         catalogProgress = 0f
         catalogLoadedItems = 0

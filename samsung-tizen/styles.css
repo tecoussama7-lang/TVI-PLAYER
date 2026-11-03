@@ -13,3 +13,12 @@ html,body{background-color:#080b12;color:#f7f8fc;font-family:Arial,sans-serif}
 button:focus,input:focus{outline:3px solid #65e0bd;outline-offset:3px}
 @media(max-width:1100px){.media-card{width:22%;margin-right:2%}}
 @media(max-width:700px){.media-card{width:30%;margin-right:2%}.login-card{width:100%}}
+
+/* Catalogue tools and feature states */
+.catalog-tools{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:8px 0 12px}
+.catalog-tools input{width:280px;max-width:100%;min-height:44px}
+.filter-button{background:#192235;border:1px solid #ffffff24;color:#dce3ef;padding:9px 14px;min-height:42px}
+.filter-button.active{background:#65e0bd;color:#07110f;font-weight:800}
+.media-card.is-favorite:after{content:"★";position:absolute;right:8px;top:8px;color:#65e0bd;font-size:22px;text-shadow:0 1px 5px #000}
+.media-card{position:relative}
+@media(max-width:700px){.catalog-tools{gap:6px}.catalog-tools input{width:100%}.filter-button{font-size:13px;padding:8px 10px}}

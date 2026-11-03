@@ -142,7 +142,7 @@
       else text(poster,state.section==='live'?'▶':'▧');
       var title=document.createElement('span');title.className='media-title';text(title,itemName(item));button.appendChild(poster);button.appendChild(title);
       if(isFavorite(item))addClass(button,'is-favorite');
-      on(button,'click',function(){if(state.section==='series')openSeries(item,button);else play(item);});root.appendChild(button);
+      on(button,'click',function(){if(state.section==='series')openSeries(item,button);else play(item);});on(button,'dblclick',function(){toggleFavorite(item);});root.appendChild(button);
     });
     focusFirst();
   }
@@ -182,7 +182,7 @@
   function returnToSeries(){state.inSeries=false;text(byId('section-title'),sections.series.title);renderCategories();renderMedia();if(state.returnFocus&&state.returnFocus.focus)state.returnFocus.focus();}
   function streamUrl(path,id,ext){return state.server.replace(/\/+$/,'')+'/'+path+'/'+encode(state.username)+'/'+encode(state.password)+'/'+encode(id)+'.'+(ext||'mp4');}
   function startVideo(url,title){byId('video-player').src=url;text(byId('playing-title'),title);show('player-screen');var result=byId('video-player').play();if(result&&result.catch)result.catch(function(){});}
-  function play(item){var path=state.section==='live'?'live':'movie';rememberItem(item);startVideo(streamUrl(path,itemId(item),item.container_extension||(state.section==='live?'ts':'mp4')),itemName(item));}
+  function play(item){var path=state.section==='live'?'live':'movie';rememberItem(item);startVideo(streamUrl(path,itemId(item),item.container_extension||(state.section==='live'?'ts':'mp4')),itemName(item));}
   function playEpisode(episode,series){var id=episode.id||episode.stream_id;if(!id){status('This episode has no playable stream ID.');return;}startVideo(streamUrl('series',id,episode.container_extension||'mp4'),episode.title||itemName(series));}
   function closePlayer(){var video=byId('video-player');video.pause();video.removeAttribute('src');video.load();show('catalog-screen');}
   function back(){if(!hasClass(byId('player-screen'),'hidden')){closePlayer();return true;}if(!hasClass(byId('catalog-screen'),'hidden')&&state.inSeries){returnToSeries();return true;}if(!hasClass(byId('catalog-screen'),'hidden')){byId('change-account').focus();return true;}return false;}
@@ -193,7 +193,7 @@
   on(byId('catalog-search'),'input',function(){state.favoritesOnly=false;state.recentOnly=false;updateFilterButtons();renderMedia();});
   on(byId('show-favorites'),'click',function(){state.favoritesOnly=!state.favoritesOnly;state.recentOnly=false;updateFilterButtons();renderMedia();});
   on(byId('show-recent'),'click',function(){state.recentOnly=!state.recentOnly;state.favoritesOnly=false;updateFilterButtons();renderMedia();});
-  on(byId('parental-settings'),'click',function(){var old='';try{old=localStorage.getItem('tvi-parental-pin')||'';}catch(ignore){}var pin=window.prompt(old?'Change parental PIN (4 digits):':'Set parental PIN (4 digits):');if(pin===null)return;if(!/^\\d{4}$/.test(pin)){window.alert('PIN must contain exactly 4 digits.');return;}try{localStorage.setItem('tvi-parental-pin',pin);window.alert('Parental PIN saved on this TV.');}catch(ignore2){window.alert('Could not save PIN on this TV.');}});
+  on(byId('parental-settings'),'click',function(){var old='';try{old=localStorage.getItem('tvi-parental-pin')||'';}catch(ignore){}if(old){var verify=window.prompt('Enter current parental PIN:');if(verify!==old){window.alert('Incorrect PIN.');return;}}var pin=window.prompt(old?'Enter new parental PIN (4 digits):':'Set parental PIN (4 digits):');if(pin===null)return;if(!/^\\d{4}$/.test(pin)){window.alert('PIN must contain exactly 4 digits.');return;}try{localStorage.setItem('tvi-parental-pin',pin);window.alert('Parental PIN saved on this TV.');}catch(ignore2){window.alert('Could not save PIN on this TV.');}});
   on(document,'keydown',function(event){
     event=event||window.event;var key=event.key||'',code=event.keyCode;
     if(key==='Escape'||key==='Backspace'||code===10009){if(back()){if(event.preventDefault)event.preventDefault();return;}}

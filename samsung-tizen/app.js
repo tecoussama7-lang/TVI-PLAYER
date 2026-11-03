@@ -197,14 +197,31 @@
       return;
     }
     const active = document.activeElement;
-    if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
-      if (active?.classList.contains('media-card')) {
-        const cards = [...document.querySelectorAll('.media-card')];
-        const next = cards.indexOf(active) + (event.key === 'ArrowRight' ? 1 : -1);
-        if (cards[next]) { cards[next].focus(); event.preventDefault(); }
+    const directions = { ArrowRight: [1, 0], ArrowLeft: [-1, 0], ArrowDown: [0, 1], ArrowUp: [0, -1] };
+    if (directions[event.key] && !$('player-screen').classList.contains('hidden')) return;
+    if (directions[event.key]) {
+      const [dx, dy] = directions[event.key];
+      const candidates = [...document.querySelectorAll('#catalog-screen button:not(:disabled), #login-screen button:not(:disabled), #login-screen input:not(:disabled)')]
+        .filter(el => el.getClientRects().length > 0 && !el.classList.contains('hidden'));
+      const origin = active?.getBoundingClientRect();
+      if (origin) {
+        const ox = origin.left + origin.width / 2, oy = origin.top + origin.height / 2;
+        let best = null, bestScore = Infinity;
+        for (const candidate of candidates) {
+          if (candidate === active) continue;
+          const rect = candidate.getBoundingClientRect();
+          const x = rect.left + rect.width / 2, y = rect.top + rect.height / 2;
+          const vx = x - ox, vy = y - oy;
+          const primary = dx ? vx * dx : vy * dy;
+          const secondary = dx ? Math.abs(vy) : Math.abs(vx);
+          if (primary <= 4) continue;
+          const score = primary + secondary * 2.2;
+          if (score < bestScore) { best = candidate; bestScore = score; }
+        }
+        if (best) { best.focus(); event.preventDefault(); }
       }
     }
-    if (event.key === 'Enter' && active?.classList.contains('media-card')) active.click();
+    if (event.key === 'Enter' && active && active.tagName === 'BUTTON') active.click();
   });
   window.addEventListener('load', () => {
     registerSamsungRemoteKeys();

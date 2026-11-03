@@ -671,8 +671,10 @@ private fun PlayerTvAppContent() {
                     // continuation offset. The query uses the same search predicate,
                     // so search results continue from the correct row rather than
                     // restarting or skipping items.
-                    val categoryFilter = selectedCategory.takeIf {
-                        catalogSection == CatalogSection.LIVE && it in liveCategoryNames
+                    val categoryFilter = when (catalogSection) {
+                        CatalogSection.LIVE -> selectedCategory.takeIf { it in liveCategoryNames }
+                        CatalogSection.MOVIES -> selectedMovieCategory.takeIf { name -> movieCategories.any { it.name == name } }
+                        CatalogSection.SERIES -> selectedSeriesCategory.takeIf { name -> seriesCategories.any { it.name == name } }
                     }
                     val total = mediaCatalogStore.count(
                         source.id, catalogSection.name, search = requestedSearch, category = categoryFilter,
@@ -762,8 +764,10 @@ private fun PlayerTvAppContent() {
         if (loadKey !in loadedCatalogs) return@LaunchedEffect
         val requestedSearch = search
         val requestedCategory = selectedCategory
-        val categoryFilter = requestedCategory.takeIf {
-            catalogSection == CatalogSection.LIVE && it in liveCategoryNames
+        val categoryFilter = when (catalogSection) {
+            CatalogSection.LIVE -> requestedCategory.takeIf { it in liveCategoryNames }
+            CatalogSection.MOVIES -> selectedMovieCategory.takeIf { name -> movieCategories.any { it.name == name } }
+            CatalogSection.SERIES -> selectedSeriesCategory.takeIf { name -> seriesCategories.any { it.name == name } }
         }
         val filteredPage = withContext(Dispatchers.IO) {
             mediaCatalogStore.page(

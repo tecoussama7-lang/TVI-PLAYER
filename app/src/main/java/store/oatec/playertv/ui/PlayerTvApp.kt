@@ -356,6 +356,7 @@ private fun PlayerTvAppContent() {
     var selectedMovieCategory by rememberSaveable { mutableStateOf("") }
     var selectedSeriesCategory by rememberSaveable { mutableStateOf("") }
     var loadedCategoryKeys by remember { mutableStateOf<Set<String>>(emptySet()) }
+    var loadingCategoryKeys by remember { mutableStateOf<Set<String>>(emptySet()) }
     var search by rememberSaveable { mutableStateOf("") }
     var selectedMedia by remember { mutableStateOf<MediaEntry?>(null) }
     var selectedDetails by remember { mutableStateOf<MediaEntry?>(null) }
@@ -457,7 +458,8 @@ private fun PlayerTvAppContent() {
     fun loadCategory(source: PlayerSource, catalogSection: CatalogSection, category: SourceCategory, force: Boolean = false) {
         val sectionKey = "${source.id}:${catalogSection.name}"
         val categoryKey = "$sectionKey:${category.id}"
-        if (!force && categoryKey in loadedCategoryKeys) return
+        if (!force && categoryKey in loadingCategoryKeys) return
+        loadingCategoryKeys = loadingCategoryKeys + categoryKey
         scope.launch {
             activeLoadCount++
             loadingCatalogKeys = loadingCatalogKeys + sectionKey
@@ -489,18 +491,26 @@ private fun PlayerTvAppContent() {
                 if (source.id == activeSourceId) {
                     loadedCategoryKeys = loadedCategoryKeys + categoryKey
                     loadedCatalogs = loadedCatalogs + sectionKey
-                    catalogPageOffsets = catalogPageOffsets + (sectionKey to page.size)
-                    when (catalogSection) {
-                        CatalogSection.LIVE -> if (selectedCategory == category.name) catalog = catalog.copy(liveChannels = applyKidsModeFilter(page, preferences))
-                        CatalogSection.MOVIES -> if (selectedMovieCategory == category.name) catalog = catalog.copy(movies = applyKidsModeFilter(page, preferences))
-                        CatalogSection.SERIES -> if (selectedSeriesCategory == category.name) catalog = catalog.copy(series = applyKidsModeFilter(page, preferences))
+                    val isCurrentCategory = when (catalogSection) {
+                        CatalogSection.LIVE -> selectedCategory == category.name
+                        CatalogSection.MOVIES -> selectedMovieCategory == category.name
+                        CatalogSection.SERIES -> selectedSeriesCategory == category.name
                     }
-                    catalogProgress = 1f
-                    message = "$total ${catalogSection.name.lowercase()} items in ${category.name}."
+                    if (isCurrentCategory) {
+                        catalogPageOffsets = catalogPageOffsets + (sectionKey to page.size)
+                        when (catalogSection) {
+                            CatalogSection.LIVE -> catalog = catalog.copy(liveChannels = applyKidsModeFilter(page, preferences))
+                            CatalogSection.MOVIES -> catalog = catalog.copy(movies = applyKidsModeFilter(page, preferences))
+                            CatalogSection.SERIES -> catalog = catalog.copy(series = applyKidsModeFilter(page, preferences))
+                        }
+                        catalogProgress = 1f
+                        message = "$total ${catalogSection.name.lowercase()} items in ${category.name}."
+                    }
                 }
             } catch (error: Exception) {
                 if (source.id == activeSourceId) message = error.message ?: "Could not load this category."
             } finally {
+                loadingCategoryKeys = loadingCategoryKeys - categoryKey
                 loadingCatalogKeys = loadingCatalogKeys - sectionKey
                 activeLoadCount = (activeLoadCount - 1).coerceAtLeast(0)
                 busy = activeLoadCount > 0

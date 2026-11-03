@@ -1,236 +1,163 @@
-(() => {
+(function () {
   'use strict';
-  const $ = (id) => document.getElementById(id);
-  const state = { server: '', username: '', password: '', section: 'live', categories: [], categoryId: null, streams: [], cache: new Map(), focusIndex: 0, returnFocus: null };
-  const sections = {
-    live: { title: 'Live TV', cats: 'get_live_categories', items: 'get_live_streams' },
-    movie: { title: 'Movies', cats: 'get_vod_categories', items: 'get_vod_streams' },
-    series: { title: 'Series', cats: 'get_series_categories', items: 'get_series' }
+  function byId(id) { return document.getElementById(id); }
+  function on(el, name, fn) { if (el.addEventListener) el.addEventListener(name, fn, false); else el.attachEvent('on' + name, fn); }
+  function hasClass(el, name) { return (' ' + el.className + ' ').indexOf(' ' + name + ' ') !== -1; }
+  function addClass(el, name) { if (!hasClass(el, name)) el.className += (el.className ? ' ' : '') + name; }
+  function removeClass(el, name) { el.className = (' ' + el.className + ' ').replace(' ' + name + ' ', ' ').replace(/^\s+|\s+$/g, ''); }
+  function clear(el) { while (el.firstChild) el.removeChild(el.firstChild); }
+  function text(el, value) { el.textContent = value == null ? '' : String(value); }
+  function array(value) { return Object.prototype.toString.call(value) === '[object Array]' ? value : []; }
+  function encode(value) { return encodeURIComponent(value == null ? '' : String(value)); }
+  var state = { server:'', username:'', password:'', section:'live', categories:[], categoryId:null, streams:[], cache:{}, returnFocus:null, inSeries:false };
+  var sections = {
+    live:{title:'Live TV', cats:'get_live_categories', items:'get_live_streams'},
+    movie:{title:'Movies', cats:'get_vod_categories', items:'get_vod_streams'},
+    series:{title:'Series', cats:'get_series_categories', items:'get_series'}
   };
-  const apiUrl = (action, extra = '') => {
-    const q = new URLSearchParams({ username: state.username, password: state.password });
-    if (action) q.set('action', action);
-    if (extra) q.set('category_id', extra);
-    return state.server.replace(/\/+$/, '') + '/player_api.php?' + q.toString();
-  };
-  async function fetchJson(url) {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 18000);
-    try {
-      const response = await fetch(url, { signal: controller.signal, cache: 'no-store' });
-      if (!response.ok) throw new Error('Server returned HTTP ' + response.status);
-      return await response.json();
-    } finally { clearTimeout(timer); }
+  function apiUrl(action, categoryId, seriesId) {
+    var query = 'username=' + encode(state.username) + '&password=' + encode(state.password);
+    if (action) query += '&action=' + encode(action);
+    if (categoryId !== null && categoryId !== undefined) query += '&category_id=' + encode(categoryId);
+    if (seriesId !== null && seriesId !== undefined) query += '&series_id=' + encode(seriesId);
+    return state.server.replace(/\/+$/, '') + '/player_api.php?' + query;
+  }
+  function requestJson(url, done, failed) {
+    var xhr = new XMLHttpRequest(), finished = false;
+    var timer = setTimeout(function () { if (!finished) { finished = true; xhr.abort(); failed(new Error('Connection timed out.')); } }, 18000);
+    xhr.onreadystatechange = function () {
+      if (xhr.readyState !== 4 || finished) return;
+      finished = true; clearTimeout(timer);
+      if (xhr.status < 200 || xhr.status >= 300) { failed(new Error('Server returned HTTP ' + xhr.status)); return; }
+      try { done(JSON.parse(xhr.responseText)); } catch (e) { failed(new Error('Invalid server response.')); }
+    };
+    xhr.onerror = function () { if (!finished) { finished = true; clearTimeout(timer); failed(new Error('Network error or server CORS restriction.')); } };
+    xhr.ontimeout = function () { if (!finished) { finished = true; clearTimeout(timer); failed(new Error('Connection timed out.')); } };
+    try { xhr.open('GET', url, true); xhr.timeout = 18000; xhr.send(null); } catch (e) { if (!finished) { finished = true; clearTimeout(timer); failed(e); } }
   }
   function show(id) {
-    ['login-screen','catalog-screen','player-screen'].forEach(x => $(x).classList.toggle('hidden', x !== id));
-    if (id === 'catalog-screen') focusFirstAvailable();
+    var ids = ['login-screen','catalog-screen','player-screen'], i;
+    for (i=0;i<ids.length;i++) { if (ids[i] === id) removeClass(byId(ids[i]), 'hidden'); else addClass(byId(ids[i]), 'hidden'); }
+    if (id === 'catalog-screen') focusFirst();
   }
-  function setStatus(message) { $('status').textContent = message; }
-  function validArray(value) { return Array.isArray(value) ? value : []; }
-  function focusFirstAvailable() {
-    const target = document.querySelector('.media-card') || document.querySelector('.category-chip') || document.querySelector('.nav-item[data-section]');
-    target?.focus();
+  function status(message) { text(byId('status'), message); }
+  function focusFirst() {
+    var target = document.querySelector('.media-card') || document.querySelector('.category-chip') || document.querySelector('.nav-item[data-section]');
+    if (target && target.focus) target.focus();
   }
-  function registerSamsungRemoteKeys() {
+  function registerKeys() {
     try {
-      const api = window.tizen?.tvinputdevice;
-      if (!api) return;
-      ['MediaPlayPause','MediaStop','MediaFastForward','MediaRewind','MediaPlay','MediaPause'].forEach(key => {
-        try { api.registerKey(key); } catch (_) {}
-      });
-    } catch (_) {}
+      if (window.tizen && window.tizen.tvinputdevice) {
+        var keys = ['MediaPlayPause','MediaStop','MediaFastForward','MediaRewind','MediaPlay','MediaPause'], i;
+        for (i=0;i<keys.length;i++) { try { window.tizen.tvinputdevice.registerKey(keys[i]); } catch (ignore) {} }
+      }
+    } catch (ignore2) {}
   }
-  async function connect(event) {
-    event?.preventDefault();
-    state.server = $('server').value.trim().replace(/\/+$/, '');
-    state.username = $('username').value.trim();
-    state.password = $('password').value;
-    $('login-error').textContent = '';
-    try {
-      const info = await fetchJson(apiUrl(''));
-      if (!info || (!info.user_info && !info.server_info)) throw new Error('The server response was not recognized. Check the URL and login details.');
-      const status = info.user_info?.status;
-      if (status && !['Active','Enabled','Trial'].includes(status)) throw new Error('This account is not active.');
-      localStorage.setItem('tvi-profile', JSON.stringify({ server: state.server, username: state.username }));
-      $('profile-status').textContent = state.username;
-      state.cache.clear();
-      show('catalog-screen');
-      await loadSection('live');
-    } catch (error) { $('login-error').textContent = error.name === 'AbortError' ? 'Connection timed out. Try again.' : (error.message || 'Could not connect.'); }
-  }
-  async function loadSection(section) {
-    state.section = section; state.categoryId = null; state.categories = []; state.streams = [];
-    document.querySelectorAll('.nav-item[data-section]').forEach(button => button.classList.toggle('active', button.dataset.section === section));
-    $('section-title').textContent = sections[section].title;
-    $('media-grid').replaceChildren(); $('category-list').replaceChildren(); $('catalog-count').textContent = '';
-    setStatus('Loading categories…');
-    try {
-      const key = section + ':categories';
-      state.categories = state.cache.get(key) || validArray(await fetchJson(apiUrl(sections[section].cats)));
-      state.cache.set(key, state.categories);
-      renderCategories();
-      if (!state.categories.length) { setStatus('No categories returned by this service.'); return; }
-      await loadCategory(String(state.categories[0].category_id ?? state.categories[0].id));
-    } catch (error) { setStatus('Could not load categories: ' + (error.message || 'network error')); }
-  }
-  function renderCategories() {
-    const root = $('category-list'); root.replaceChildren();
-    state.categories.forEach((category, index) => {
-      const id = String(category.category_id ?? category.id ?? '');
-      const button = document.createElement('button');
-      button.className = 'category-chip' + (id === state.categoryId ? ' active' : '');
-      button.textContent = category.category_name || category.name || ('Category ' + (index + 1));
-      button.dataset.categoryId = id;
-      button.addEventListener('click', () => loadCategory(id));
-      root.append(button);
-    });
-  }
-  async function loadCategory(id) {
-    state.categoryId = id; renderCategories();
-    const cacheKey = state.section + ':' + id;
-    $('media-grid').replaceChildren();
-    if (state.cache.has(cacheKey)) {
-      state.streams = state.cache.get(cacheKey); renderMedia(); setStatus('');
-      return;
-    }
-    setStatus('Loading ' + sections[state.section].title.toLowerCase() + '…');
-    try {
-      const data = validArray(await fetchJson(apiUrl(sections[state.section].items, id)));
-      state.streams = data; state.cache.set(cacheKey, data);
-      renderMedia(); setStatus(data.length ? '' : 'No items in this category.');
-    } catch (error) { setStatus('Could not load this category: ' + (error.message || 'network error')); }
-  }
-  function itemId(item) { return item.stream_id ?? item.series_id ?? item.id; }
-  function itemName(item) { return item.name || item.title || 'Untitled'; }
-  function renderMedia() {
-    const root = $('media-grid'); root.replaceChildren();
-    $('catalog-count').textContent = state.streams.length + ' items';
-    const fragment = document.createDocumentFragment();
-    state.streams.forEach((item) => {
-      const button = document.createElement('button'); button.className = 'media-card'; button.dataset.itemId = itemId(item);
-      const poster = document.createElement('span'); poster.className = 'poster';
-      const imageUrl = item.stream_icon || item.cover || item.movie_image || '';
-      if (imageUrl) {
-        const img = document.createElement('img'); img.loading = 'lazy'; img.alt = ''; img.src = imageUrl;
-        img.onerror = () => { img.remove(); poster.textContent = '▶'; };
-        poster.append(img);
-      } else poster.textContent = state.section === 'live' ? '▶' : '▧';
-      const title = document.createElement('span'); title.className = 'media-title'; title.textContent = itemName(item);
-      button.append(poster, title); button.addEventListener('click', () => state.section === 'series' ? openSeries(item, button) : play(item));
-      fragment.append(button);
-    });
-    root.append(fragment); state.focusIndex = 0;
-    focusFirstAvailable();
-  }
-  async function openSeries(series, sourceButton) {
-    state.returnFocus = sourceButton;
-    setStatus('Loading episodes…');
-    try {
-      const detailsUrl = new URL(apiUrl(''));
-      detailsUrl.searchParams.set('action', 'get_series_info');
-      detailsUrl.searchParams.set('series_id', String(itemId(series)));
-      const details = await fetchJson(detailsUrl.toString());
-      const episodes = details.episodes || {};
-      const flat = Object.values(episodes).flat().filter(Boolean);
-      if (!flat.length) { setStatus('No episodes were returned for this series.'); return; }
-      const root = $('media-grid'); root.replaceChildren();
-      $('section-title').textContent = itemName(series);
-      $('catalog-count').textContent = flat.length + ' episodes';
-      flat.forEach((episode, index) => {
-        const button = document.createElement('button'); button.className = 'media-card episode-card';
-        const poster = document.createElement('span'); poster.className = 'poster'; poster.textContent = '▶';
-        const title = document.createElement('span'); title.className = 'media-title';
-        title.textContent = episode.title || ('Episode ' + (episode.episode_num || index + 1));
-        button.append(poster, title); button.addEventListener('click', () => playEpisode(episode, series));
-        root.append(button);
-      });
-      setStatus('Select an episode. Use Back to return to series.');
-      const back = document.createElement('button'); back.className = 'category-chip'; back.textContent = '← Back to series';
-      back.addEventListener('click', () => { $('section-title').textContent = sections.series.title; renderMedia(); state.returnFocus?.focus(); });
-      $('category-list').prepend(back);
-      focusFirstAvailable();
-    } catch (error) { setStatus('Could not load episodes: ' + (error.message || 'network error')); }
-  }
-  function streamUrl(path, id, ext) {
-    return state.server.replace(/\/+$/, '') + '/' + path + '/' + encodeURIComponent(state.username) + '/' + encodeURIComponent(state.password) + '/' + encodeURIComponent(id) + '.' + (ext || 'mp4');
-  }
-  function startVideo(url, title) {
-    $('video-player').src = url; $('playing-title').textContent = title; show('player-screen');
-    $('video-player').play().catch(() => {});
-  }
-  function play(item) {
-    const path = state.section === 'live' ? 'live' : 'movie';
-    const ext = item.container_extension || (state.section === 'live' ? 'ts' : 'mp4');
-    startVideo(streamUrl(path, itemId(item), ext), itemName(item));
-  }
-  function playEpisode(episode, series) {
-    const id = episode.id || episode.stream_id;
-    if (!id) { setStatus('This episode has no playable stream ID.'); return; }
-    startVideo(streamUrl('series', id, episode.container_extension || 'mp4'), (episode.title || itemName(series)));
-  }
-  function closePlayer() {
-    $('video-player').pause(); $('video-player').removeAttribute('src'); $('video-player').load(); show('catalog-screen');
-  }
-  function handleBack() {
-    if (!$('player-screen').classList.contains('hidden')) { closePlayer(); return true; }
-    if (!$('catalog-screen').classList.contains('hidden') && state.section === 'series' && $('section-title').textContent !== sections.series.title) {
-      $('section-title').textContent = sections.series.title; renderMedia(); state.returnFocus?.focus(); return true;
-    }
-    if (!$('catalog-screen').classList.contains('hidden')) {
-      $('change-account').focus(); return true;
-    }
+  function connect(event) {
+    if (event && event.preventDefault) event.preventDefault();
+    state.server = byId('server').value.replace(/^\s+|\s+$/g,'').replace(/\/+$/,'');
+    state.username = byId('username').value.replace(/^\s+|\s+$/g,'');
+    state.password = byId('password').value;
+    text(byId('login-error'), '');
+    requestJson(apiUrl(''), function (info) {
+      if (!info || (!info.user_info && !info.server_info)) { text(byId('login-error'),'Unrecognized server response. Check your details.'); return; }
+      var accountStatus = info.user_info && info.user_info.status;
+      if (accountStatus && ['Active','Enabled','Trial'].indexOf(accountStatus) < 0) { text(byId('login-error'),'This account is not active.'); return; }
+      try { localStorage.setItem('tvi-profile', JSON.stringify({server:state.server,username:state.username})); } catch (ignore) {}
+      text(byId('profile-status'), state.username); state.cache = {}; show('catalog-screen'); loadSection('live');
+    }, function (error) { text(byId('login-error'), error.message || 'Could not connect.'); });
     return false;
   }
-  $('login-form').addEventListener('submit', connect);
-  $('section-nav').addEventListener('click', event => { const button = event.target.closest('[data-section]'); if (button) loadSection(button.dataset.section); });
-  $('change-account').addEventListener('click', () => { state.cache.clear(); $('password').value = ''; show('login-screen'); $('server').focus(); });
-  $('close-player').addEventListener('click', closePlayer);
-  document.addEventListener('keydown', event => {
-    if (event.key === 'Escape' || event.key === 'Backspace' || event.keyCode === 10009) {
-      if (handleBack()) { event.preventDefault(); event.stopPropagation(); return; }
-    }
-    if (event.key === 'MediaPlayPause' || event.keyCode === 10252) {
-      const video = $('video-player');
-      if (!$('player-screen').classList.contains('hidden')) { video.paused ? video.play().catch(() => {}) : video.pause(); event.preventDefault(); }
-      return;
-    }
-    if (event.key === 'MediaStop' || event.keyCode === 10253) {
-      if (!$('player-screen').classList.contains('hidden')) { closePlayer(); event.preventDefault(); }
-      return;
-    }
-    const active = document.activeElement;
-    const directions = { ArrowRight: [1, 0], ArrowLeft: [-1, 0], ArrowDown: [0, 1], ArrowUp: [0, -1] };
-    if (directions[event.key] && !$('player-screen').classList.contains('hidden')) return;
-    if (directions[event.key]) {
-      const [dx, dy] = directions[event.key];
-      const candidates = [...document.querySelectorAll('#catalog-screen button:not(:disabled), #login-screen button:not(:disabled), #login-screen input:not(:disabled)')]
-        .filter(el => el.getClientRects().length > 0 && !el.classList.contains('hidden'));
-      const origin = active?.getBoundingClientRect();
-      if (origin) {
-        const ox = origin.left + origin.width / 2, oy = origin.top + origin.height / 2;
-        let best = null, bestScore = Infinity;
-        for (const candidate of candidates) {
-          if (candidate === active) continue;
-          const rect = candidate.getBoundingClientRect();
-          const x = rect.left + rect.width / 2, y = rect.top + rect.height / 2;
-          const vx = x - ox, vy = y - oy;
-          const primary = dx ? vx * dx : vy * dy;
-          const secondary = dx ? Math.abs(vy) : Math.abs(vx);
-          if (primary <= 4) continue;
-          const score = primary + secondary * 2.2;
-          if (score < bestScore) { best = candidate; bestScore = score; }
-        }
-        if (best) { best.focus(); event.preventDefault(); }
-      }
-    }
-    if (event.key === 'Enter' && active && active.tagName === 'BUTTON') active.click();
+  function loadSection(section) {
+    state.section=section; state.categoryId=null; state.categories=[]; state.streams=[]; state.inSeries=false;
+    var nav=document.querySelectorAll('.nav-item[data-section]'), i;
+    for(i=0;i<nav.length;i++) { if(nav[i].getAttribute('data-section')===section) addClass(nav[i],'active'); else removeClass(nav[i],'active'); }
+    text(byId('section-title'),sections[section].title); clear(byId('media-grid')); clear(byId('category-list')); text(byId('catalog-count'),''); status('Loading categories…');
+    var key=section+':categories';
+    if (state.cache[key]) { state.categories=state.cache[key]; categoriesReady(); return; }
+    requestJson(apiUrl(sections[section].cats),function(data){state.categories=array(data);state.cache[key]=state.categories;categoriesReady();},function(error){status('Could not load categories: '+error.message);});
+  }
+  function categoriesReady() {
+    renderCategories();
+    if (!state.categories.length) { status('No categories returned by this service.'); return; }
+    var first=state.categories[0], id=first.category_id != null ? first.category_id : first.id;
+    loadCategory(String(id));
+  }
+  function renderCategories() {
+    var root=byId('category-list'); clear(root);
+    state.categories.forEach(function(category,index){
+      var id=String(category.category_id != null ? category.category_id : (category.id != null ? category.id : ''));
+      var button=document.createElement('button'); button.className='category-chip'+(id===state.categoryId?' active':'');
+      text(button,category.category_name||category.name||('Category '+(index+1))); button.setAttribute('data-category-id',id);
+      on(button,'click',function(){loadCategory(id);}); root.appendChild(button);
+    });
+  }
+  function loadCategory(id) {
+    state.categoryId=id; state.inSeries=false; renderCategories(); clear(byId('media-grid'));
+    var key=state.section+':'+id;
+    if (state.cache[key]) {state.streams=state.cache[key];renderMedia();status('');return;}
+    status('Loading '+sections[state.section].title.toLowerCase()+'…');
+    requestJson(apiUrl(sections[state.section].items,id),function(data){
+      state.streams=array(data);state.cache[key]=state.streams;renderMedia();status(state.streams.length?'':'No items in this category.');
+    },function(error){status('Could not load this category: '+error.message);});
+  }
+  function itemId(item) { return item.stream_id != null ? item.stream_id : (item.series_id != null ? item.series_id : item.id); }
+  function itemName(item) { return item.name || item.title || 'Untitled'; }
+  function renderMedia() {
+    var root=byId('media-grid');clear(root);text(byId('catalog-count'),state.streams.length+' items');
+    state.streams.forEach(function(item){
+      var button=document.createElement('button');button.className='media-card';button.setAttribute('data-item-id',itemId(item));
+      var poster=document.createElement('span');poster.className='poster';
+      var imageUrl=item.stream_icon||item.cover||item.movie_image||'';
+      if(imageUrl){var img=document.createElement('img');img.alt='';img.src=imageUrl;on(img,'error',function(){if(img.parentNode){img.parentNode.removeChild(img);text(poster,'▶');}});poster.appendChild(img);}
+      else text(poster,state.section==='live'?'▶':'▧');
+      var title=document.createElement('span');title.className='media-title';text(title,itemName(item));button.appendChild(poster);button.appendChild(title);
+      on(button,'click',function(){if(state.section==='series')openSeries(item,button);else play(item);});root.appendChild(button);
+    });
+    focusFirst();
+  }
+  function openSeries(series,sourceButton) {
+    state.returnFocus=sourceButton;status('Loading episodes…');
+    requestJson(apiUrl('get_series_info',null,itemId(series)),function(details){
+      var episodes=details && details.episodes ? details.episodes : {}, flat=[], season;
+      for(season in episodes){if(Object.prototype.hasOwnProperty.call(episodes,season)){flat=flat.concat(array(episodes[season]));}}
+      if(!flat.length){status('No episodes were returned for this series.');return;}
+      state.inSeries=true;clear(byId('media-grid'));text(byId('section-title'),itemName(series));text(byId('catalog-count'),flat.length+' episodes');
+      flat.forEach(function(episode,index){
+        var button=document.createElement('button');button.className='media-card episode-card';
+        var poster=document.createElement('span');poster.className='poster';text(poster,'▶');
+        var title=document.createElement('span');title.className='media-title';text(title,episode.title||('Episode '+(episode.episode_num||index+1)));
+        button.appendChild(poster);button.appendChild(title);on(button,'click',function(){playEpisode(episode,series);});byId('media-grid').appendChild(button);
+      });
+      var back=document.createElement('button');back.className='category-chip';text(back,'← Back to series');
+      on(back,'click',returnToSeries);byId('category-list').insertBefore(back,byId('category-list').firstChild);
+      status('Select an episode. Use Back to return to series.');focusFirst();
+    },function(error){status('Could not load episodes: '+error.message);});
+  }
+  function returnToSeries(){state.inSeries=false;text(byId('section-title'),sections.series.title);renderCategories();renderMedia();if(state.returnFocus&&state.returnFocus.focus)state.returnFocus.focus();}
+  function streamUrl(path,id,ext){return state.server.replace(/\/+$/,'')+'/'+path+'/'+encode(state.username)+'/'+encode(state.password)+'/'+encode(id)+'.'+(ext||'mp4');}
+  function startVideo(url,title){byId('video-player').src=url;text(byId('playing-title'),title);show('player-screen');var result=byId('video-player').play();if(result&&result.catch)result.catch(function(){});}
+  function play(item){var path=state.section==='live'?'live':'movie';startVideo(streamUrl(path,itemId(item),item.container_extension||(state.section==='live'?'ts':'mp4')),itemName(item));}
+  function playEpisode(episode,series){var id=episode.id||episode.stream_id;if(!id){status('This episode has no playable stream ID.');return;}startVideo(streamUrl('series',id,episode.container_extension||'mp4'),episode.title||itemName(series));}
+  function closePlayer(){var video=byId('video-player');video.pause();video.removeAttribute('src');video.load();show('catalog-screen');}
+  function back(){if(!hasClass(byId('player-screen'),'hidden')){closePlayer();return true;}if(!hasClass(byId('catalog-screen'),'hidden')&&state.inSeries){returnToSeries();return true;}if(!hasClass(byId('catalog-screen'),'hidden')){byId('change-account').focus();return true;}return false;}
+  on(byId('login-form'),'submit',connect);
+  on(byId('section-nav'),'click',function(event){event=event||window.event;var target=event.target||event.srcElement;while(target&&target!==byId('section-nav')&&!target.getAttribute('data-section'))target=target.parentNode;if(target&&target.getAttribute('data-section'))loadSection(target.getAttribute('data-section'));});
+  on(byId('change-account'),'click',function(){state.cache={};byId('password').value='';show('login-screen');byId('server').focus();});
+  on(byId('close-player'),'click',closePlayer);
+  on(document,'keydown',function(event){
+    event=event||window.event;var key=event.key||'',code=event.keyCode;
+    if(key==='Escape'||key==='Backspace'||code===10009){if(back()){if(event.preventDefault)event.preventDefault();return;}}
+    if(key==='MediaPlayPause'||code===10252){var video=byId('video-player');if(!hasClass(byId('player-screen'),'hidden')){if(video.paused){var p=video.play();if(p&&p.catch)p.catch(function(){});}else video.pause();if(event.preventDefault)event.preventDefault();}return;}
+    if(key==='MediaStop'||code===10253){if(!hasClass(byId('player-screen'),'hidden')){closePlayer();if(event.preventDefault)event.preventDefault();}return;}
+    var dirs={ArrowRight:[1,0],ArrowLeft:[-1,0],ArrowDown:[0,1],ArrowUp:[0,-1]},d=dirs[key],active=document.activeElement;
+    if(!d||!hasClass(byId('player-screen'),'hidden'))return;
+    var candidates=document.querySelectorAll('#catalog-screen button:not(:disabled), #login-screen button:not(:disabled), #login-screen input:not(:disabled)'),origin=active&&active.getBoundingClientRect?active.getBoundingClientRect():null;
+    if(!origin)return;
+    var ox=origin.left+origin.width/2,oy=origin.top+origin.height/2,best=null,bestScore=Infinity,i;
+    for(i=0;i<candidates.length;i++){var candidate=candidates[i];if(candidate===active||!candidate.getClientRects().length)continue;var rect=candidate.getBoundingClientRect(),vx=rect.left+rect.width/2-ox,vy=rect.top+rect.height/2-oy,primary=d[0]?vx*d[0]:vy*d[1],secondary=d[0]?Math.abs(vy):Math.abs(vx),score=primary+secondary*2.2;if(primary>4&&score<bestScore){best=candidate;bestScore=score;}}
+    if(best){best.focus();if(event.preventDefault)event.preventDefault();}
+    if(key==='Enter'&&active&&active.tagName==='BUTTON')active.click();
   });
-  window.addEventListener('load', () => {
-    registerSamsungRemoteKeys();
-    try {
-      const saved = JSON.parse(localStorage.getItem('tvi-profile') || 'null');
-      if (saved?.server && saved?.username) { $('server').value = saved.server; $('username').value = saved.username; }
-    } catch (_) {}
-  });
-})();
+  on(window,'load',function(){registerKeys();try{var saved=JSON.parse(localStorage.getItem('tvi-profile')||'null');if(saved&&saved.server&&saved.username){byId('server').value=saved.server;byId('username').value=saved.username;}}catch(ignore){}});
+}());

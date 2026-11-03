@@ -4,7 +4,7 @@ This folder is the Samsung Smart TV packaging target for the shared TV web clien
 
 ## Included
 - `config.xml`: Tizen TV widget metadata, app identity, TV profile and required network/remote-input privileges.
-- `index.html`, `styles.css`, `app.js`: shared web client assets copied from `../tv-web`.
+- `index.html`, `styles.css`, `app.js`: self-contained Samsung TV web client assets (the JavaScript includes Samsung remote-key registration and D-pad focus navigation).
 
 ## Build a Samsung TV package
 1. Install Samsung Tizen Studio and the TV extension for the target TV SDK.

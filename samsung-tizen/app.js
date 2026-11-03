@@ -127,7 +127,10 @@
     state.returnFocus = sourceButton;
     setStatus('Loading episodes…');
     try {
-      const details = await fetchJson(apiUrl('get_series_info', String(itemId(series))));
+      const detailsUrl = new URL(apiUrl(''));
+      detailsUrl.searchParams.set('action', 'get_series_info');
+      detailsUrl.searchParams.set('series_id', String(itemId(series)));
+      const details = await fetchJson(detailsUrl.toString());
       const episodes = details.episodes || {};
       const flat = Object.values(episodes).flat().filter(Boolean);
       if (!flat.length) { setStatus('No episodes were returned for this series.'); return; }

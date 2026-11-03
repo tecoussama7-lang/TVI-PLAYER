@@ -44,6 +44,20 @@ class MediaCatalogStore(context: Context) : SQLiteOpenHelper(
         )
         db.execSQL("CREATE INDEX media_catalog_source_section_title ON media_catalog(source_id, section, title COLLATE NOCASE)")
         db.execSQL("CREATE INDEX media_catalog_source_section_category ON media_catalog(source_id, section, category COLLATE NOCASE)")
+        db.execSQL(
+            """
+            CREATE TABLE catalog_categories (
+                source_id TEXT NOT NULL,
+                section TEXT NOT NULL,
+                category_id TEXT NOT NULL,
+                category_name TEXT NOT NULL,
+                loaded INTEGER NOT NULL DEFAULT 0,
+                item_count INTEGER NOT NULL DEFAULT 0,
+                updated_at INTEGER NOT NULL DEFAULT 0,
+                PRIMARY KEY(source_id, section, category_id)
+            )
+            """.trimIndent(),
+        )
     }
 
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
@@ -66,6 +80,18 @@ class MediaCatalogStore(context: Context) : SQLiteOpenHelper(
             db.execSQL("CREATE INDEX IF NOT EXISTS media_catalog_source_section_title ON media_catalog(source_id, section, title COLLATE NOCASE)")
             db.execSQL("CREATE INDEX IF NOT EXISTS media_catalog_source_section_category ON media_catalog(source_id, section, category COLLATE NOCASE)")
         }
+        if (oldVersion < 3) {
+            db.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS catalog_categories (
+                    source_id TEXT NOT NULL, section TEXT NOT NULL, category_id TEXT NOT NULL,
+                    category_name TEXT NOT NULL, loaded INTEGER NOT NULL DEFAULT 0,
+                    item_count INTEGER NOT NULL DEFAULT 0, updated_at INTEGER NOT NULL DEFAULT 0,
+                    PRIMARY KEY(source_id, section, category_id)
+                )
+                """.trimIndent(),
+            )
+        }
     }
 
     /**
@@ -84,10 +110,74 @@ class MediaCatalogStore(context: Context) : SQLiteOpenHelper(
         }
     }
 
+    /** Replace only one provider category; other category rows remain intact. */
+    fun beginCategoryImport(sourceId: String, section: String, category: SourceCategory): ImportSession {
+        val db = writableDatabase
+        db.beginTransaction()
+        return try {
+            db.delete(TABLE, "source_id=? AND section=? AND category=?", arrayOf(sourceId, section, category.name))
+            ImportSession(db, sourceId, section, category.id, category.name)
+        } catch (error: Throwable) {
+            db.endTransaction()
+            throw error
+        }
+    }
+
+    /** Save the provider category directory without downloading any media items. */
+    fun saveCategories(sourceId: String, section: String, categories: List<SourceCategory>) {
+        val db = writableDatabase
+        db.beginTransaction()
+        try {
+            for (category in categories) {
+                val values = ContentValues().apply {
+                    put("source_id", sourceId)
+                    put("section", section)
+                    put("category_id", category.id)
+                    put("category_name", category.name)
+                }
+                db.insertWithOnConflict("catalog_categories", null, values, SQLiteDatabase.CONFLICT_IGNORE)
+                db.update(
+                    "catalog_categories",
+                    ContentValues().apply { put("category_name", category.name) },
+                    "source_id=? AND section=? AND category_id=?",
+                    arrayOf(sourceId, section, category.id),
+                )
+            }
+            db.setTransactionSuccessful()
+        } finally {
+            db.endTransaction()
+        }
+    }
+
+    fun categoryList(sourceId: String, section: String): List<SourceCategory> {
+        val result = mutableListOf<SourceCategory>()
+        readableDatabase.query(
+            "catalog_categories",
+            arrayOf("category_id", "category_name"),
+            "source_id=? AND section=?",
+            arrayOf(sourceId, section),
+            null, null, "category_name COLLATE NOCASE ASC",
+        ).use { cursor ->
+            while (cursor.moveToNext()) result += SourceCategory(cursor.getString(0), cursor.getString(1))
+        }
+        return result
+    }
+
+    fun isCategoryCached(sourceId: String, section: String, categoryId: String): Boolean =
+        readableDatabase.query(
+            "catalog_categories",
+            arrayOf("loaded"),
+            "source_id=? AND section=? AND category_id=?",
+            arrayOf(sourceId, section, categoryId),
+            null, null, null, "1",
+        ).use { cursor -> cursor.moveToFirst() && cursor.getInt(0) == 1 }
+
     inner class ImportSession internal constructor(
         private val db: SQLiteDatabase,
         private val sourceId: String,
         private val section: String,
+        private val categoryId: String? = null,
+        private val categoryName: String? = null,
     ) : AutoCloseable {
         private var finished = false
 
@@ -120,6 +210,22 @@ class MediaCatalogStore(context: Context) : SQLiteOpenHelper(
 
         fun commit() {
             check(!finished) { "Catalogue import is already closed." }
+            if (!categoryId.isNullOrBlank() && !categoryName.isNullOrBlank()) {
+                val count = db.rawQuery(
+                    "SELECT COUNT(*) FROM $TABLE WHERE source_id=? AND section=? AND category=?",
+                    arrayOf(sourceId, section, categoryName),
+                ).use { cursor -> if (cursor.moveToFirst()) cursor.getLong(0) else 0L }
+                val values = ContentValues().apply {
+                    put("source_id", sourceId)
+                    put("section", section)
+                    put("category_id", categoryId)
+                    put("category_name", categoryName)
+                    put("loaded", 1)
+                    put("item_count", count)
+                    put("updated_at", System.currentTimeMillis())
+                }
+                db.insertWithOnConflict("catalog_categories", null, values, SQLiteDatabase.CONFLICT_REPLACE)
+            }
             db.setTransactionSuccessful()
             finished = true
             db.endTransaction()
@@ -266,7 +372,7 @@ class MediaCatalogStore(context: Context) : SQLiteOpenHelper(
 
     private companion object {
         const val DATABASE_NAME = "player_catalog.db"
-        const val DATABASE_VERSION = 2
+        const val DATABASE_VERSION = 3
         const val TABLE = "media_catalog"
         const val DEFAULT_PAGE_SIZE = 100
         const val MAX_PAGE_SIZE = 500

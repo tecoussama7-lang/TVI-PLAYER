@@ -155,7 +155,7 @@
   function showEpg(item){
     if(state.section!=='live')return;
     status('Loading programme information…');
-    requestJson(apiUrl('get_short_epg',itemId(item)),function(data){
+    requestJson(apiUrl('get_short_epg')+'&stream_id='+encode(itemId(item)),function(data){
       var entries=data&&data.epg_listings?data.epg_listings:[],lines=[],i;
       for(i=0;i<entries.length&&i<5;i++){var e=entries[i],title=e.title||'Programme';try{title=decodeURIComponent(escape(window.atob(title)));}catch(ignore){}lines.push(title+(e.start?' — '+e.start:''));}
       status(lines.length?itemName(item)+' · '+lines.join(' | '):'No EPG information available for '+itemName(item)+'.');
@@ -198,6 +198,11 @@
     event=event||window.event;var key=event.key||'',code=event.keyCode;
     if(key==='Escape'||key==='Backspace'||code===10009){if(back()){if(event.preventDefault)event.preventDefault();return;}}
     if(key==='MediaPlayPause'||code===10252){var video=byId('video-player');if(!hasClass(byId('player-screen'),'hidden')){if(video.paused){var p=video.play();if(p&&p.catch)p.catch(function(){});}else video.pause();if(event.preventDefault)event.preventDefault();}return;}
+    if((key==='f'||key==='F')&&active&&active.getAttribute&&active.getAttribute('data-item-id')!==null){
+      var favoriteId=active.getAttribute('data-item-id'),fi;
+      for(fi=0;fi<state.streams.length;fi++){if(String(itemId(state.streams[fi]))===String(favoriteId)){toggleFavorite(state.streams[fi]);break;}}
+      if(event.preventDefault)event.preventDefault();return;
+    }
     if(key==='Info'||key==='Information'||code===457){
       var focused=document.activeElement,id=focused&&focused.getAttribute?focused.getAttribute('data-item-id'):null,i;
       if(id!==null){for(i=0;i<state.streams.length;i++){if(String(itemId(state.streams[i]))===String(id)){showEpg(state.streams[i]);break;}}}

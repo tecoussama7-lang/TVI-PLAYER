@@ -9,6 +9,7 @@ on:
     branches:
       - feature/prompt-full-implementation
       - fix/tvi-catalog-first-page-performance
+      - feature/isolated-category-cache
   workflow_dispatch:
 
 permissions:

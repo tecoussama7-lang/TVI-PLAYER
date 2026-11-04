@@ -70,7 +70,7 @@
     if (event && event.preventDefault) event.preventDefault();
     state.server = byId('server').value.replace(/^\s+|\s+$/g,'').replace(/\/+$/,'');
     state.username = byId('username').value.replace(/^\s+|\s+$/g,'');
-    state.password = byId('password').value;
+    state.password = byId('password').value; state.sourceType='xtream';
     text(byId('login-error'), '');
     requestJson(apiUrl(''), function (info) {
       if (!info || (!info.user_info && !info.server_info)) { text(byId('login-error'),'Unrecognized server response. Check your details.'); return; }
@@ -162,7 +162,7 @@
   function rememberItem(item){
     var key=mediaKey(item),i;
     for(i=state.recent.length-1;i>=0;i--){if(state.recent[i].key===key)state.recent.splice(i,1);}
-    state.recent.unshift({key:key,section:state.section,id:String(itemId(item)),name:itemName(item),position:0,duration:0,url:streamUrl(state.section==='live'?'live':'movie',itemId(item),item.container_extension||(state.section==='live'?'ts':'mp4'))});
+    state.recent.unshift({key:key,section:state.section,id:String(itemId(item)),name:itemName(item),position:0,duration:0,url:item.direct_url||streamUrl(state.section==='live'?'live':'movie',itemId(item),item.container_extension||(state.section==='live'?'ts':'mp4'))});
     if(state.recent.length>40)state.recent.length=40;saveLists();
   }
   function savePlaybackProgress(){

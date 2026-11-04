@@ -861,6 +861,7 @@ private fun PlayerTvAppContent() {
         if (source.id != activeSourceId || requestedSearch != search || currentSection.name != section ||
             selectedCategory != requestedCategory
         ) return@LaunchedEffect
+        catalogPageOffsets = catalogPageOffsets + (loadKey to filteredPage.size)
         catalog = when (catalogSection) {
             CatalogSection.LIVE -> catalog.copy(liveChannels = applyKidsModeFilter(filteredPage, preferences))
             CatalogSection.MOVIES -> catalog.copy(movies = applyKidsModeFilter(filteredPage, preferences))
@@ -2589,7 +2590,7 @@ private fun MediaScreen(
     var selectedShelf by rememberSaveable(title) { mutableStateOf(selectedProviderCategory.ifBlank { "All" }) }
     LaunchedEffect(selectedProviderCategory) { if (selectedProviderCategory.isNotBlank()) selectedShelf = selectedProviderCategory }
     val shelves = remember(entries, title, providerCategories) {
-        if (providerCategories.isNotEmpty()) providerCategories else {
+        if (providerCategories.isNotEmpty()) listOf("All") + providerCategories else {
         val providerCategories = entries.map { it.category.trim() }.filter { it.isNotBlank() && !it.equals("Other", true) }.distinct().sortedBy { it.lowercase() }
         val curated = listOf("Action", "Adventure", "Animation", "Biography", "Comedy", "Crime", "Documentary", "Drama", "Family", "Fantasy", "History", "Horror", "Music", "Mystery", "Romance", "Sci-Fi", "Sport", "Thriller", "War", "Western")
         val knownGenres = entries.flatMap { entry -> (entry.genre + "," + entry.title).split(",", "|", "/", "·").map { it.trim() } }
@@ -3093,7 +3094,7 @@ private fun SeriesScreen(
     var selectedShelf by rememberSaveable { mutableStateOf(selectedProviderCategory.ifBlank { "All" }) }
     LaunchedEffect(selectedProviderCategory) { if (selectedProviderCategory.isNotBlank()) selectedShelf = selectedProviderCategory }
     val shelves = remember(entries, providerCategories) {
-        if (providerCategories.isNotEmpty()) providerCategories else {
+        if (providerCategories.isNotEmpty()) listOf("All") + providerCategories else {
         val providerCategories = entries.map { it.category.trim() }.filter { it.isNotBlank() && !it.equals("Other", true) }.distinct().sortedBy { it.lowercase() }
         val curated = listOf("Action", "Adventure", "Animation", "Biography", "Comedy", "Crime", "Documentary", "Drama", "Family", "Fantasy", "History", "Horror", "Mystery", "Reality", "Romance", "Sci-Fi", "Sport", "Thriller", "War", "Western")
         val genres = entries.flatMap { it.genre.split(",", "|", "/", "·").map(String::trim) }

@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#080b12">
+  <title>TVI Player</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand"><span class="brand-mark">TVI</span><span>PLAYER</span></div>
+      <div id="profile-status" class="profile-status">Connect your playlist</div>
+    </header>
+    <main>
+      <section id="login-screen" class="login-screen">
+        <div class="login-card">
+          <p class="eyebrow">YOUR ENTERTAINMENT, TOGETHER</p>
+          <h1>Welcome to <span>TVI Player</span></h1>
+          <p class="muted">Connect using your Xtream-compatible service details.</p>
+          <form id="login-form">
+            <label>Server URL<input id="server" type="url" placeholder="https://example.com:8080" required autocomplete="url"></label>
+            <label>Username<input id="username" type="text" required autocomplete="username"></label>
+            <label>Password<input id="password" type="password" required autocomplete="current-password"></label>
+            <button class="primary" type="submit">Connect</button>
+            <p id="login-error" class="error" role="alert"></p>
+          </form>
+          <div class="m3u-connect"><label>M3U playlist URL<input id="m3u-url" type="url" placeholder="https://example.com/playlist.m3u"></label><button id="connect-m3u" class="secondary" type="button">Connect M3U playlist</button></div>\n          <p class="fine-print">Only connect to a service you are authorized to use. M3U support is for Live TV playlists.</p>
+        </div>
+      </section>
+      <section id="catalog-screen" class="catalog-screen hidden">
+        <nav id="section-nav" class="section-nav" aria-label="Media sections">
+          <button data-section="live" class="nav-item focused">Live TV</button>
+          <button data-section="movie" class="nav-item">Movies</button>
+          <button data-section="series" class="nav-item">Series</button>
+          <button id="change-account" class="nav-item account-button">Change account</button>
+        </nav>
+        <div class="catalog-heading">
+          <div><p class="eyebrow">EXPLORE</p><h1 id="section-title">Live TV</h1></div>
+          <div id="catalog-count" class="catalog-count"></div>
+        </div>
+        <div id="category-list" class="category-list" aria-label="Categories"></div>
+        <div class="catalog-tools">
+          <input id="catalog-search" type="search" placeholder="Search this category…" aria-label="Search catalogue">
+          <button id="show-favorites" class="filter-button" type="button">★ Favorites</button>
+          <button id="show-recent" class="filter-button" type="button">Recently watched</button>
+          <button id="parental-settings" class="filter-button" type="button">Parental PIN</button>
+        </div>
+        <div id="status" class="status" role="status">Choose a category</div>
+        <div id="media-grid" class="media-grid"></div>
+      </section>
+      <section id="player-screen" class="player-screen hidden">
+        <video id="video-player" controls playsinline></video>
+        <div class="player-footer"><div><h2 id="playing-title"></h2><p>Press Back or Escape to return</p></div><button id="close-player" class="secondary">Back to catalogue</button></div>
+      </section>
+    </main>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>

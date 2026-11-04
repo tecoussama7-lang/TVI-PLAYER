@@ -1,0 +1,61 @@
+name: Samsung Tizen validation
+
+on:
+  pull_request:
+    paths:
+      - "samsung-tizen/**"
+      - ".github/workflows/samsung-tizen.yml"
+  push:
+    branches:
+      - "feature/tv-multiplatform-foundation"
+    paths:
+      - "samsung-tizen/**"
+      - ".github/workflows/samsung-tizen.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate JavaScript syntax
+        run: node --check samsung-tizen/app.js
+
+      - name: Validate Tizen manifest and required assets
+        run: |
+          python3 - <<'PY'
+          import pathlib
+          import xml.etree.ElementTree as ET
+
+          root = pathlib.Path("samsung-tizen")
+          manifest = ET.parse(root / "config.xml").getroot()
+          ns = {"tizen": "http://tizen.org/ns/widgets"}
+          app = manifest.find("tizen:application", ns)
+          assert app is not None, "Missing Tizen application declaration"
+          assert app.attrib.get("required_version"), "Missing required_version"
+          for name in ("index.html", "styles.css", "app.js", "README.md"):
+              path = root / name
+              assert path.is_file() and path.stat().st_size > 0, f"Missing or empty: {path}"
+          html = (root / "index.html").read_text(encoding="utf-8")
+          assert "styles.css" in html, "index.html does not reference styles.css"
+          assert "app.js" in html, "index.html does not reference app.js"
+          print("Samsung Tizen manifest and web assets look structurally valid.")
+          PY
+
+      - name: Create unsigned source bundle
+        run: |
+          cd samsung-tizen
+          zip -r ../tvi-player-samsung-tizen-source.zip config.xml index.html styles.css app.js README.md
+
+      - name: Upload unsigned source bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: tvi-player-samsung-tizen-source
+          path: tvi-player-samsung-tizen-source.zip
+          if-no-files-found: error
+          retention-days: 14

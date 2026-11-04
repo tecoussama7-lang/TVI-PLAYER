@@ -23,6 +23,18 @@
     if (seriesId !== null && seriesId !== undefined) query += '&series_id=' + encode(seriesId);
     return state.server.replace(/\/+$/, '') + '/player_api.php?' + query;
   }
+  function requestText(url, done, failed) {
+    var xhr = new XMLHttpRequest(), finished = false;
+    var timer = setTimeout(function () { if (!finished) { finished = true; xhr.abort(); failed(new Error('Connection timed out.')); } }, 25000);
+    xhr.onreadystatechange = function () {
+      if (xhr.readyState !== 4 || finished) return;
+      finished = true; clearTimeout(timer);
+      if (xhr.status < 200 || xhr.status >= 300) { failed(new Error('Playlist server returned HTTP ' + xhr.status)); return; }
+      done(xhr.responseText || '');
+    };
+    xhr.onerror = function () { if (!finished) { finished = true; clearTimeout(timer); failed(new Error('Could not download playlist. The server may block TV browser requests (CORS).')); } };
+    try { xhr.open('GET', url, true); xhr.timeout = 25000; xhr.send(null); } catch (e) { if (!finished) { finished = true; clearTimeout(timer); failed(e); } }
+  }
   function requestJson(url, done, failed) {
     var xhr = new XMLHttpRequest(), finished = false;
     var timer = setTimeout(function () { if (!finished) { finished = true; xhr.abort(); failed(new Error('Connection timed out.')); } }, 18000);
@@ -68,6 +80,32 @@
       text(byId('profile-status'), state.username); state.cache = {}; show('catalog-screen'); loadSection('live');
     }, function (error) { text(byId('login-error'), error.message || 'Could not connect.'); });
     return false;
+  }
+  function connectM3u() {
+    var url = byId('m3u-url').value.replace(/^\\s+|\\s+$/g,'');
+    if (!/^https?:\\/\\//i.test(url)) { text(byId('login-error'),'Enter a valid http or https M3U playlist URL.'); return; }
+    text(byId('login-error'),''); status('Downloading M3U playlist…');
+    requestText(url,function(body){
+      var lines=body.replace(/^\\uFEFF/,'').split(/\\r?\\n/),items=[],categories={},pending='',i,line,attrs,name,group,logo,match,entry;
+      for(i=0;i<lines.length;i++){
+        line=lines[i].replace(/^\\s+|\\s+$/g,'');
+        if(line.indexOf('#EXTINF:')===0){pending=line;continue;}
+        if(!line||line.charAt(0)==='#'||!pending)continue;
+        attrs={};
+        var re=/([\\w-]+)=("(?:[^"]*)"|'(?:[^']*)'|[^,\\s]*)/g;
+        while((match=re.exec(pending))!==null)attrs[match[1].toLowerCase()]=match[2].replace(/^["']|["']$/g,'');
+        name=pending.substring(pending.lastIndexOf(',')+1).replace(/^\\s+|\\s+$/g,'')||attrs['tvg-name']||'Untitled channel';
+        group=attrs['group-title']||'Other';logo=attrs['tvg-logo']||'';
+        entry={stream_id:'m3u-'+items.length,name:name,category_id:group,stream_icon:logo,direct_url:line,container_extension:''};
+        items.push(entry);categories[group]=true;pending='';
+      }
+      if(!items.length){text(byId('login-error'),'No valid #EXTINF channel entries were found in this playlist.');return;}
+      state.sourceType='m3u';state.server='';state.username='';state.password='';state.cache={};state.section='live';
+      state.categories=[];for(group in categories){if(Object.prototype.hasOwnProperty.call(categories,group))state.categories.push({category_id:group,category_name:group});}
+      state.cache['live:categories']=state.categories;state.cache['live:all']=items;
+      try{localStorage.setItem('tvi-m3u-url',url);}catch(ignore){}
+      text(byId('profile-status'),'M3U playlist');show('catalog-screen');loadSection('live');
+    },function(error){text(byId('login-error'),error.message||'Could not load playlist.');});
   }
   function loadSection(section) {
     if ((section==='movie'||section==='series') && !parentalUnlock()) return;
@@ -210,11 +248,11 @@
   function returnToSeries(){state.inSeries=false;text(byId('section-title'),sections.series.title);renderCategories();renderMedia();if(state.returnFocus&&state.returnFocus.focus)state.returnFocus.focus();}
   function streamUrl(path,id,ext){return state.server.replace(/\/+$/,'')+'/'+path+'/'+encode(state.username)+'/'+encode(state.password)+'/'+encode(id)+'.'+(ext||'mp4');}
   function startVideo(url,title,key){var video=byId('video-player');state.playbackKey=key||null;state.resumeApplied=false;state.resumeAt=0;video.src=url;text(byId('playing-title'),title);show('player-screen');var result=video.play();if(result&&result.catch)result.catch(function(){});}
-  function play(item){var path=state.section==='live'?'live':'movie',key=mediaKey(item);rememberItem(item);startVideo(streamUrl(path,itemId(item),item.container_extension||(state.section==='live'?'ts':'mp4')),itemName(item),key);}
+  function play(item){var path=state.section==='live'?'live':'movie',key=mediaKey(item);rememberItem(item);startVideo(item.direct_url||streamUrl(path,itemId(item),item.container_extension||(state.section==='live'?'ts':'mp4')),itemName(item),key);}
   function playEpisode(episode,series){var id=episode.id||episode.stream_id;if(!id){status('This episode has no playable stream ID.');return;}var key='episode:'+String(id),i,entry=null;for(i=state.recent.length-1;i>=0;i--){if(state.recent[i].key===key){entry=state.recent[i];state.recent.splice(i,1);break;}}if(!entry)entry={key:key,section:'episode',id:String(id),name:episode.title||itemName(series),position:0,duration:0,url:streamUrl('series',id,episode.container_extension||'mp4')};state.recent.unshift(entry);if(state.recent.length>40)state.recent.length=40;saveLists();startVideo(streamUrl('series',id,episode.container_extension||'mp4'),episode.title||itemName(series),key);}
   function closePlayer(){var video=byId('video-player');savePlaybackProgress();video.pause();video.removeAttribute('src');video.load();state.playbackKey=null;show('catalog-screen');}
   function back(){if(!hasClass(byId('player-screen'),'hidden')){closePlayer();return true;}if(!hasClass(byId('catalog-screen'),'hidden')&&state.inSeries){returnToSeries();return true;}if(!hasClass(byId('catalog-screen'),'hidden')){byId('change-account').focus();return true;}return false;}
-  on(byId('login-form'),'submit',connect);
+  on(byId('login-form'),'submit',connect);\n  on(byId('connect-m3u'),'click',connectM3u);
   on(byId('section-nav'),'click',function(event){event=event||window.event;var target=event.target||event.srcElement;while(target&&target!==byId('section-nav')&&!target.getAttribute('data-section'))target=target.parentNode;if(target&&target.getAttribute('data-section'))loadSection(target.getAttribute('data-section'));});
   on(byId('change-account'),'click',function(){state.cache={};byId('password').value='';show('login-screen');byId('server').focus();});
   on(byId('close-player'),'click',closePlayer);
@@ -252,5 +290,5 @@
     if(best){best.focus();if(event.preventDefault)event.preventDefault();}
     
   });
-  on(window,'load',function(){registerKeys();try{state.favorites=array(JSON.parse(localStorage.getItem('tvi-favorites')||'[]'));state.recent=array(JSON.parse(localStorage.getItem('tvi-recent')||'[]'));var saved=JSON.parse(localStorage.getItem('tvi-profile')||'null');if(saved&&saved.server&&saved.username){byId('server').value=saved.server;byId('username').value=saved.username;}}catch(ignore){}});
+  on(window,'load',function(){registerKeys();try{state.favorites=array(JSON.parse(localStorage.getItem('tvi-favorites')||'[]'));state.recent=array(JSON.parse(localStorage.getItem('tvi-recent')||'[]'));var saved=JSON.parse(localStorage.getItem('tvi-profile')||'null');if(saved&&saved.server&&saved.username){byId('server').value=saved.server;byId('username').value=saved.username;}var m3u=localStorage.getItem('tvi-m3u-url');if(m3u)byId('m3u-url').value=m3u;}catch(ignore){}});
 }());

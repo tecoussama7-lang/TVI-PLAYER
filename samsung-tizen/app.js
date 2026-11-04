@@ -82,19 +82,19 @@
     return false;
   }
   function connectM3u() {
-    var url = byId('m3u-url').value.replace(/^\\s+|\\s+$/g,'');
-    if (!/^https?:\\/\\//i.test(url)) { text(byId('login-error'),'Enter a valid http or https M3U playlist URL.'); return; }
+    var url = byId('m3u-url').value.replace(/^\s+|\s+$/g,'');
+    if (!/^https?:\/\//i.test(url)) { text(byId('login-error'),'Enter a valid http or https M3U playlist URL.'); return; }
     text(byId('login-error'),''); status('Downloading M3U playlist…');
     requestText(url,function(body){
-      var lines=body.replace(/^\\uFEFF/,'').split(/\\r?\\n/),items=[],categories={},pending='',i,line,attrs,name,group,logo,match,entry;
+      var lines=body.replace(/^\uFEFF/,'').split(/\r?\n/),items=[],categories={},pending='',i,line,attrs,name,group,logo,match,entry;
       for(i=0;i<lines.length;i++){
-        line=lines[i].replace(/^\\s+|\\s+$/g,'');
+        line=lines[i].replace(/^\s+|\s+$/g,'');
         if(line.indexOf('#EXTINF:')===0){pending=line;continue;}
         if(!line||line.charAt(0)==='#'||!pending)continue;
         attrs={};
-        var re=/([\\w-]+)=("(?:[^"]*)"|'(?:[^']*)'|[^,\\s]*)/g;
+        var re=/([\w-]+)=("(?:[^"]*)"|'(?:[^']*)'|[^,\s]*)/g;
         while((match=re.exec(pending))!==null)attrs[match[1].toLowerCase()]=match[2].replace(/^["']|["']$/g,'');
-        name=pending.substring(pending.lastIndexOf(',')+1).replace(/^\\s+|\\s+$/g,'')||attrs['tvg-name']||'Untitled channel';
+        name=pending.substring(pending.lastIndexOf(',')+1).replace(/^\s+|\s+$/g,'')||attrs['tvg-name']||'Untitled channel';
         group=attrs['group-title']||'Other';logo=attrs['tvg-logo']||'';
         entry={stream_id:'m3u-'+items.length,name:name,category_id:group,stream_icon:logo,direct_url:line,container_extension:''};
         items.push(entry);categories[group]=true;pending='';
@@ -108,6 +108,7 @@
     },function(error){text(byId('login-error'),error.message||'Could not load playlist.');});
   }
   function loadSection(section) {
+    if(state.sourceType==='m3u'&&section!=='live'){window.alert('This M3U playlist contains Live TV only.');return;}
     if ((section==='movie'||section==='series') && !parentalUnlock()) return;
     state.favoritesOnly=false; state.recentOnly=false; updateFilterButtons();
     state.section=section; state.categoryId=null; state.categories=[]; state.streams=[]; state.inSeries=false;
@@ -136,6 +137,7 @@
   function loadCategory(id) {
     state.categoryId=id; state.inSeries=false; renderCategories(); clear(byId('media-grid'));
     var key=state.section+':'+id;
+    if(state.sourceType==='m3u'){state.streams=(state.cache['live:all']||[]).filter(function(item){return String(item.category_id)===String(id);});state.visibleCount=0;renderMedia(true);status(state.streams.length?'':'No channels in this group.');return;}
     if (state.cache[key]) {state.streams=state.cache[key];state.visibleCount=0;renderMedia(true);status('');return;}
     status('Loading '+sections[state.section].title.toLowerCase()+'…');
     requestJson(apiUrl(sections[state.section].items,id),function(data){

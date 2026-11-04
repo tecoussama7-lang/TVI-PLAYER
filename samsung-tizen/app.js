@@ -9,7 +9,8 @@
   function text(el, value) { el.textContent = value == null ? '' : String(value); }
   function array(value) { return Object.prototype.toString.call(value) === '[object Array]' ? value : []; }
   function encode(value) { return encodeURIComponent(value == null ? '' : String(value)); }
-  var state = { server:'', username:'', password:'', section:'live', categories:[], categoryId:null, streams:[], cache:{}, returnFocus:null, inSeries:false, favorites:[], recent:[], favoritesOnly:false, recentOnly:false, playbackKey:null, resumeAt:0, resumeApplied:false };
+  var state = { server:'', username:'', password:'', section:'live', categories:[], categoryId:null, streams:[], cache:{}, returnFocus:null, inSeries:false, favorites:[], recent:[], favoritesOnly:false, recentOnly:false, playbackKey:null, resumeAt:0, resumeApplied:false, visibleCount:0 };
+  var PAGE_SIZE = 60;
   var sections = {
     live:{title:'Live TV', cats:'get_live_categories', items:'get_live_streams'},
     movie:{title:'Movies', cats:'get_vod_categories', items:'get_vod_streams'},
@@ -97,10 +98,10 @@
   function loadCategory(id) {
     state.categoryId=id; state.inSeries=false; renderCategories(); clear(byId('media-grid'));
     var key=state.section+':'+id;
-    if (state.cache[key]) {state.streams=state.cache[key];renderMedia();status('');return;}
+    if (state.cache[key]) {state.streams=state.cache[key];state.visibleCount=0;renderMedia(true);status('');return;}
     status('Loading '+sections[state.section].title.toLowerCase()+'…');
     requestJson(apiUrl(sections[state.section].items,id),function(data){
-      state.streams=array(data);state.cache[key]=state.streams;renderMedia();status(state.streams.length?'':'No items in this category.');
+      state.streams=array(data);state.cache[key]=state.streams;state.visibleCount=0;renderMedia(true);status(state.streams.length?'':'No items in this category.');
     },function(error){status('Could not load this category: '+error.message);});
   }
   function itemId(item) { return item.stream_id != null ? item.stream_id : (item.series_id != null ? item.series_id : item.id); }
@@ -139,27 +140,39 @@
       try{video.currentTime=item.position;status('');}catch(ignore){}
     }
   }
-  function renderMedia() {
-    var root=byId('media-grid');clear(root);var shown=[];
-    state.streams.forEach(function(item){
-      var key=mediaKey(item),name=itemName(item).toLowerCase(),query=(byId('catalog-search').value||'').toLowerCase();
-      if(query&&name.indexOf(query)===-1)return;
-      if(state.favoritesOnly&&!isFavorite(item))return;
-      if(state.recentOnly&& !recentHas(key))return;
+  function renderMedia(reset) {
+    var root=byId('media-grid'),shown=[],query=(byId('catalog-search').value||'').toLowerCase(),i,item,key,name;
+    if(reset!==false){state.visibleCount=PAGE_SIZE;clear(root);}
+    for(i=0;i<state.streams.length;i++){
+      item=state.streams[i];key=mediaKey(item);name=itemName(item).toLowerCase();
+      if(query&&name.indexOf(query)===-1)continue;
+      if(state.favoritesOnly&&!isFavorite(item))continue;
+      if(state.recentOnly&&!recentHas(key))continue;
       shown.push(item);
-    });
+    }
+    if(state.visibleCount>shown.length)state.visibleCount=shown.length;
     text(byId('catalog-count'),shown.length+' / '+state.streams.length+' items');
-    shown.forEach(function(item){
+    for(i=root.querySelectorAll('.load-more').length-1;i>=0;i--){var old=root.querySelectorAll('.load-more')[i];if(old.parentNode)old.parentNode.removeChild(old);}
+    for(i=0;i<shown.length&&i<state.visibleCount;i++){
+      item=shown[i];
       var button=document.createElement('button');button.className='media-card';button.setAttribute('data-item-id',itemId(item));
       var poster=document.createElement('span');poster.className='poster';
       var imageUrl=item.stream_icon||item.cover||item.movie_image||'';
-      if(imageUrl){var img=document.createElement('img');img.alt='';img.src=imageUrl;on(img,'error',function(){if(img.parentNode){img.parentNode.removeChild(img);text(poster,'▶');}});poster.appendChild(img);}
+      if(imageUrl){var img=document.createElement('img');img.alt='';img.src=imageUrl;img.setAttribute('loading','lazy');on(img,'error',function(){if(this.parentNode){this.parentNode.removeChild(this);}});poster.appendChild(img);}
       else text(poster,state.section==='live'?'▶':'▧');
       var title=document.createElement('span');title.className='media-title';text(title,itemName(item));button.appendChild(poster);button.appendChild(title);
       if(isFavorite(item))addClass(button,'is-favorite');
-      on(button,'click',function(){if(state.section==='series')openSeries(item,button);else play(item);});on(button,'dblclick',function(){toggleFavorite(item);});root.appendChild(button);
-    });
-    focusFirst();
+      on(button,'click',(function(selected){return function(){if(state.section==='series')openSeries(selected,this);else play(selected);};}(item)));
+      on(button,'dblclick',(function(selected){return function(){toggleFavorite(selected);};}(item)));
+      root.appendChild(button);
+    }
+    if(shown.length>state.visibleCount){
+      var more=document.createElement('button');more.className='filter-button load-more';more.type='button';
+      text(more,'Load more ('+Math.min(PAGE_SIZE,shown.length-state.visibleCount)+' of '+(shown.length-state.visibleCount)+')');
+      on(more,'click',function(){state.visibleCount=Math.min(shown.length,state.visibleCount+PAGE_SIZE);renderMedia(false);});
+      root.appendChild(more);
+    }
+    if(reset!==false)focusFirst();
   }
   function recentHas(key){var i;for(i=0;i<state.recent.length;i++){if(state.recent[i].key===key)return true;}return false;}
   function parentalUnlock(){
@@ -209,9 +222,9 @@
   on(byId('video-player'),'pause',savePlaybackProgress);
   on(byId('video-player'),'loadedmetadata',applyResume);
   on(byId('video-player'),'ended',function(){if(state.playbackKey){var i;for(i=0;i<state.recent.length;i++){if(state.recent[i].key===state.playbackKey){state.recent[i].position=0;saveLists();break;}}}});
-  on(byId('catalog-search'),'input',function(){state.favoritesOnly=false;state.recentOnly=false;updateFilterButtons();renderMedia();});
-  on(byId('show-favorites'),'click',function(){state.favoritesOnly=!state.favoritesOnly;state.recentOnly=false;updateFilterButtons();renderMedia();});
-  on(byId('show-recent'),'click',function(){state.recentOnly=!state.recentOnly;state.favoritesOnly=false;updateFilterButtons();renderMedia();});
+  on(byId('catalog-search'),'input',function(){state.favoritesOnly=false;state.recentOnly=false;state.visibleCount=0;updateFilterButtons();renderMedia(true);});
+  on(byId('show-favorites'),'click',function(){state.favoritesOnly=!state.favoritesOnly;state.recentOnly=false;state.visibleCount=0;updateFilterButtons();renderMedia(true);});
+  on(byId('show-recent'),'click',function(){state.recentOnly=!state.recentOnly;state.favoritesOnly=false;state.visibleCount=0;updateFilterButtons();renderMedia(true);});
   on(byId('parental-settings'),'click',function(){var old='';try{old=localStorage.getItem('tvi-parental-pin')||'';}catch(ignore){}if(old){var verify=window.prompt('Enter current parental PIN:');if(verify!==old){window.alert('Incorrect PIN.');return;}}var pin=window.prompt(old?'Enter new parental PIN (4 digits):':'Set parental PIN (4 digits):');if(pin===null)return;if(!/^\d{4}$/.test(pin)){window.alert('PIN must contain exactly 4 digits.');return;}try{localStorage.setItem('tvi-parental-pin',pin);window.alert('Parental PIN saved on this TV.');}catch(ignore2){window.alert('Could not save PIN on this TV.');}});
   on(document,'keydown',function(event){
     event=event||window.event;var key=event.key||'',code=event.keyCode;

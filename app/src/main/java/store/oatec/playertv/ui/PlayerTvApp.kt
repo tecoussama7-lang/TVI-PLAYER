@@ -4140,7 +4140,12 @@ private fun visibleChannels(
             "All" -> !hidden
             "Favorites" -> !hidden && channel.id in preferences.favorites()
             "Hidden" -> hidden
-            else -> !hidden && effectiveCategory.equals(category, ignoreCase = true)
+            // Provider categories must remain selectable even when automatic
+            // classification (for example Sports) assigns a different display group.
+            else -> !hidden && (
+                effectiveCategory.equals(category, ignoreCase = true) ||
+                    channel.category.trim().equals(category, ignoreCase = true)
+                )
         }) &&
         (search.isBlank() || channel.title.contains(search, true) || channel.category.contains(search, true))
 }

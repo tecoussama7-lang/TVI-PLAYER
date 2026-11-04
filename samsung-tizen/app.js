@@ -254,7 +254,8 @@
   function playEpisode(episode,series){var id=episode.id||episode.stream_id;if(!id){status('This episode has no playable stream ID.');return;}var key='episode:'+String(id),i,entry=null;for(i=state.recent.length-1;i>=0;i--){if(state.recent[i].key===key){entry=state.recent[i];state.recent.splice(i,1);break;}}if(!entry)entry={key:key,section:'episode',id:String(id),name:episode.title||itemName(series),position:0,duration:0,url:streamUrl('series',id,episode.container_extension||'mp4')};state.recent.unshift(entry);if(state.recent.length>40)state.recent.length=40;saveLists();startVideo(streamUrl('series',id,episode.container_extension||'mp4'),episode.title||itemName(series),key);}
   function closePlayer(){var video=byId('video-player');savePlaybackProgress();video.pause();video.removeAttribute('src');video.load();state.playbackKey=null;show('catalog-screen');}
   function back(){if(!hasClass(byId('player-screen'),'hidden')){closePlayer();return true;}if(!hasClass(byId('catalog-screen'),'hidden')&&state.inSeries){returnToSeries();return true;}if(!hasClass(byId('catalog-screen'),'hidden')){byId('change-account').focus();return true;}return false;}
-  on(byId('login-form'),'submit',connect);\n  on(byId('connect-m3u'),'click',connectM3u);
+  on(byId('login-form'),'submit',connect);
+  on(byId('connect-m3u'),'click',connectM3u);
   on(byId('section-nav'),'click',function(event){event=event||window.event;var target=event.target||event.srcElement;while(target&&target!==byId('section-nav')&&!target.getAttribute('data-section'))target=target.parentNode;if(target&&target.getAttribute('data-section'))loadSection(target.getAttribute('data-section'));});
   on(byId('change-account'),'click',function(){state.cache={};byId('password').value='';show('login-screen');byId('server').focus();});
   on(byId('close-player'),'click',closePlayer);

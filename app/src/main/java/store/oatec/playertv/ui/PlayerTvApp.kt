@@ -955,10 +955,14 @@ private fun PlayerTvAppContent() {
         }
         kidsYoutubeMovies = emptyList()
         kidsYoutubeSeries = emptyList()
-        withContext(Dispatchers.IO) {
-            kidsYoutubeMovies = runCatching { searchYouTubeKidsTrending(Section.MOVIES) }.getOrDefault(emptyList())
-            kidsYoutubeSeries = runCatching { searchYouTubeKidsTrending(Section.SERIES) }.getOrDefault(emptyList())
+        val trendingBySection = withContext(Dispatchers.IO) {
+            Pair(
+                runCatching { searchYouTubeKidsTrending(Section.MOVIES) }.getOrDefault(emptyList()),
+                runCatching { searchYouTubeKidsTrending(Section.SERIES) }.getOrDefault(emptyList()),
+            )
         }
+        kidsYoutubeMovies = trendingBySection.first
+        kidsYoutubeSeries = trendingBySection.second
     }
 
     val filePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->

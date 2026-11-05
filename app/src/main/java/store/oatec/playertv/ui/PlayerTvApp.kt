@@ -2418,6 +2418,32 @@ private fun LiveScreen(
         LazyRow(Modifier.fillMaxWidth().padding(top = 2.dp, bottom = 3.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             items(categories, key = { it }) { item -> CategoryPill(item, category == item) { onCategory(item) } }
         }
+        // Keep channel-manager actions reachable on phones as well as TV/desktop layouts.
+        if (!isWideScreen && selectedChannel != null) {
+            val detail = selectedChannel!!
+            Row(
+                Modifier.fillMaxWidth().padding(bottom = 5.dp),
+                horizontalArrangement = Arrangement.spacedBy(7.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    "رقم ${channelNumber(detail, catalog.liveChannels, preferences)}",
+                    color = Lime,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+                Spacer(Modifier.weight(1f))
+                TextButton(onClick = { onFavorite(detail) }, contentPadding = PaddingValues(horizontal = 7.dp, vertical = 2.dp)) {
+                    Text(if (detail.id in preferences.favorites()) "★ المفضلة" else "☆ المفضلة", color = Lime, fontSize = 11.sp)
+                }
+                TextButton(onClick = { onOrganize(detail) }, contentPadding = PaddingValues(horizontal = 7.dp, vertical = 2.dp)) {
+                    Text("ترتيب / تصنيف", color = TextMain, fontSize = 11.sp)
+                }
+                TextButton(onClick = { pendingDeleteChannel = detail }, contentPadding = PaddingValues(horizontal = 7.dp, vertical = 2.dp)) {
+                    Text("حذف", color = ErrorRed, fontSize = 11.sp)
+                }
+            }
+        }
         when {
             busy && catalog.liveChannels.isEmpty() -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { LoadingState("Loading channels", catalogProgress, catalogLoadedItems) }
             channels.isEmpty() -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { EmptyState("No channels available", message.ifBlank { "Add or refresh an IPTV source to load channels." }) }

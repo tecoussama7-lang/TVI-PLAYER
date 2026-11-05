@@ -353,6 +353,10 @@ private fun PlayerTvAppContent() {
     var movieCategories by remember(activeSourceId) { mutableStateOf<List<SourceCategory>>(emptyList()) }
     var seriesCategories by remember(activeSourceId) { mutableStateOf<List<SourceCategory>>(emptyList()) }
     var liveCategories by remember(activeSourceId) { mutableStateOf<List<SourceCategory>>(emptyList()) }
+    var kidsChannels by remember(activeSourceId) { mutableStateOf<List<MediaEntry>>(emptyList()) }
+    var kidsMovies by remember(activeSourceId) { mutableStateOf<List<MediaEntry>>(emptyList()) }
+    var kidsSeries by remember(activeSourceId) { mutableStateOf<List<MediaEntry>>(emptyList()) }
+    var kidsYoutubeTrending by remember { mutableStateOf<List<MediaEntry>>(emptyList()) }
     var selectedMovieCategory by rememberSaveable { mutableStateOf("") }
     var selectedSeriesCategory by rememberSaveable { mutableStateOf("") }
     var loadedCategoryKeys by remember { mutableStateOf<Set<String>>(emptySet()) }
@@ -809,11 +813,26 @@ private fun PlayerTvAppContent() {
     }
 
     LaunchedEffect(activeSourceId) {
+        kidsChannels = emptyList()
+        kidsMovies = emptyList()
+        kidsSeries = emptyList()
         catalog = SourceCatalog()
         loadedCatalogs = emptySet()
         episodes = emptyList()
         episodesBusy = false
         pendingSeries = null
+    }
+
+    // Kids Mode prepares the three provider sections in the background so its
+    // dashboard can discover child-specific provider categories even when the
+    // parent opens the app directly into Kids Home.
+    LaunchedEffect(activeSourceId, kidsModeActive) {
+        val source = sources.firstOrNull { it.id == activeSourceId } ?: return@LaunchedEffect
+        if (kidsModeActive) {
+            refresh(source, Section.LIVE)
+            refresh(source, Section.MOVIES)
+            refresh(source, Section.SERIES)
+        }
     }
 
     // Load only the section the user is viewing. Each section reads its saved
@@ -881,6 +900,47 @@ private fun PlayerTvAppContent() {
         if (source.id == activeSourceId) {
             liveCategoryNames = categories.distinct().sortedBy { it.lowercase() }
         }
+    }
+
+    // Load every provider category explicitly marked for children, independently
+    // for Live TV, Movies and Series. This avoids relying on the first general
+    // catalogue page, where child titles can be buried among thousands of items.
+    LaunchedEffect(activeSourceId, kidsModeActive, loadedCatalogs, liveCategories, movieCategories, seriesCategories) {
+        val source = sources.firstOrNull { it.id == activeSourceId } ?: return@LaunchedEffect
+        if (!kidsModeActive) {
+            kidsChannels = emptyList(); kidsMovies = emptyList(); kidsSeries = emptyList()
+            kidsYoutubeTrending = emptyList()
+            return@LaunchedEffect
+        }
+        val ready = listOf("LIVE", "MOVIES", "SERIES").all { "${source.id}:$it" in loadedCatalogs }
+        if (!ready) return@LaunchedEffect
+        val liveKids = liveCategories.filter { isKidsCategoryName(it.name) }
+        val movieKids = movieCategories.filter { isKidsCategoryName(it.name) }
+        val seriesKids = seriesCategories.filter { isKidsCategoryName(it.name) }
+        val loaded = withContext(Dispatchers.IO) {
+            fun read(sectionName: String, categories: List<SourceCategory>): List<MediaEntry> =
+                categories.flatMap { category ->
+                    mediaCatalogStore.page(source.id, sectionName, limit = 500, offset = 0, category = category.name)
+                }.distinctBy { it.id }
+            Triple(
+                read(CatalogSection.LIVE.name, liveKids),
+                read(CatalogSection.MOVIES.name, movieKids),
+                read(CatalogSection.SERIES.name, seriesKids),
+            )
+        }
+        if (source.id == activeSourceId && kidsModeActive) {
+            kidsChannels = applyKidsModeFilter(loaded.first, preferences)
+            kidsMovies = applyKidsModeFilter(loaded.second, preferences)
+            kidsSeries = applyKidsModeFilter(loaded.third, preferences)
+        }
+    }
+
+    LaunchedEffect(kidsModeActive) {
+        if (!kidsModeActive) { kidsYoutubeTrending = emptyList(); return@LaunchedEffect }
+        kidsYoutubeTrending = emptyList()
+        kidsYoutubeTrending = runCatching {
+            withContext(Dispatchers.IO) { searchYouTubeKidsTrending() }
+        }.getOrDefault(emptyList())
     }
 
     val filePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
@@ -1021,9 +1081,10 @@ private fun PlayerTvAppContent() {
                 KidsDashboard(
                     compact = compactLandscape,
                     section = currentSection,
-                    movies = applyKidsModeFilter(catalog.movies, preferences),
-                    series = applyKidsModeFilter(catalog.series, preferences),
-                    channels = applyKidsModeFilter(catalog.liveChannels, preferences),
+                    movies = kidsMovies.ifEmpty { applyKidsModeFilter(catalog.movies, preferences) },
+                    series = kidsSeries.ifEmpty { applyKidsModeFilter(catalog.series, preferences) },
+                    channels = kidsChannels.ifEmpty { applyKidsModeFilter(catalog.liveChannels, preferences) },
+                    youtubeTrending = kidsYoutubeTrending,
                     search = search,
                     onSearch = { search = it },
                     onSection = { next -> navigateTo(next); pendingSeries = null },
@@ -4246,6 +4307,7 @@ private fun KidsDashboard(
     movies: List<MediaEntry>,
     series: List<MediaEntry>,
     channels: List<MediaEntry>,
+    youtubeTrending: List<MediaEntry>,
     search: String,
     onSearch: (String) -> Unit,
     onSection: (Section) -> Unit,
@@ -4456,7 +4518,7 @@ private fun KidsDashboard(
                             }
                         }
                     }
-                    Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(if (compact) 8.dp else 14.dp)) {
+                    Row(Modifier.fillMaxWidth().weight(0.78f), horizontalArrangement = Arrangement.spacedBy(if (compact) 8.dp else 14.dp)) {
                         Surface(
                             color = Color(0xFF6546B8), shape = RoundedCornerShape(18.dp),
                             border = BorderStroke(2.dp, Color(0xFFFFC857)),
@@ -4484,9 +4546,90 @@ private fun KidsDashboard(
                             }
                         }
                     }
+                    if (youtubeTrending.isNotEmpty()) {
+                        KidsPosterShelf(
+                            title = "🔥 YouTube Kids Trend",
+                            entries = youtubeTrending,
+                            section = Section.MOVIES,
+                            compact = compact,
+                            accent = Color(0xFFFFD76A),
+                            onPlay = onPlay,
+                            onPlayYoutube = onPlayYoutube,
+                            onMovieDetails = onMovieDetails,
+                        )
+                    } else {
+                        Text("YouTube Kids Trend غادي يبان ملي يتوفر الاتصال.", color = Color(0xFFD7E8F8), fontSize = 10.sp)
+                    }
                 }
             }
         }
+    }
+}
+
+
+/** Matches provider category labels that explicitly identify child/family content. */
+private fun isKidsCategoryName(value: String): Boolean {
+    val normalized = value.lowercase()
+    return listOf(
+        "kids", "kid", "children", "child", "junior", "cartoon", "animation",
+        "baby", "preschool", "family", "disney junior", "nick jr", "nickelodeon",
+        "spacetoon", "mbc3", "jeem", "براعم", "أطفال", "اطفال", "طفل",
+        "كرتون", "رسوم متحركة", "العائلة", "عائلي",
+    ).any { normalized.contains(it) }
+}
+
+/** YouTube Data API search sorted by view count with strict SafeSearch. */
+private fun searchYouTubeKidsTrending(): List<MediaEntry> {
+    val apiKey = BuildConfig.YOUTUBE_API_KEY.trim()
+    if (apiKey.isBlank()) return emptyList()
+    val params = listOf(
+        "part" to "snippet",
+        "q" to "kids cartoons animation nursery rhymes family friendly",
+        "type" to "video",
+        "videoEmbeddable" to "true",
+        "order" to "viewCount",
+        "maxResults" to "25",
+        "safeSearch" to "strict",
+        "regionCode" to "MA",
+        "relevanceLanguage" to "en",
+        "key" to apiKey,
+    ).joinToString("&") { (key, value) ->
+        java.net.URLEncoder.encode(key, "UTF-8") + "=" + java.net.URLEncoder.encode(value, "UTF-8")
+    }
+    val connection = (URL("https://www.googleapis.com/youtube/v3/search?$params").openConnection() as HttpURLConnection).apply {
+        requestMethod = "GET"
+        connectTimeout = 10000
+        readTimeout = 12000
+        setRequestProperty("Accept", "application/json")
+    }
+    return try {
+        val code = connection.responseCode
+        val stream = if (code in 200..299) connection.inputStream else connection.errorStream
+        val body = stream?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }.orEmpty()
+        if (code !in 200..299) return emptyList()
+        val items = JSONObject(body).optJSONArray("items") ?: return emptyList()
+        (0 until items.length()).mapNotNull { index ->
+            val item = items.optJSONObject(index) ?: return@mapNotNull null
+            val videoId = item.optJSONObject("id")?.optString("videoId").orEmpty()
+            val snippet = item.optJSONObject("snippet") ?: return@mapNotNull null
+            val title = snippet.optString("title").trim()
+            if (videoId.isBlank() || title.isBlank()) return@mapNotNull null
+            val thumbnails = snippet.optJSONObject("thumbnails")
+            val thumbnail = thumbnails?.optJSONObject("high")?.optString("url").orEmpty()
+                .ifBlank { thumbnails?.optJSONObject("medium")?.optString("url").orEmpty() }
+                .ifBlank { thumbnails?.optJSONObject("default")?.optString("url").orEmpty() }
+            MediaEntry(
+                id = "youtube:" + videoId,
+                title = title,
+                category = "YouTube Kids • Trend",
+                streamUrl = "https://www.youtube.com/watch?v=" + videoId,
+                logoUrl = thumbnail.ifBlank { "https://i.ytimg.com/vi/" + videoId + "/hqdefault.jpg" },
+                kind = MediaKind.MOVIE,
+                description = "YouTube Kids trending result • " + snippet.optString("channelTitle"),
+            )
+        }.distinctBy { it.id }.take(20)
+    } finally {
+        connection.disconnect()
     }
 }
 

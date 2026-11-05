@@ -8,6 +8,7 @@ on:
       - fix/player-layout-kids-ui-2026-10
       - feature/prompt-full-implementation
       - feature/isolated-category-cache
+      - feature/kids-mode-category-discovery
   workflow_dispatch:
 
 permissions:

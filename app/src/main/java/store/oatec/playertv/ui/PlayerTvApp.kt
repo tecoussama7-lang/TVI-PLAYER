@@ -399,6 +399,7 @@ private fun PlayerTvAppContent() {
         section = target.name
         selectedCategory = "All"
         search = ""
+        message = ""
         selectedMedia = null
         selectedDetails = null
     }
@@ -531,6 +532,7 @@ private fun PlayerTvAppContent() {
         }
         val loadKey = "${source.id}:${catalogSection.name}"
         if (!force && loadKey in loadedCatalogs) return
+        message = ""
         if (source.type == SourceType.XTREAM) {
             // Import every provider category one at a time; each category is an
             // independent SQLite transaction, keeping memory bounded on large lists.
@@ -3142,6 +3144,9 @@ private fun SeriesScreen(
         }
         Spacer(Modifier.height(2.dp))
         when {
+            filtered.isEmpty() && busy -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                LoadingState("Loading series")
+            }
             filtered.isEmpty() -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 EmptyState("No series available", message.ifBlank { "Series metadata is available from supported Xtream sources." })
             }

@@ -356,7 +356,8 @@ private fun PlayerTvAppContent() {
     var kidsChannels by remember(activeSourceId) { mutableStateOf<List<MediaEntry>>(emptyList()) }
     var kidsMovies by remember(activeSourceId) { mutableStateOf<List<MediaEntry>>(emptyList()) }
     var kidsSeries by remember(activeSourceId) { mutableStateOf<List<MediaEntry>>(emptyList()) }
-    var kidsYoutubeTrending by remember { mutableStateOf<List<MediaEntry>>(emptyList()) }
+    var kidsYoutubeMovies by remember { mutableStateOf<List<MediaEntry>>(emptyList()) }
+    var kidsYoutubeSeries by remember { mutableStateOf<List<MediaEntry>>(emptyList()) }
     var selectedMovieCategory by rememberSaveable { mutableStateOf("") }
     var selectedSeriesCategory by rememberSaveable { mutableStateOf("") }
     var loadedCategoryKeys by remember { mutableStateOf<Set<String>>(emptySet()) }
@@ -947,11 +948,17 @@ private fun PlayerTvAppContent() {
     }
 
     LaunchedEffect(kidsModeActive) {
-        if (!kidsModeActive) { kidsYoutubeTrending = emptyList(); return@LaunchedEffect }
-        kidsYoutubeTrending = emptyList()
-        kidsYoutubeTrending = runCatching {
-            withContext(Dispatchers.IO) { searchYouTubeKidsTrending() }
-        }.getOrDefault(emptyList())
+        if (!kidsModeActive) {
+            kidsYoutubeMovies = emptyList()
+            kidsYoutubeSeries = emptyList()
+            return@LaunchedEffect
+        }
+        kidsYoutubeMovies = emptyList()
+        kidsYoutubeSeries = emptyList()
+        withContext(Dispatchers.IO) {
+            kidsYoutubeMovies = runCatching { searchYouTubeKidsTrending(Section.MOVIES) }.getOrDefault(emptyList())
+            kidsYoutubeSeries = runCatching { searchYouTubeKidsTrending(Section.SERIES) }.getOrDefault(emptyList())
+        }
     }
 
     val filePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
@@ -1092,10 +1099,9 @@ private fun PlayerTvAppContent() {
                 KidsDashboard(
                     compact = compactLandscape,
                     section = currentSection,
-                    movies = kidsMovies.ifEmpty { applyKidsModeFilter(catalog.movies, preferences) },
-                    series = kidsSeries.ifEmpty { applyKidsModeFilter(catalog.series, preferences) },
+                    movies = (kidsMovies.ifEmpty { applyKidsModeFilter(catalog.movies, preferences) } + kidsYoutubeMovies).distinctBy { it.id },
+                    series = (kidsSeries.ifEmpty { applyKidsModeFilter(catalog.series, preferences) } + kidsYoutubeSeries).distinctBy { it.id },
                     channels = kidsChannels.ifEmpty { applyKidsModeFilter(catalog.liveChannels, preferences) },
-                    youtubeTrending = kidsYoutubeTrending,
                     search = search,
                     onSearch = { search = it },
                     onSection = { next -> navigateTo(next); pendingSeries = null },
@@ -4318,7 +4324,6 @@ private fun KidsDashboard(
     movies: List<MediaEntry>,
     series: List<MediaEntry>,
     channels: List<MediaEntry>,
-    youtubeTrending: List<MediaEntry>,
     search: String,
     onSearch: (String) -> Unit,
     onSection: (Section) -> Unit,
@@ -4557,20 +4562,6 @@ private fun KidsDashboard(
                             }
                         }
                     }
-                    if (youtubeTrending.isNotEmpty()) {
-                        KidsPosterShelf(
-                            title = "🔥 YouTube Kids Trend",
-                            entries = youtubeTrending,
-                            section = Section.MOVIES,
-                            compact = compact,
-                            accent = Color(0xFFFFD76A),
-                            onPlay = onPlay,
-                            onPlayYoutube = onPlayYoutube,
-                            onMovieDetails = onMovieDetails,
-                        )
-                    } else {
-                        Text("YouTube Kids Trend غادي يبان ملي يتوفر الاتصال.", color = Color(0xFFD7E8F8), fontSize = 10.sp)
-                    }
                 }
             }
         }
@@ -4590,12 +4581,18 @@ private fun isKidsCategoryName(value: String): Boolean {
 }
 
 /** YouTube Data API search sorted by view count with strict SafeSearch. */
-private fun searchYouTubeKidsTrending(): List<MediaEntry> {
+private fun searchYouTubeKidsTrending(section: Section): List<MediaEntry> {
+    require(section == Section.MOVIES || section == Section.SERIES)
     val apiKey = BuildConfig.YOUTUBE_API_KEY.trim()
     if (apiKey.isBlank()) return emptyList()
+    val query = if (section == Section.SERIES) {
+        "kids cartoon series episodes animation nursery rhymes family friendly"
+    } else {
+        "kids cartoon movie full movie animation family friendly"
+    }
     val params = listOf(
         "part" to "snippet",
-        "q" to "kids cartoons animation nursery rhymes family friendly",
+        "q" to query,
         "type" to "video",
         "videoEmbeddable" to "true",
         "order" to "viewCount",
@@ -4632,10 +4629,10 @@ private fun searchYouTubeKidsTrending(): List<MediaEntry> {
             MediaEntry(
                 id = "youtube:" + videoId,
                 title = title,
-                category = "YouTube Kids • Trend",
+                category = if (section == Section.SERIES) "YouTube Kids • مسلسل" else "YouTube Kids • فيلم وكرتون",
                 streamUrl = "https://www.youtube.com/watch?v=" + videoId,
                 logoUrl = thumbnail.ifBlank { "https://i.ytimg.com/vi/" + videoId + "/hqdefault.jpg" },
-                kind = MediaKind.MOVIE,
+                kind = if (section == Section.SERIES) MediaKind.SERIES else MediaKind.MOVIE,
                 description = "YouTube Kids trending result • " + snippet.optString("channelTitle"),
             )
         }.distinctBy { it.id }.take(20)

@@ -823,15 +823,59 @@ private fun PlayerTvAppContent() {
         pendingSeries = null
     }
 
-    // Kids Mode prepares the three provider sections in the background so its
-    // dashboard can discover child-specific provider categories even when the
-    // parent opens the app directly into Kids Home.
+    // Kids Mode downloads only provider categories identified as child/family
+    // content. It does not import every adult category just to build the Kids view.
     LaunchedEffect(activeSourceId, kidsModeActive) {
         val source = sources.firstOrNull { it.id == activeSourceId } ?: return@LaunchedEffect
-        if (kidsModeActive) {
+        if (!kidsModeActive) {
+            kidsChannels = emptyList(); kidsMovies = emptyList(); kidsSeries = emptyList()
+            return@LaunchedEffect
+        }
+        if (source.type != SourceType.XTREAM) {
             refresh(source, Section.LIVE)
-            refresh(source, Section.MOVIES)
-            refresh(source, Section.SERIES)
+            return@LaunchedEffect
+        }
+        runCatching {
+            withContext(Dispatchers.IO) {
+                suspend fun loadKidsSection(section: CatalogSection): Pair<List<SourceCategory>, List<MediaEntry>> {
+                    val categories = repository.loadCategories(source, section)
+                    mediaCatalogStore.saveCategories(source.id, section.name, categories)
+                    val childCategories = categories.filter { isKidsCategoryName(it.name) }
+                    for (category in childCategories) {
+                        if (!mediaCatalogStore.isCategoryCached(source.id, section.name, category.id)) {
+                            mediaCatalogStore.beginCategoryImport(source.id, section.name, category).use { session ->
+                                repository.loadCategoryBatched(source, section, category) { batch ->
+                                    session.insertBatch(batch)
+                                }
+                                session.commit()
+                            }
+                        }
+                    }
+                    val entries = childCategories.flatMap { category ->
+                        mediaCatalogStore.page(
+                            source.id, section.name, limit = 500, offset = 0, category = category.name,
+                        )
+                    }.distinctBy { it.id }
+                    return categories to entries
+                }
+                Triple(
+                    loadKidsSection(CatalogSection.LIVE),
+                    loadKidsSection(CatalogSection.MOVIES),
+                    loadKidsSection(CatalogSection.SERIES),
+                )
+            }
+        }.onSuccess { loaded ->
+            if (source.id == activeSourceId && kidsModeActive) {
+                liveCategories = loaded.first.first
+                movieCategories = loaded.second.first
+                seriesCategories = loaded.third.first
+                liveCategoryNames = loaded.first.first.map { it.name }.distinct().sorted()
+                kidsChannels = applyKidsModeFilter(loaded.first.second, preferences)
+                kidsMovies = applyKidsModeFilter(loaded.second.second, preferences)
+                kidsSeries = applyKidsModeFilter(loaded.third.second, preferences)
+            }
+        }.onFailure {
+            if (source.id == activeSourceId) message = "Kids categories could not be loaded: ${it.message ?: "provider error"}"
         }
     }
 
@@ -899,39 +943,6 @@ private fun PlayerTvAppContent() {
         }
         if (source.id == activeSourceId) {
             liveCategoryNames = categories.distinct().sortedBy { it.lowercase() }
-        }
-    }
-
-    // Load every provider category explicitly marked for children, independently
-    // for Live TV, Movies and Series. This avoids relying on the first general
-    // catalogue page, where child titles can be buried among thousands of items.
-    LaunchedEffect(activeSourceId, kidsModeActive, loadedCatalogs, liveCategories, movieCategories, seriesCategories) {
-        val source = sources.firstOrNull { it.id == activeSourceId } ?: return@LaunchedEffect
-        if (!kidsModeActive) {
-            kidsChannels = emptyList(); kidsMovies = emptyList(); kidsSeries = emptyList()
-            kidsYoutubeTrending = emptyList()
-            return@LaunchedEffect
-        }
-        val ready = listOf("LIVE", "MOVIES", "SERIES").all { "${source.id}:$it" in loadedCatalogs }
-        if (!ready) return@LaunchedEffect
-        val liveKids = liveCategories.filter { isKidsCategoryName(it.name) }
-        val movieKids = movieCategories.filter { isKidsCategoryName(it.name) }
-        val seriesKids = seriesCategories.filter { isKidsCategoryName(it.name) }
-        val loaded = withContext(Dispatchers.IO) {
-            fun read(sectionName: String, categories: List<SourceCategory>): List<MediaEntry> =
-                categories.flatMap { category ->
-                    mediaCatalogStore.page(source.id, sectionName, limit = 500, offset = 0, category = category.name)
-                }.distinctBy { it.id }
-            Triple(
-                read(CatalogSection.LIVE.name, liveKids),
-                read(CatalogSection.MOVIES.name, movieKids),
-                read(CatalogSection.SERIES.name, seriesKids),
-            )
-        }
-        if (source.id == activeSourceId && kidsModeActive) {
-            kidsChannels = applyKidsModeFilter(loaded.first, preferences)
-            kidsMovies = applyKidsModeFilter(loaded.second, preferences)
-            kidsSeries = applyKidsModeFilter(loaded.third, preferences)
         }
     }
 

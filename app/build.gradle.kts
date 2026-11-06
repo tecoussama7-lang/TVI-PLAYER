@@ -7,14 +7,11 @@ android {
     namespace = "store.oatec.playertv"
     compileSdk = 36
 
+
     defaultConfig {
         ndk {
             abiFilters += listOf("arm64-v8a")
         }
-    }
-
-
-    defaultConfig {
         applicationId = "store.oatec.playertv"
         minSdk = 23
         targetSdk = 36

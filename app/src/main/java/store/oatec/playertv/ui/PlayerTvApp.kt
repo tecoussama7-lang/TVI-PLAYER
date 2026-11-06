@@ -1289,7 +1289,12 @@ private fun PlayerTvAppContent(appLanguage: String, onLanguageChanged: (String) 
                             onFavorite = { item -> preferences.setFavorite(item.id, item.id !in preferences.favorites()); preferenceRevision++ },
                             onOrganize = { organizingChannel = it },
                             onHide = { item -> preferences.setHidden(item.id, item.id !in preferences.hiddenChannels()); preferenceRevision++ },
-                            onDelete = { item -> preferences.setHidden(item.id, true); preferenceRevision++ },
+                            onDelete = { item ->
+                                if (item.id.startsWith("manual:")) preferences.removeCustomChannel(item.id)
+                                else preferences.setHidden(item.id, true)
+                                preferenceRevision++
+                            },
+                            onChanged = { preferenceRevision++ },
                         )
                         Section.MOVIES -> MediaScreen(
                             title = "Movies",
@@ -2584,16 +2589,20 @@ private fun LiveScreen(
     onOrganize: (MediaEntry) -> Unit,
     onHide: (MediaEntry) -> Unit,
     onDelete: (MediaEntry) -> Unit,
+    onChanged: () -> Unit,
 ) {
-    val channels = remember(catalog.liveChannels, category, search, preferenceRevision) {
-        visibleChannels(catalog, category, search, preferences)
+    val allLiveChannels = remember(catalog.liveChannels, preferenceRevision) { catalog.liveChannels + preferences.customChannels() }
+    val channels = remember(allLiveChannels, category, search, preferenceRevision) {
+        visibleChannels(catalog.copy(liveChannels = allLiveChannels), category, search, preferences)
     }
     var selectedChannel by remember(channels) { mutableStateOf(channels.firstOrNull()) }
-    var previewRequested by remember(channels) { mutableStateOf(false) }
+    var previewRequested by remember(channels) { mutableStateOf(true) }
     var pendingDeleteChannel by remember { mutableStateOf<MediaEntry?>(null) }
-    val categories = remember(availableCategories, catalog.liveChannels, preferenceRevision) {
+    var channelActionsTarget by remember { mutableStateOf<MediaEntry?>(null) }
+    var showAddChannelDialog by remember { mutableStateOf(false) }
+    val categories = remember(availableCategories, allLiveChannels, preferenceRevision) {
         (listOf("All", "Favorites", "Hidden") + AUTO_CHANNEL_CATEGORIES + availableCategories +
-            catalog.liveChannels.map { preferences.categoryFor(it.id, automaticChannelCategory(it)) } +
+            allLiveChannels.map { preferences.categoryFor(it.id, automaticChannelCategory(it)) } +
             preferences.customCategories()
         ).filter(String::isNotBlank).distinct()
     }
@@ -2615,6 +2624,7 @@ private fun LiveScreen(
                 } else false
             }, contentPadding = PaddingValues(horizontal = 9.dp, vertical = 2.dp)) { Text("← الرئيسية", fontSize = 10.sp) }
             Spacer(Modifier.weight(1f))
+            OutlinedButton(onClick = { showAddChannelDialog = true }, contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)) { Text("＋ قناة", fontSize = 11.sp) }
             OutlinedTextField(
                 value = search, onValueChange = onSearch, modifier = Modifier.width(when { screenWidthDp >= 1200 -> 300.dp; screenWidthDp >= 700 -> 230.dp; else -> 145.dp }).heightIn(max = 54.dp),
                 singleLine = true, placeholder = { Text("بحث فالقنوات…", color = TextMuted, fontSize = 12.sp) },
@@ -2633,7 +2643,7 @@ private fun LiveScreen(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    "رقم ${channelNumber(detail, catalog.liveChannels, preferences)}",
+                    "رقم ${channelNumber(detail, allLiveChannels, preferences)}",
                     color = Lime,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
@@ -2667,14 +2677,15 @@ private fun LiveScreen(
                         color = if (selected) Raised else Panel, shape = RoundedCornerShape(10.dp),
                         border = BorderStroke(if (selected) 2.dp else 1.dp, if (selected) Lime else Color.White.copy(alpha = 0.08f)),
                         modifier = Modifier.fillMaxWidth().height(if (isWideScreen) 104.dp else 78.dp).combinedClickable(
-                            onClick = { selectedChannel = item; previewRequested = false },
+                            onClick = { selectedChannel = item; previewRequested = true },
+                            onLongClick = { channelActionsTarget = item },
                             onDoubleClick = { onPlay(item.copy(title = preferences.channelTitle(item.id, item.title))) },
                         ),
                     ) {
                         Row(Modifier.padding(if (isWideScreen) 10.dp else 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
                             Box(Modifier.size(if (isWideScreen) 52.dp else 38.dp).background(Color.Black, RoundedCornerShape(7.dp)), contentAlignment = Alignment.Center) {
                                 if (item.logoUrl.isNotBlank()) AsyncImage(model = item.logoUrl, contentDescription = item.title, modifier = Modifier.fillMaxSize().padding(2.dp), contentScale = ContentScale.Fit)
-                                else Text(channelNumber(item, catalog.liveChannels, preferences).toString(), color = Lime, fontSize = 12.sp, fontWeight = FontWeight.Black)
+                                else Text(channelNumber(item, allLiveChannels, preferences).toString(), color = Lime, fontSize = 12.sp, fontWeight = FontWeight.Black)
                             }
                             Column(Modifier.weight(1f)) {
                                 Text(channelNumber(item, catalog.liveChannels, preferences).toString().padStart(3, '0'), color = Lime, fontSize = 10.sp, fontWeight = FontWeight.Bold)
@@ -2722,6 +2733,41 @@ private fun LiveScreen(
                 }
             }
         }
+    }
+    channelActionsTarget?.let { item ->
+        AlertDialog(
+            onDismissRequest = { channelActionsTarget = null },
+            title = { Text("إدارة القناة") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(preferences.channelTitle(item.id, item.title), color = TextMain)
+                    TextButton(onClick = { channelActionsTarget = null; showAddChannelDialog = true }) { Text("＋ إضافة قناة") }
+                    TextButton(onClick = { channelActionsTarget = null; onOrganize(item) }) { Text("✎ تعديل القناة") }
+                    TextButton(onClick = { channelActionsTarget = null; pendingDeleteChannel = item }) { Text("⌫ حذف القناة", color = ErrorRed) }
+                }
+            },
+            confirmButton = { TextButton(onClick = { channelActionsTarget = null }) { Text("إغلاق") } },
+        )
+    }
+    if (showAddChannelDialog) {
+        AddManualChannelDialog(
+            onDismiss = { showAddChannelDialog = false },
+            onSave = { title, url, logo, categoryName ->
+                val item = MediaEntry(
+                    id = "manual:" + UUID.randomUUID().toString(),
+                    title = title,
+                    category = categoryName,
+                    streamUrl = url,
+                    logoUrl = logo,
+                )
+                preferences.saveCustomChannel(item)
+                preferences.addCategory(categoryName)
+                selectedChannel = item
+                previewRequested = true
+                showAddChannelDialog = false
+                onChanged()
+            },
+        )
     }
     pendingDeleteChannel?.let { item ->
         AlertDialog(

@@ -2,6 +2,7 @@ package store.oatec.playertv.data
 
 import android.content.Context
 import org.json.JSONArray
+import org.json.JSONObject
 import store.oatec.playertv.model.MediaEntry
 
 class PlayerPreferences(context: Context) {
@@ -25,6 +26,54 @@ class PlayerPreferences(context: Context) {
         }
         val array = JSONArray().apply { updated.forEach(::put) }
         preferences.edit().putString(FAVORITES_KEY, array.toString()).apply()
+    }
+
+    /** User-created channels are stored locally and kept separate from provider catalog data. */
+    fun customChannels(): List<MediaEntry> = preferences.getString(CUSTOM_CHANNELS_KEY, null)
+        ?.let(::JSONArray)
+        ?.let { array ->
+            (0 until array.length()).mapNotNull { index ->
+                val item = array.optJSONObject(index) ?: return@mapNotNull null
+                val id = item.optString("id")
+                val title = item.optString("title")
+                val streamUrl = item.optString("streamUrl")
+                if (id.isBlank() || title.isBlank() || streamUrl.isBlank()) null else MediaEntry(
+                    id = id,
+                    title = title,
+                    category = item.optString("category", "Custom"),
+                    streamUrl = streamUrl,
+                    logoUrl = item.optString("logoUrl"),
+                )
+            }
+        }.orEmpty()
+
+    fun saveCustomChannel(channel: MediaEntry) {
+        val channels = customChannels().filterNot { it.id == channel.id } + channel
+        val array = JSONArray().apply {
+            channels.forEach { item ->
+                put(JSONObject()
+                    .put("id", item.id)
+                    .put("title", item.title)
+                    .put("category", item.category)
+                    .put("streamUrl", item.streamUrl)
+                    .put("logoUrl", item.logoUrl))
+            }
+        }
+        preferences.edit().putString(CUSTOM_CHANNELS_KEY, array.toString()).apply()
+    }
+
+    fun removeCustomChannel(channelId: String) {
+        val array = JSONArray().apply {
+            customChannels().filterNot { it.id == channelId }.forEach { item ->
+                put(JSONObject()
+                    .put("id", item.id)
+                    .put("title", item.title)
+                    .put("category", item.category)
+                    .put("streamUrl", item.streamUrl)
+                    .put("logoUrl", item.logoUrl))
+            }
+        }
+        preferences.edit().putString(CUSTOM_CHANNELS_KEY, array.toString()).apply()
     }
 
     fun customCategories(): List<String> = preferences.getString(CATEGORIES_KEY, null)
@@ -277,6 +326,7 @@ class PlayerPreferences(context: Context) {
         const val KIDS_BLOCK_ITEM_IDS_KEY = "kids_block_item_ids"
         const val NEXT_CHANNEL_NUMBER_KEY = "next_channel_number"
         const val CATEGORIES_KEY = "custom_categories"
+        const val CUSTOM_CHANNELS_KEY = "custom_channels"
         const val HIDDEN_KEY = "hidden_channels"
         const val HISTORY_KEY = "watch_history"
         const val RESUME_PLAYBACK_KEY = "resume_playback"

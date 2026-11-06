@@ -242,6 +242,38 @@ private fun appText(source: String, language: String): String {
         "Stop" to listOf("إيقاف","Arrêter","Stop","Detener","Stopp","Stoppen","Stoppa","Stoppe","Ferma","Stoppar"),
         "Player settings" to listOf("إعدادات المشغل","Paramètres du lecteur","Player settings","Ajustes del reproductor","Player-Einstellungen","Spelerinstellingen","Spelarinställningar","Player-Iistellige","Impostazioni lettore","Preferenzas dal player"),
         "Retry" to listOf("إعادة المحاولة","Réessayer","Retry","Reintentar","Erneut versuchen","Opnieuw proberen","Försök igen","Nomol probiere","Riprova","Empruvar danovamain"),
+        "إضافة قناة يدوياً" to listOf("العربية", "Add channel manually", "Ajouter une chaîne manuellement", "Añadir canal manualmente", "Kanal manuell hinzufügen", "Kanaal handmatig toevoegen", "Lägg till kanal manuellt", "Kanal manuell hinzuefüege", "Aggiungi canale manualmente", "Agiuntar in chanagl manualmain"),
+        "اسم القناة" to listOf("العربية", "Channel name", "Nom de la chaîne", "Nombre del canal", "Kanalname", "Kanaalnaam", "Kanalnamn", "Kanalname", "Nome del canale", "Num dal chanagl"),
+        "رابط البث" to listOf("العربية", "Stream URL", "URL du flux", "URL de transmisión", "Stream-URL", "Stream-URL", "Strömningsadress", "Stream-URL", "URL dello streaming", "URL dal stream"),
+        "رابط الشعار (اختياري)" to listOf("العربية", "Logo URL (optional)", "URL du logo (facultatif)", "URL del logotipo (opcional)", "Logo-URL (optional)", "Logo-URL (optioneel)", "Logotypens URL (valfritt)", "Logo-URL (optional)", "URL del logo (facoltativo)", "URL dal logo (opziunal)"),
+        "التصنيف" to listOf("العربية", "Category", "Catégorie", "Categoría", "Kategorie", "Categorie", "Kategori", "Kategorie", "Categoria", "Categoria"),
+        "إضافة" to listOf("العربية", "Add", "Ajouter", "Añadir", "Hinzufügen", "Toevoegen", "Lägg till", "Hinzuefüege", "Aggiungi", "Agiuntar"),
+        "إلغاء" to listOf("العربية", "Cancel", "Annuler", "Cancelar", "Abbrechen", "Annuleren", "Avbryt", "Abbräche", "Annulla", "Annullar"),
+        "رجوع" to listOf("العربية", "Back", "Retour", "Volver", "Zurück", "Terug", "Tillbaka", "Zrugg", "Indietro", "Enavos"),
+        "← الرئيسية" to listOf("العربية", "← Home", "← Accueil", "← Inicio", "← Startseite", "← Home", "← Hem", "← Start", "← Home", "← Mussavia"),
+        "＋ قناة" to listOf("العربية", "＋ Channel", "＋ Chaîne", "＋ Canal", "＋ Kanal", "＋ Kanaal", "＋ Kanal", "＋ Kanal", "＋ Canale", "＋ Chanagl"),
+        "بحث فالقنوات…" to listOf("العربية", "Search channels…", "Rechercher des chaînes…", "Buscar canales…", "Kanäle suchen…", "Kanalen zoeken…", "Sök kanaler…", "Kanäl sueche…", "Cerca canali…", "Tschertgar chanals…"),
+        "ترتيب / تصنيف" to listOf("العربية", "Organize / categorize", "Trier / catégoriser", "Ordenar / categorizar", "Sortieren / kategorisieren", "Ordenen / categoriseren", "Sortera / kategorisera", "Sortiere / kategorisiere", "Ordina / categorizza", "Ordinar / categorisar"),
+        "حذف" to listOf("العربية", "Delete", "Supprimer", "Eliminar", "Löschen", "Verwijderen", "Ta bort", "Lösche", "Elimina", "Stizzar"),
+        "تفاصيل القناة" to listOf("العربية", "Channel details", "Détails de la chaîne", "Detalles del canal", "Kanaldetails", "Kanaaldetails", "Kanaldetaljer", "Kanaldetail", "Dettagli canale", "Detagls dal chanagl"),
+        "إيقاف" to listOf("العربية", "Stop", "Arrêter", "Detener", "Stoppen", "Stoppen", "Stoppa", "Stoppe", "Ferma", "Stoppar"),
+        "معاينة" to listOf("العربية", "Preview", "Aperçu", "Vista previa", "Vorschau", "Voorbeeld", "Förhandsvisning", "Vorschau", "Anteprima", "Previsualisaziun"),
+        "★ محفوظة" to listOf("العربية", "★ Saved", "★ Enregistrée", "★ Guardado", "★ Gespeichert", "★ Opgeslagen", "★ Sparad", "★ Gspeicheret", "★ Salvato", "★ Memorisà"),
+        "تنظيم" to listOf("العربية", "Organize", "Organiser", "Organizar", "Organisieren", "Organiseren", "Organisera", "Organisiere", "Organizza", "Organisar"),
+        "إظهار" to listOf("العربية", "Show", "Afficher", "Mostrar", "Anzeigen", "Tonen", "Visa", "Aazeige", "Mostra", "Mussar"),
+        "إخفاء" to listOf("العربية", "Hide", "Masquer", "Ocultar", "Ausblenden", "Verbergen", "Dölj", "Verstecke", "Nascondi", "Z zuonder"),
+        "إدارة القناة" to listOf("العربية", "Manage channel", "Gérer la chaîne", "Gestionar canal", "Kanal verwalten", "Kanaal beheren", "Hantera kanal", "Kanal verwalte", "Gestisci canale", "Administrar chanagl"),
+        "＋ إضافة قناة" to listOf("العربية", "＋ Add channel", "＋ Ajouter une chaîne", "＋ Añadir canal", "＋ Kanal hinzufügen", "＋ Kanaal toevoegen", "＋ Lägg till kanal", "＋ Kanal hinzuefüege", "＋ Aggiungi canale", "＋ Agiuntar in chanagl"),
+        "✎ تعديل القناة" to listOf("العربية", "✎ Edit channel", "✎ Modifier la chaîne", "✎ Editar canal", "✎ Kanal bearbeiten", "✎ Kanaal bewerken", "✎ Redigera kanal", "✎ Kanal bearbeite", "✎ Modifica canale", "✎ Modifitgar chanagl"),
+        "⌫ حذف القناة" to listOf("العربية", "⌫ Delete channel", "⌫ Supprimer la chaîne", "⌫ Eliminar canal", "⌫ Kanal löschen", "⌫ Kanaal verwijderen", "⌫ Ta bort kanal", "⌫ Kanal lösche", "⌫ Elimina canale", "⌫ Stizzar chanagl"),
+        "إغلاق" to listOf("العربية", "Close", "Fermer", "Cerrar", "Schließen", "Sluiten", "Stäng", "Schliesse", "Chiudi", "Serrar"),
+        "شاهد" to listOf("العربية", "Watch", "Regarder", "Ver", "Ansehen", "Bekijken", "Titta", "Luege", "Guarda", "Guardar"),
+        "قنوات الأطفال مباشرة" to listOf("العربية", "Kids live channels", "Chaînes jeunesse en direct", "Canales infantiles en directo", "Kinder-Live-Kanäle", "Live-kinderkanalen", "Barnkanaler live", "Chinderkanäl live", "Canali per bambini in diretta", "Chanals d'uffants live"),
+        "الأفلام" to listOf("العربية", "Movies", "Films", "Películas", "Filme", "Films", "Filmer", "Film", "Film", "Films"),
+        "المسلسلات" to listOf("العربية", "Series", "Séries", "Series", "Serien", "Series", "Serier", "Serien", "Serie", "Serias"),
+        "اختار شنو بغيتي تتفرج اليوم ⭐" to listOf("العربية", "Choose what you want to watch today ⭐", "Choisissez ce que vous voulez regarder aujourd’hui ⭐", "Elige qué quieres ver hoy ⭐", "Wähle aus, was du heute sehen möchtest ⭐", "Kies wat je vandaag wilt kijken ⭐", "Välj vad du vill titta på idag ⭐", "Wähl uus, was du hüt luege wotsch ⭐", "Scegli cosa vuoi guardare oggi ⭐", "Tscherna quai che ti vuls guardar oz ⭐"),
+        "قلب على فيلم أو كرتون أو مسلسل" to listOf("العربية", "Search for a movie, cartoon or series", "Rechercher un film, un dessin animé ou une série", "Buscar una película, dibujo animado o serie", "Film, Zeichentrick oder Serie suchen", "Zoek een film, tekenfilm of serie", "Sök efter film, tecknad film eller serie", "Suech en Film, Trickfilm oder Serie", "Cerca un film, cartone o serie", "Tschertga in film, in cartoon u ina seria"),
+        "ما كايناش تريلرات متاحة دابا." to listOf("العربية", "No trailers are available right now.", "Aucune bande-annonce n’est disponible pour le moment.", "No hay tráileres disponibles ahora.", "Zurzeit sind keine Trailer verfügbar.", "Er zijn momenteel geen trailers beschikbaar.", "Inga trailers tillgängliga just nu.", "Im Momänt sind kei Trailer verfüegbar.", "Nessun trailer disponibile al momento.", "Actualmain na datti trailers disponibels."),
     )
     val index = when (language) { "ar" -> 0; "fr" -> 1; "en" -> 2; "es" -> 3; "de" -> 4; "nl" -> 5; "sv" -> 6; "gsw" -> 7; "it" -> 8; "rm" -> 9; else -> 2 }
     return translations[source]?.get(index) ?: source
@@ -1704,7 +1736,7 @@ private fun InitialSetupScreen(
                 )
                 if (error.isNotBlank()) Text(error, color = ErrorRed, fontSize = 12.sp)
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(onClick = { entryScreen = "welcome"; error = "" }, modifier = Modifier.weight(1f), enabled = !activationBusy) { Text("رجوع") }
+                    OutlinedButton(onClick = { entryScreen = "welcome"; error = "" }, modifier = Modifier.weight(1f), enabled = !activationBusy) { Text(appText("رجوع", LocalAppLanguage.current)) }
                     Button(
                         onClick = {
                             val normalizedCode = premiumCode.trim().uppercase()
@@ -2629,12 +2661,12 @@ private fun LiveScreen(
                     onHome()
                     true
                 } else false
-            }, contentPadding = PaddingValues(horizontal = 9.dp, vertical = 2.dp)) { Text("← الرئيسية", fontSize = 10.sp) }
+            }, contentPadding = PaddingValues(horizontal = 9.dp, vertical = 2.dp)) { Text(appText("← الرئيسية", LocalAppLanguage.current), fontSize = 10.sp) }
             Spacer(Modifier.weight(1f))
-            OutlinedButton(onClick = { showAddChannelDialog = true }, contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)) { Text("＋ قناة", fontSize = 11.sp) }
+            OutlinedButton(onClick = { showAddChannelDialog = true }, contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)) { Text(appText("＋ قناة", LocalAppLanguage.current), fontSize = 11.sp) }
             OutlinedTextField(
                 value = search, onValueChange = onSearch, modifier = Modifier.width(when { screenWidthDp >= 1200 -> 300.dp; screenWidthDp >= 700 -> 230.dp; else -> 145.dp }).heightIn(max = 54.dp),
-                singleLine = true, placeholder = { Text("بحث فالقنوات…", color = TextMuted, fontSize = 12.sp) },
+                singleLine = true, placeholder = { Text(appText("بحث فالقنوات…", LocalAppLanguage.current), color = TextMuted, fontSize = 12.sp) },
                 textStyle = MaterialTheme.typography.bodyMedium.copy(color = TextMain), shape = RoundedCornerShape(10.dp),
             )
         }
@@ -2660,10 +2692,10 @@ private fun LiveScreen(
                     Text(if (detail.id in preferences.favorites()) "★ المفضلة" else "☆ المفضلة", color = Lime, fontSize = 11.sp)
                 }
                 TextButton(onClick = { onOrganize(detail) }, contentPadding = PaddingValues(horizontal = 7.dp, vertical = 2.dp)) {
-                    Text("ترتيب / تصنيف", color = TextMain, fontSize = 11.sp)
+                    Text(appText("ترتيب / تصنيف", LocalAppLanguage.current), color = TextMain, fontSize = 11.sp)
                 }
                 TextButton(onClick = { pendingDeleteChannel = detail }, contentPadding = PaddingValues(horizontal = 7.dp, vertical = 2.dp)) {
-                    Text("حذف", color = ErrorRed, fontSize = 11.sp)
+                    Text(appText("حذف", LocalAppLanguage.current), color = ErrorRed, fontSize = 11.sp)
                 }
             }
         }
@@ -2716,7 +2748,7 @@ private fun LiveScreen(
                         border = BorderStroke(1.dp, Color.White.copy(alpha = 0.10f)),
                     ) {
                         Column(Modifier.fillMaxSize().padding(14.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(9.dp)) {
-                            Text("تفاصيل القناة", color = Lime, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            Text(appText("تفاصيل القناة", LocalAppLanguage.current), color = Lime, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                             Text(preferences.channelTitle(detail.id, detail.title), color = TextMain, fontSize = 20.sp, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
                             Box(Modifier.fillMaxWidth().height(190.dp).background(Color.Black, RoundedCornerShape(10.dp)), contentAlignment = Alignment.Center) {
                                 ChannelMiniPreview(entry = detail, playing = previewRequested)
@@ -2729,11 +2761,11 @@ private fun LiveScreen(
                             }
                             Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
                                 TextButton(onClick = { onFavorite(detail) }) { Text(if (detail.id in preferences.favorites()) "★ محفوظة" else "☆ المفضلة", color = Lime) }
-                                TextButton(onClick = { onOrganize(detail) }) { Text("تنظيم", color = TextMuted) }
+                                TextButton(onClick = { onOrganize(detail) }) { Text(appText("تنظيم", LocalAppLanguage.current), color = TextMuted) }
                             }
                             Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
                                 TextButton(onClick = { onHide(detail) }) { Text(if (detail.id in preferences.hiddenChannels()) "إظهار" else "إخفاء", color = TextMuted) }
-                                TextButton(onClick = { pendingDeleteChannel = detail }) { Text("حذف", color = ErrorRed) }
+                                TextButton(onClick = { pendingDeleteChannel = detail }) { Text(appText("حذف", LocalAppLanguage.current), color = ErrorRed) }
                             }
                         }
                     }
@@ -2744,16 +2776,16 @@ private fun LiveScreen(
     channelActionsTarget?.let { item ->
         AlertDialog(
             onDismissRequest = { channelActionsTarget = null },
-            title = { Text("إدارة القناة") },
+            title = { Text(appText("إدارة القناة", LocalAppLanguage.current)) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(preferences.channelTitle(item.id, item.title), color = TextMain)
-                    TextButton(onClick = { channelActionsTarget = null; showAddChannelDialog = true }) { Text("＋ إضافة قناة") }
-                    TextButton(onClick = { channelActionsTarget = null; onOrganize(item) }) { Text("✎ تعديل القناة") }
-                    TextButton(onClick = { channelActionsTarget = null; pendingDeleteChannel = item }) { Text("⌫ حذف القناة", color = ErrorRed) }
+                    TextButton(onClick = { channelActionsTarget = null; showAddChannelDialog = true }) { Text(appText("＋ إضافة قناة", LocalAppLanguage.current)) }
+                    TextButton(onClick = { channelActionsTarget = null; onOrganize(item) }) { Text(appText("✎ تعديل القناة", LocalAppLanguage.current)) }
+                    TextButton(onClick = { channelActionsTarget = null; pendingDeleteChannel = item }) { Text(appText("⌫ حذف القناة", LocalAppLanguage.current), color = ErrorRed) }
                 }
             },
-            confirmButton = { TextButton(onClick = { channelActionsTarget = null }) { Text("إغلاق") } },
+            confirmButton = { TextButton(onClick = { channelActionsTarget = null }) { Text(appText("إغلاق", LocalAppLanguage.current)) } },
         )
     }
     if (showAddChannelDialog) {
@@ -2952,7 +2984,7 @@ private fun MediaScreen(
                         onHome()
                         true
                     } else false
-                }, contentPadding = PaddingValues(horizontal = 9.dp, vertical = 2.dp)) { Text("← الرئيسية", fontSize = 10.sp) }
+                }, contentPadding = PaddingValues(horizontal = 9.dp, vertical = 2.dp)) { Text(appText("← الرئيسية", LocalAppLanguage.current), fontSize = 10.sp) }
             Spacer(Modifier.weight(1f))
             SearchField(search, onSearch, Modifier.width(when {
                 screenWidthDp >= 1200 -> 280.dp
@@ -3170,7 +3202,7 @@ private fun OfflineDownloadsScreen(
                                 store.delete(item.downloadId)
                                 downloads = downloads.filterNot { it.downloadId == item.downloadId }
                                 onMessage("تحيد التحميل ديال " + item.title)
-                            }) { Text("حذف", color = ErrorRed) }
+                            }) { Text(appText("حذف", LocalAppLanguage.current), color = ErrorRed) }
                         }
                     }
                 }
@@ -3415,7 +3447,7 @@ private fun SeriesScreen(
                         onHome()
                         true
                     } else false
-                }, contentPadding = PaddingValues(horizontal = 9.dp, vertical = 2.dp)) { Text("← الرئيسية", fontSize = 10.sp) }
+                }, contentPadding = PaddingValues(horizontal = 9.dp, vertical = 2.dp)) { Text(appText("← الرئيسية", LocalAppLanguage.current), fontSize = 10.sp) }
             Spacer(Modifier.weight(1f))
             SearchField(search, onSearch, Modifier.width(when { screenWidthDp >= 1200 -> 280.dp; screenWidthDp >= 700 -> 210.dp; else -> 135.dp }))
         }
@@ -3483,7 +3515,7 @@ private fun SeriesScreen(
                                 Text(listOf(series.year, series.genre, series.rating.takeIf { it.isNotBlank() }?.let { "★ $it" }.orEmpty()).filter { it.isNotBlank() }.joinToString(" · "), color = GoldLight, fontSize = 11.sp, maxLines = 2)
                                 if (series.description.isNotBlank()) Text(series.description, color = TextMuted, fontSize = 11.sp, maxLines = 3, overflow = TextOverflow.Ellipsis)
                             }
-                            TextButton(onClick = { detailsOpen = false }) { Text("إغلاق") }
+                            TextButton(onClick = { detailsOpen = false }) { Text(appText("إغلاق", LocalAppLanguage.current)) }
                         }
                         when {
                             busy -> Box(Modifier.fillMaxWidth().height(120.dp), contentAlignment = Alignment.Center) { LoadingState("Loading episodes") }
@@ -4281,13 +4313,13 @@ private fun AddManualChannelDialog(
     var error by rememberSaveable { mutableStateOf("") }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("إضافة قناة يدوياً") },
+        title = { Text(appText("إضافة قناة يدوياً", LocalAppLanguage.current)) },
         text = {
             Column(Modifier.fillMaxWidth().heightIn(max = 430.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(title, { title = it; error = "" }, modifier = Modifier.fillMaxWidth(), label = { Text("اسم القناة") }, singleLine = true)
-                OutlinedTextField(url, { url = it; error = "" }, modifier = Modifier.fillMaxWidth(), label = { Text("رابط البث") }, singleLine = true)
-                OutlinedTextField(logo, { logo = it }, modifier = Modifier.fillMaxWidth(), label = { Text("رابط الشعار (اختياري)") }, singleLine = true)
-                OutlinedTextField(category, { category = it }, modifier = Modifier.fillMaxWidth(), label = { Text("التصنيف") }, singleLine = true)
+                OutlinedTextField(title, { title = it; error = "" }, modifier = Modifier.fillMaxWidth(), label = { Text(appText("اسم القناة", LocalAppLanguage.current)) }, singleLine = true)
+                OutlinedTextField(url, { url = it; error = "" }, modifier = Modifier.fillMaxWidth(), label = { Text(appText("رابط البث", LocalAppLanguage.current)) }, singleLine = true)
+                OutlinedTextField(logo, { logo = it }, modifier = Modifier.fillMaxWidth(), label = { Text(appText("رابط الشعار (اختياري)", LocalAppLanguage.current)) }, singleLine = true)
+                OutlinedTextField(category, { category = it }, modifier = Modifier.fillMaxWidth(), label = { Text(appText("التصنيف", LocalAppLanguage.current)) }, singleLine = true)
                 if (error.isNotBlank()) Text(error, color = ErrorRed, fontSize = 11.sp)
             }
         },
@@ -4298,9 +4330,9 @@ private fun AddManualChannelDialog(
                     !(url.trim().startsWith("http://", true) || url.trim().startsWith("https://", true)) -> error = "دخل رابط بث صحيح يبدأ بـ http أو https."
                     else -> onSave(title.trim(), url.trim(), logo.trim(), category.trim().ifBlank { "Custom" })
                 }
-            }) { Text("إضافة") }
+            }) { Text(appText("إضافة", LocalAppLanguage.current)) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("إلغاء") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(appText("إلغاء", LocalAppLanguage.current)) } },
     )
 }
 
@@ -4345,8 +4377,8 @@ private fun OrganizeChannelDialog(
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 )
                 if (channel.id.startsWith("manual:")) {
-                    OutlinedTextField(streamUrl, { streamUrl = it; error = "" }, modifier = Modifier.fillMaxWidth(), label = { Text("رابط البث") }, singleLine = true)
-                    OutlinedTextField(logoUrl, { logoUrl = it; error = "" }, modifier = Modifier.fillMaxWidth(), label = { Text("رابط الشعار (اختياري)") }, singleLine = true)
+                    OutlinedTextField(streamUrl, { streamUrl = it; error = "" }, modifier = Modifier.fillMaxWidth(), label = { Text(appText("رابط البث", LocalAppLanguage.current)) }, singleLine = true)
+                    OutlinedTextField(logoUrl, { logoUrl = it; error = "" }, modifier = Modifier.fillMaxWidth(), label = { Text(appText("رابط الشعار (اختياري)", LocalAppLanguage.current)) }, singleLine = true)
                 }
                 Text(appText("Move to category", LocalAppLanguage.current), color = TextMuted, fontSize = 11.sp)
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
@@ -4746,7 +4778,7 @@ private fun KidsDashboard(
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
                             Text(appText("🌈 TVI KIDS", LocalAppLanguage.current), color = Color(0xFFFFD76A), fontSize = if (compact) 23.sp else 34.sp, fontWeight = FontWeight.Black)
-                            Text("اختار شنو بغيتي تتفرج اليوم ⭐", color = Color(0xFFE5F4FF), fontSize = if (compact) 11.sp else 14.sp)
+                            Text(appText("اختار شنو بغيتي تتفرج اليوم ⭐", LocalAppLanguage.current), color = Color(0xFFE5F4FF), fontSize = if (compact) 11.sp else 14.sp)
                         }
                         OutlinedButton(onClick = onExit, contentPadding = PaddingValues(horizontal = 12.dp, vertical = 5.dp)) {
                             Text(appText("👨 Parent / PIN", LocalAppLanguage.current), fontSize = 11.sp, maxLines = 1)
@@ -4761,7 +4793,7 @@ private fun KidsDashboard(
                             Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(7.dp)) {
                                 Text("📺", fontSize = if (compact) 42.sp else 64.sp)
                                 Text(appText("TV LIVE", LocalAppLanguage.current), color = Color.White, fontSize = if (compact) 25.sp else 36.sp, fontWeight = FontWeight.Black)
-                                Text("قنوات الأطفال مباشرة", color = Color(0xFFD7F4FF), fontSize = if (compact) 11.sp else 15.sp)
+                                Text(appText("قنوات الأطفال مباشرة", LocalAppLanguage.current), color = Color(0xFFD7F4FF), fontSize = if (compact) 11.sp else 15.sp)
                             }
                         }
                     }
@@ -4774,7 +4806,7 @@ private fun KidsDashboard(
                             Box(Modifier.fillMaxSize().padding(10.dp), contentAlignment = Alignment.Center) {
                                 Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
                                     Text("🎨", fontSize = if (compact) 34.sp else 52.sp)
-                                    Text("الأفلام", color = Color.White, fontSize = if (compact) 20.sp else 28.sp, fontWeight = FontWeight.Black)
+                                    Text(appText("الأفلام", LocalAppLanguage.current), color = Color.White, fontSize = if (compact) 20.sp else 28.sp, fontWeight = FontWeight.Black)
                                     Text(appText("Movies", LocalAppLanguage.current), color = Color(0xFFFFEAB0), fontSize = 12.sp)
                                 }
                             }
@@ -4787,7 +4819,7 @@ private fun KidsDashboard(
                             Box(Modifier.fillMaxSize().padding(10.dp), contentAlignment = Alignment.Center) {
                                 Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
                                     Text("🦸", fontSize = if (compact) 34.sp else 52.sp)
-                                    Text("المسلسلات", color = Color.White, fontSize = if (compact) 20.sp else 28.sp, fontWeight = FontWeight.Black)
+                                    Text(appText("المسلسلات", LocalAppLanguage.current), color = Color.White, fontSize = if (compact) 20.sp else 28.sp, fontWeight = FontWeight.Black)
                                     Text(appText("Series", LocalAppLanguage.current), color = Color(0xFFE8DFFF), fontSize = 12.sp)
                                 }
                             }
@@ -5420,7 +5452,7 @@ private fun KinoCheckTrailersScreen(
                 OutlinedButton(onClick = { refreshToken++ }) { Text(appText("Try again", LocalAppLanguage.current)) }
             }
             videos.isEmpty() -> Box(Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
-                Text("ما كايناش تريلرات متاحة دابا.", color = TextMuted)
+                Text(appText("ما كايناش تريلرات متاحة دابا.", LocalAppLanguage.current), color = TextMuted)
             }
             else -> LazyVerticalGrid(
                 columns = GridCells.Adaptive(minSize = 165.dp),

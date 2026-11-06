@@ -1482,10 +1482,11 @@ private fun PlayerTvAppContent(appLanguage: String, onLanguageChanged: (String) 
                     channels = catalog.liveChannels,
                     preferences = preferences,
                     onDismiss = { organizingChannel = null },
-                    onSave = { title, category, number ->
+                    onSave = { title, category, number, streamUrl, logoUrl ->
                         preferences.setChannelTitle(channel.id, title)
                         preferences.moveToCategory(channel.id, category)
-                        preferences.moveChannelToNumber(channel.id, number, catalog.liveChannels.map { it.id })
+                        preferences.moveChannelToNumber(channel.id, number, (catalog.liveChannels + preferences.customChannels()).map { it.id })
+                        if (channel.id.startsWith("manual:")) preferences.saveCustomChannel(channel.copy(title = title, category = category, streamUrl = streamUrl, logoUrl = logoUrl))
                         preferenceRevision++
                         organizingChannel = null
                     },
@@ -4263,15 +4264,52 @@ private fun PlaybackDialog(
 }
 
 @Composable
+private fun AddManualChannelDialog(
+    onDismiss: () -> Unit,
+    onSave: (String, String, String, String) -> Unit,
+) {
+    var title by rememberSaveable { mutableStateOf("") }
+    var url by rememberSaveable { mutableStateOf("") }
+    var logo by rememberSaveable { mutableStateOf("") }
+    var category by rememberSaveable { mutableStateOf("Custom") }
+    var error by rememberSaveable { mutableStateOf("") }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("إضافة قناة يدوياً") },
+        text = {
+            Column(Modifier.fillMaxWidth().heightIn(max = 430.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(title, { title = it; error = "" }, modifier = Modifier.fillMaxWidth(), label = { Text("اسم القناة") }, singleLine = true)
+                OutlinedTextField(url, { url = it; error = "" }, modifier = Modifier.fillMaxWidth(), label = { Text("رابط البث") }, singleLine = true)
+                OutlinedTextField(logo, { logo = it }, modifier = Modifier.fillMaxWidth(), label = { Text("رابط الشعار (اختياري)") }, singleLine = true)
+                OutlinedTextField(category, { category = it }, modifier = Modifier.fillMaxWidth(), label = { Text("التصنيف") }, singleLine = true)
+                if (error.isNotBlank()) Text(error, color = ErrorRed, fontSize = 11.sp)
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = {
+                when {
+                    title.isBlank() -> error = "دخل اسم القناة."
+                    !(url.trim().startsWith("http://", true) || url.trim().startsWith("https://", true)) -> error = "دخل رابط بث صحيح يبدأ بـ http أو https."
+                    else -> onSave(title.trim(), url.trim(), logo.trim(), category.trim().ifBlank { "Custom" })
+                }
+            }) { Text("إضافة") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("إلغاء") } },
+    )
+}
+
+@Composable
 private fun OrganizeChannelDialog(
     channel: MediaEntry,
     channels: List<MediaEntry>,
     preferences: PlayerPreferences,
     onDismiss: () -> Unit,
-    onSave: (String, String, Int) -> Unit,
+    onSave: (String, String, Int, String, String) -> Unit,
 ) {
     var title by rememberSaveable(channel.id) { mutableStateOf(preferences.channelTitle(channel.id, channel.title)) }
     var category by rememberSaveable(channel.id) { mutableStateOf(preferences.categoryFor(channel.id, channel.category)) }
+    var streamUrl by rememberSaveable(channel.id) { mutableStateOf(channel.streamUrl) }
+    var logoUrl by rememberSaveable(channel.id) { mutableStateOf(channel.logoUrl) }
     var channelNumber by rememberSaveable(channel.id) { mutableStateOf(channelNumber(channel, channels, preferences).toString()) }
     var newCategory by rememberSaveable(channel.id) { mutableStateOf("") }
     var error by rememberSaveable(channel.id) { mutableStateOf("") }
@@ -4300,6 +4338,10 @@ private fun OrganizeChannelDialog(
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 )
+                if (channel.id.startsWith("manual:")) {
+                    OutlinedTextField(streamUrl, { streamUrl = it; error = "" }, modifier = Modifier.fillMaxWidth(), label = { Text("رابط البث") }, singleLine = true)
+                    OutlinedTextField(logoUrl, { logoUrl = it; error = "" }, modifier = Modifier.fillMaxWidth(), label = { Text("رابط الشعار (اختياري)") }, singleLine = true)
+                }
                 Text(appText("Move to category", LocalAppLanguage.current), color = TextMuted, fontSize = 11.sp)
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
                     items(categories, key = { it }) { option ->
@@ -4333,7 +4375,8 @@ private fun OrganizeChannelDialog(
                     title.isBlank() -> error = "Enter a channel name."
                     category.isBlank() -> error = "Choose a category."
                     number == null || number < 1 -> error = "Enter a channel number greater than zero."
-                    else -> onSave(title.trim(), category, number)
+                    channel.id.startsWith("manual:") && !(streamUrl.trim().startsWith("http://", true) || streamUrl.trim().startsWith("https://", true)) -> error = "Enter a valid stream URL."
+                    else -> onSave(title.trim(), category, number, streamUrl.trim(), logoUrl.trim())
                 }
             }) { Text(appText("Save", LocalAppLanguage.current)) }
         },

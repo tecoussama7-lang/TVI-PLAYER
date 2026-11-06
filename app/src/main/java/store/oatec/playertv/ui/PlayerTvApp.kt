@@ -1817,6 +1817,31 @@ private fun SettingsScreen(
             }
         }
         Surface(color = Panel, shape = RoundedCornerShape(10.dp), modifier = Modifier.fillMaxWidth()) {
+            Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text("APP LANGUAGE", color = Lime, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
+                Text("Choose the language used by the app.", color = TextMuted, fontSize = 11.sp)
+                val supportedLanguages = listOf(
+                    "ar" to "العربية", "fr" to "Français", "en" to "English", "es" to "Español",
+                    "de" to "Deutsch", "nl" to "Nederlands", "sv" to "Svenska",
+                    "gsw" to "Schweizerdeutsch", "it" to "Italiano", "rm" to "Rumantsch",
+                )
+                var selectedLanguage by remember { mutableStateOf(preferences.appLanguage()) }
+                androidx.compose.foundation.layout.FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    supportedLanguages.forEach { (code, label) ->
+                        if (selectedLanguage == code) {
+                            Button(onClick = { selectedLanguage = code; preferences.setAppLanguage(code) }) { Text(label) }
+                        } else {
+                            OutlinedButton(onClick = { selectedLanguage = code; preferences.setAppLanguage(code) }) { Text(label) }
+                        }
+                    }
+                }
+                Text("Language preference is saved on this device.", color = TextMuted, fontSize = 10.sp)
+            }
+        }
+        Surface(color = Panel, shape = RoundedCornerShape(10.dp), modifier = Modifier.fillMaxWidth()) {
             Row(
                 Modifier.fillMaxWidth().padding(16.dp),
                 verticalAlignment = Alignment.CenterVertically,

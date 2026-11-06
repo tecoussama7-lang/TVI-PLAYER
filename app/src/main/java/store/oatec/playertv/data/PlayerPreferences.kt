@@ -7,6 +7,13 @@ import store.oatec.playertv.model.MediaEntry
 class PlayerPreferences(context: Context) {
     private val preferences = context.getSharedPreferences("player_preferences", Context.MODE_PRIVATE)
 
+    fun appLanguage(): String = preferences.getString(APP_LANGUAGE_KEY, "en") ?: "en"
+
+    fun setAppLanguage(language: String) {
+        val supported = setOf("ar", "fr", "en", "es", "de", "nl", "sv", "gsw", "it", "rm")
+        if (language in supported) preferences.edit().putString(APP_LANGUAGE_KEY, language).apply()
+    }
+
     fun favorites(): Set<String> = preferences.getString(FAVORITES_KEY, null)
         ?.let(::JSONArray)
         ?.let { array -> (0 until array.length()).mapNotNull(array::optString).toSet() }
@@ -262,6 +269,7 @@ class PlayerPreferences(context: Context) {
     }
 
     private companion object {
+        const val APP_LANGUAGE_KEY = "app_language"
         const val FAVORITES_KEY = "favorite_ids"
         const val KIDS_MODE_ENABLED_KEY = "kids_mode_enabled"
         const val KIDS_PIN_HASH_KEY = "kids_pin_sha256"

@@ -77,6 +77,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -163,6 +167,38 @@ import store.oatec.playertv.model.CatalogSection
 import store.oatec.playertv.model.PlayerSource
 import store.oatec.playertv.model.SourceCatalog
 import store.oatec.playertv.model.SourceType
+
+private val LocalAppLanguage = staticCompositionLocalOf { "en" }
+
+private fun appText(source: String, language: String): String {
+    val translations = mapOf(
+        "Home" to listOf("الرئيسية","Accueil","Home","Inicio","Startseite","Home","Hem","Start","Home","Mussavia"),
+        "Live TV" to listOf("التلفاز المباشر","TV en direct","Live TV","TV en directo","Live-TV","Live-tv","Direkt-TV","Live-TV","TV in diretta","TV directa"),
+        "Movies" to listOf("الأفلام","Films","Movies","Películas","Filme","Films","Filmer","Film","Film","Films"),
+        "Series" to listOf("المسلسلات","Séries","Series","Series","Serien","Series","Serier","Serien","Serie","Serias"),
+        "Trailers" to listOf("الإعلانات","Bandes-annonces","Trailers","Tráilers","Trailer","Trailers","Trailrar","Trailer","Trailer","Trailer"),
+        "Downloads" to listOf("التنزيلات","Téléchargements","Downloads","Descargas","Downloads","Downloads","Nedladdningar","Downloads","Download","Telechargiadas"),
+        "Sources" to listOf("المصادر","Sources","Sources","Fuentes","Quellen","Bronnen","Källor","Quellen","Sorgenti","Funtanas"),
+        "Settings" to listOf("الإعدادات","Paramètres","Settings","Ajustes","Einstellungen","Instellingen","Inställningar","Einstellungen","Impostazioni","Impostaziuns"),
+        "← Back" to listOf("رجوع ←","← Retour","← Back","← Volver","← Zurück","← Terug","← Tillbaka","← Zurück","← Indietro","← Enavos"),
+        "Exit" to listOf("خروج","Quitter","Exit","Salir","Beenden","Afsluiten","Avsluta","Beenden","Esci","Sortir"),
+        "SETTINGS" to listOf("الإعدادات","PARAMÈTRES","SETTINGS","AJUSTES","EINSTELLUNGEN","INSTELLINGEN","INSTÄLLNINGAR","EINSTELLUNGEN","IMPOSTAZIONI","IMPOSTAZIUNS"),
+        "Playback, sources and OATEC preferences" to listOf("إعدادات التشغيل والمصادر وOATEC","Lecture, sources et préférences OATEC","Playback, sources and OATEC preferences","Reproducción, fuentes y preferencias de OATEC","Wiedergabe, Quellen und OATEC-Einstellungen","Afspelen, bronnen en OATEC-voorkeuren","Uppspelning, källor och OATEC-inställningar","Wiedergabe, Quellen und OATEC-Einstellungen","Riproduzione, sorgenti e preferenze OATEC","Reproducziun, funtaunas e preferenzas OATEC"),
+        "APP LANGUAGE" to listOf("لغة التطبيق","LANGUE DE L’APPLICATION","APP LANGUAGE","IDIOMA DE LA APLICACIÓN","APP-SPRACHE","APP-TAAL","APPSPRÅK","APP-SPRACHE","LINGUA DELL’APP","LINGUA DA L’APP"),
+        "Choose the language used by the app." to listOf("اختار لغة التطبيق.","Choisissez la langue de l’application.","Choose the language used by the app.","Elige el idioma de la aplicación.","Wähle die Sprache der App.","Kies de taal van de app.","Välj språk för appen.","Wähle d Sprach vo de App.","Scegli la lingua dell’app.","Tscherna la lingua da l’app."),
+        "Language preference is saved on this device." to listOf("سيتم حفظ اللغة على هذا الجهاز.","La langue est enregistrée sur cet appareil.","Language preference is saved on this device.","El idioma se guarda en este dispositivo.","Die Sprache wird auf diesem Gerät gespeichert.","De taal wordt op dit apparaat opgeslagen.","Språket sparas på den här enheten.","D Sprach wird uf dem Gerät gspeicheret.","La lingua viene salvata su questo dispositivo.","La lingua vegn memorisada sin quest apparat."),
+        "Sources & playlists" to listOf("المصادر وقوائم التشغيل","Sources et listes de lecture","Sources & playlists","Fuentes y listas","Quellen und Wiedergabelisten","Bronnen en afspeellijsten","Källor och spellistor","Quellen und Playlistene","Sorgenti e playlist","Funtaunas e glistas da reproducziun"),
+        "Manage sources" to listOf("إدارة المصادر","Gérer les sources","Manage sources","Gestionar fuentes","Quellen verwalten","Bronnen beheren","Hantera källor","Quellen verwalte","Gestisci sorgenti","Administrar funtaunas"),
+        "PLAYBACK" to listOf("التشغيل","LECTURE","PLAYBACK","REPRODUCCIÓN","WIEDERGABE","AFSPELEN","UPPSPELNING","WIEDERGABE","RIPRODUZIONE","REPRODUCZIUN"),
+        "Resume VOD playback" to listOf("متابعة مشاهدة الأفلام","Reprendre la lecture VOD","Resume VOD playback","Reanudar reproducción VOD","VOD-Wiedergabe fortsetzen","VOD-weergave hervatten","Återuppta VOD-uppspelning","VOD-Wiedergabe fortsetze","Riprendi riproduzione VOD","Cuntinuar la reproducziun VOD"),
+        "Playback engine" to listOf("محرك التشغيل","Moteur de lecture","Playback engine","Motor de reproducción","Wiedergabe-Engine","Afspeelengine","Uppspelningsmotor","Wiedergabe-Engine","Motore di riproduzione","Motur da reproducziun"),
+        "Watch history" to listOf("سجل المشاهدة","Historique de visionnage","Watch history","Historial","Wiedergabeverlauf","Kijkgeschiedenis","Visningshistorik","Verlauf","Cronologia","Istorgia da guardar"),
+        "Clear history" to listOf("مسح السجل","Effacer l’historique","Clear history","Borrar historial","Verlauf löschen","Geschiedenis wissen","Rensa historik","Verlauf lösche","Cancella cronologia","Stizzar l’istorgia"),
+        "KIDS MODE" to listOf("وضع الأطفال","MODE ENFANTS","KIDS MODE","MODO INFANTIL","KINDERMODUS","KINDERMODUS","BARNLÄGE","CHINDERMODUS","MODALITÀ BAMBINI","MODUS D’UFFANTS"),
+    )
+    val index = when (language) { "ar" -> 0; "fr" -> 1; "en" -> 2; "es" -> 3; "de" -> 4; "nl" -> 5; "sv" -> 6; "gsw" -> 7; "it" -> 8; "rm" -> 9; else -> 2 }
+    return translations[source]?.get(index) ?: source
+}
 
 private val Ink = Color(0xFF05070A)
 private val Panel = Color(0xFF0C1016)
@@ -282,6 +318,8 @@ private enum class Section(val label: String) {
 @Composable
 fun PlayerTvApp() {
     val context = androidx.compose.ui.platform.LocalContext.current
+    val languagePreferences = remember { PlayerPreferences(context) }
+    var appLanguage by remember { mutableStateOf(languagePreferences.appLanguage()) }
     var availableUpdate by remember { mutableStateOf<store.oatec.playertv.data.AppUpdate?>(null) }
     var dismissedVersion by rememberSaveable { mutableStateOf("") }
 
@@ -291,7 +329,18 @@ fun PlayerTvApp() {
         }.getOrNull()
     }
 
-    PlayerTvAppContent()
+    CompositionLocalProvider(
+        LocalAppLanguage provides appLanguage,
+        LocalLayoutDirection provides if (appLanguage == "ar") LayoutDirection.Rtl else LayoutDirection.Ltr,
+    ) {
+        PlayerTvAppContent(
+            appLanguage = appLanguage,
+            onLanguageChanged = { selected ->
+                languagePreferences.setAppLanguage(selected)
+                appLanguage = selected
+            },
+        )
+    }
 
     val update = availableUpdate
     if (update != null && dismissedVersion != update.versionName) {
@@ -321,7 +370,7 @@ fun PlayerTvApp() {
 }
 
 @Composable
-private fun PlayerTvAppContent() {
+private fun PlayerTvAppContent(appLanguage: String, onLanguageChanged: (String) -> Unit) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val configuration = LocalConfiguration.current
     val compactLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE && configuration.screenWidthDp < 900
@@ -1296,6 +1345,8 @@ private fun PlayerTvAppContent() {
                         Section.SETTINGS -> SettingsScreen(
                             onHome = { goBack() },
                             preferences = preferences,
+                            selectedLanguage = appLanguage,
+                            onLanguageChanged = onLanguageChanged,
                             onKidsModeChanged = { enabled ->
                                 kidsModeActive = enabled
                                 if (enabled) section = Section.HOME.name
@@ -1746,6 +1797,8 @@ private fun SetupField(
 private fun SettingsScreen(
     onHome: () -> Unit,
     preferences: PlayerPreferences,
+    selectedLanguage: String,
+    onLanguageChanged: (String) -> Unit,
     onKidsModeChanged: (Boolean) -> Unit,
     aboutRepository: OatecAboutRepository,
     onManageSources: () -> Unit,
@@ -1810,35 +1863,34 @@ private fun SettingsScreen(
                     } else false
                 },
                 contentPadding = PaddingValues(horizontal = 14.dp, vertical = 7.dp),
-            ) { Text("← Back", fontSize = 12.sp) }
+            ) { Text(appText("← Back", selectedLanguage), fontSize = 12.sp }
             Column(Modifier.weight(1f)) {
-                Text("SETTINGS", color = TextMain, fontSize = 24.sp, fontWeight = FontWeight.Black)
-                Text("Playback, sources and OATEC preferences", color = TextMuted, fontSize = 12.sp)
+                Text(appText("SETTINGS", selectedLanguage), color = TextMain, fontSize = 24.sp, fontWeight = FontWeight.Black)
+                Text(appText("Playback, sources and OATEC preferences", selectedLanguage), color = TextMuted, fontSize = 12.sp)
             }
         }
         Surface(color = Panel, shape = RoundedCornerShape(10.dp), modifier = Modifier.fillMaxWidth()) {
             Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text("APP LANGUAGE", color = Lime, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
-                Text("Choose the language used by the app.", color = TextMuted, fontSize = 11.sp)
+                Text(appText("APP LANGUAGE", selectedLanguage), color = Lime, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
+                Text(appText("Choose the language used by the app.", selectedLanguage), color = TextMuted, fontSize = 11.sp)
                 val supportedLanguages = listOf(
                     "ar" to "العربية", "fr" to "Français", "en" to "English", "es" to "Español",
                     "de" to "Deutsch", "nl" to "Nederlands", "sv" to "Svenska",
                     "gsw" to "Schweizerdeutsch", "it" to "Italiano", "rm" to "Rumantsch",
                 )
-                var selectedLanguage by remember { mutableStateOf(preferences.appLanguage()) }
                 androidx.compose.foundation.layout.FlowRow(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     supportedLanguages.forEach { (code, label) ->
                         if (selectedLanguage == code) {
-                            Button(onClick = { selectedLanguage = code; preferences.setAppLanguage(code) }) { Text(label) }
+                            Button(onClick = { onLanguageChanged(code) }) { Text(label) }
                         } else {
-                            OutlinedButton(onClick = { selectedLanguage = code; preferences.setAppLanguage(code) }) { Text(label) }
+                            OutlinedButton(onClick = { onLanguageChanged(code) }) { Text(label) }
                         }
                     }
                 }
-                Text("Language preference is saved on this device.", color = TextMuted, fontSize = 10.sp)
+                Text(appText("Language preference is saved on this device.", selectedLanguage), color = TextMuted, fontSize = 10.sp)
             }
         }
         Surface(color = Panel, shape = RoundedCornerShape(10.dp), modifier = Modifier.fillMaxWidth()) {
@@ -2363,14 +2415,14 @@ private fun NavigationRail(
                 },
                 contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp),
             ) {
-                Text("← Back", fontSize = 10.sp)
+                Text(appText("← Back", LocalAppLanguage.current), fontSize = 10.sp
             }
             OutlinedButton(
                 onClick = onExit,
                 modifier = Modifier.heightIn(min = 48.dp).widthIn(min = 76.dp),
                 contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp),
             ) {
-                Text("Exit", fontSize = 10.sp)
+                Text(appText("Exit", LocalAppLanguage.current), fontSize = 10.sp
             }
         }
         // Compact destinations replace the removed oversized top strip. Each opens content directly.
@@ -2380,12 +2432,12 @@ private fun NavigationRail(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             listOf(
-                Section.LIVE to "LIVE TV",
-                Section.MOVIES to "Movies",
-                Section.SERIES to "Series",
-                Section.TRAILERS to "Trailers",
-                Section.SETTINGS to "Settings",
-                Section.SOURCES to "Sources",
+                Section.LIVE to appText("Live TV", LocalAppLanguage.current),
+                Section.MOVIES to appText("Movies", LocalAppLanguage.current),
+                Section.SERIES to appText("Series", LocalAppLanguage.current),
+                Section.TRAILERS to appText("Trailers", LocalAppLanguage.current),
+                Section.SETTINGS to appText("Settings", LocalAppLanguage.current),
+                Section.SOURCES to appText("Sources", LocalAppLanguage.current),
             ).forEach { (destination, label) ->
                 OutlinedButton(
                     onClick = { onSelect(destination) },

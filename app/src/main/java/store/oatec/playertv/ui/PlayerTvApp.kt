@@ -2596,8 +2596,14 @@ private fun LiveScreen(
     val channels = remember(allLiveChannels, category, search, preferenceRevision) {
         visibleChannels(catalog.copy(liveChannels = allLiveChannels), category, search, preferences)
     }
-    var selectedChannel by remember(channels) { mutableStateOf(channels.firstOrNull()) }
-    var previewRequested by remember(channels) { mutableStateOf(true) }
+    var selectedChannelId by rememberSaveable { mutableStateOf("") }
+    val selectedChannel = channels.firstOrNull { it.id == selectedChannelId } ?: channels.firstOrNull()
+    LaunchedEffect(channels) {
+        if (selectedChannelId.isBlank() || channels.none { it.id == selectedChannelId }) {
+            selectedChannelId = channels.firstOrNull()?.id.orEmpty()
+        }
+    }
+    var previewRequested by remember { mutableStateOf(true) }
     var pendingDeleteChannel by remember { mutableStateOf<MediaEntry?>(null) }
     var channelActionsTarget by remember { mutableStateOf<MediaEntry?>(null) }
     var showAddChannelDialog by remember { mutableStateOf(false) }
@@ -2678,7 +2684,7 @@ private fun LiveScreen(
                         color = if (selected) Raised else Panel, shape = RoundedCornerShape(10.dp),
                         border = BorderStroke(if (selected) 2.dp else 1.dp, if (selected) Lime else Color.White.copy(alpha = 0.08f)),
                         modifier = Modifier.fillMaxWidth().height(if (isWideScreen) 104.dp else 78.dp).combinedClickable(
-                            onClick = { selectedChannel = item; previewRequested = true },
+                            onClick = { selectedChannelId = item.id; previewRequested = true },
                             onLongClick = { channelActionsTarget = item },
                             onDoubleClick = { onPlay(item.copy(title = preferences.channelTitle(item.id, item.title))) },
                         ),
@@ -2763,7 +2769,7 @@ private fun LiveScreen(
                 )
                 preferences.saveCustomChannel(item)
                 preferences.addCategory(categoryName)
-                selectedChannel = item
+                selectedChannelId = item.id
                 previewRequested = true
                 showAddChannelDialog = false
                 onChanged()

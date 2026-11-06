@@ -4455,15 +4455,23 @@ private fun KidsDashboard(
 
             Section.MOVIES, Section.SERIES -> {
                 val listState = rememberLazyListState()
-                val newestFirst = remember(source) {
-                    source.sortedByDescending { (it.year.ifBlank { it.releaseDate.take(4) }).toIntOrNull() ?: 0 }
+                val providerEntries = remember(source) { source.filterNot { it.id.startsWith("youtube:") } }
+                val youtubeTrendEntries = remember(source) { source.filter { it.id.startsWith("youtube:") } }
+                val newestProviderFirst = remember(providerEntries) {
+                    providerEntries.sortedByDescending { (it.year.ifBlank { it.releaseDate.take(4) }).toIntOrNull() ?: 0 }
                 }
-                val trending = remember(newestFirst) { newestFirst.take(16) }
+                // Always reserve visible places for YouTube trend videos so a large provider
+                // catalogue cannot push every YouTube result below the first shelf.
+                val trending = remember(newestProviderFirst, youtubeTrendEntries) {
+                    (newestProviderFirst.take(10) + youtubeTrendEntries.take(10)).distinctBy { it.id }
+                }
                 val trendingIds = remember(trending) { trending.mapTo(mutableSetOf()) { it.id } }
-                val recommended = remember(source, trendingIds, trending) {
-                    source.filterNot { it.id in trendingIds }
+                val recommended = remember(providerEntries, youtubeTrendEntries, trendingIds, trending) {
+                    val providerRecommended = providerEntries.filterNot { it.id in trendingIds }
                         .sortedWith(compareBy<MediaEntry> { it.category.lowercase() }.thenBy { it.title.lowercase() })
-                        .take(16).ifEmpty { trending.take(10) }
+                        .take(12)
+                    val youtubeRecommended = youtubeTrendEntries.filterNot { it.id in trendingIds }.take(4)
+                    (providerRecommended + youtubeRecommended).ifEmpty { trending.take(10) }
                 }
                 LaunchedEffect(listState, section, visible.size, search) {
                     snapshotFlow { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0 }

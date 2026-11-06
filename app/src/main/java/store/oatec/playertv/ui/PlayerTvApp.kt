@@ -195,6 +195,53 @@ private fun appText(source: String, language: String): String {
         "Watch history" to listOf("سجل المشاهدة","Historique de visionnage","Watch history","Historial","Wiedergabeverlauf","Kijkgeschiedenis","Visningshistorik","Verlauf","Cronologia","Istorgia da guardar"),
         "Clear history" to listOf("مسح السجل","Effacer l’historique","Clear history","Borrar historial","Verlauf löschen","Geschiedenis wissen","Rensa historik","Verlauf lösche","Cancella cronologia","Stizzar l’istorgia"),
         "KIDS MODE" to listOf("وضع الأطفال","MODE ENFANTS","KIDS MODE","MODO INFANTIL","KINDERMODUS","KINDERMODUS","BARNLÄGE","CHINDERMODUS","MODALITÀ BAMBINI","MODUS D’UFFANTS"),
+        "Parent PIN required" to listOf("رمز الوالدين مطلوب","Code parental requis","Parent PIN required","Se requiere PIN parental","Eltern-PIN erforderlich","Ouder-PIN vereist","Föräldra-PIN krävs","Eltere-PIN nötig","PIN genitore richiesto","PIN dals geniturs necessari"),
+        "Enter the parent PIN to leave Kids Mode." to listOf("أدخل رمز الوالدين للخروج من وضع الأطفال.","Saisissez le code parental pour quitter le mode enfants.","Enter the parent PIN to leave Kids Mode.","Introduce el PIN parental para salir del modo infantil.","Gib die Eltern-PIN ein, um den Kindermodus zu verlassen.","Voer de ouder-PIN in om de kindermodus te verlaten.","Ange föräldra-PIN för att lämna barnläget.","Gib de Eltere-PIN ii zum Chindermodus z'verlah.","Inserisci il PIN genitore per uscire dalla modalità bambini.","Endatescha il PIN dals geniturs per sortir dal modus d'uffants."),
+        "Parent PIN" to listOf("رمز الوالدين","Code parental","Parent PIN","PIN parental","Eltern-PIN","Ouder-PIN","Föräldra-PIN","Eltere-PIN","PIN genitore","PIN dals geniturs"),
+        "Exit Kids Mode" to listOf("الخروج من وضع الأطفال","Quitter le mode enfants","Exit Kids Mode","Salir del modo infantil","Kindermodus verlassen","Kindermodus verlaten","Avsluta barnläget","Chindermodus verlah","Esci dalla modalità bambini","Sortir dal modus d'uffants"),
+        "Cancel" to listOf("إلغاء","Annuler","Cancel","Cancelar","Abbrechen","Annuleren","Avbryt","Abbräche","Annulla","Annullar"),
+        "Premium code" to listOf("رمز Premium","Code Premium","Premium code","Código Premium","Premium-Code","Premium-code","Premiumkod","Premium-Code","Codice Premium","Code Premium"),
+        "OATEC website" to listOf("موقع OATEC","Site OATEC","OATEC website","Sitio web de OATEC","OATEC-Website","OATEC-website","OATEC-webbplats","OATEC-Websiite","Sito web OATEC","Website OATEC"),
+        "Parental PIN protection" to listOf("حماية برمز الوالدين","Protection par code parental","Parental PIN protection","Protección con PIN parental","Eltern-PIN-Schutz","Bescherming met ouder-PIN","Skydd med föräldra-PIN","Schutz mit Eltere-PIN","Protezione con PIN genitore","Protecziun cun PIN dals geniturs"),
+        "Manage content rules" to listOf("إدارة قواعد المحتوى","Gérer les règles de contenu","Manage content rules","Gestionar reglas de contenido","Inhaltsregeln verwalten","Inhoudsregels beheren","Hantera innehållsregler","Inhaltsregle verwalte","Gestisci regole dei contenuti","Administrar reglas dal cuntegn"),
+        "Remove PIN" to listOf("إزالة الرمز","Supprimer le code","Remove PIN","Eliminar PIN","PIN entfernen","PIN verwijderen","Ta bort PIN","PIN entferne","Rimuovi PIN","Allontanar PIN"),
+        "PIN saved" to listOf("تم حفظ الرمز","Code enregistré","PIN saved","PIN guardado","PIN gespeichert","PIN opgeslagen","PIN sparad","PIN gspeicheret","PIN salvato","PIN memorisà"),
+        "Remove Kids Mode PIN?" to listOf("هل تريد إزالة رمز وضع الأطفال؟","Supprimer le code du mode enfants ?","Remove Kids Mode PIN?","¿Eliminar el PIN del modo infantil?","Kindermodus-PIN entfernen?","PIN voor kindermodus verwijderen?","Ta bort PIN för barnläget?","PIN vom Chindermodus entferne?","Rimuovere il PIN della modalità bambini?","Allontanar il PIN dal modus d'uffants?"),
+        "Current PIN" to listOf("الرمز الحالي","Code actuel","Current PIN","PIN actual","Aktuelle PIN","Huidige PIN","Nuvarande PIN","Aktueller PIN","PIN attuale","PIN actual"),
+        "Allow" to listOf("سماح","Autoriser","Allow","Permitir","Erlauben","Toestaan","Tillåt","Erlaube","Consenti","Permetter"),
+        "Block" to listOf("حظر","Bloquer","Block","Bloquear","Blockieren","Blokkeren","Blockera","Sperre","Blocca","Bloccar"),
+        "Clear rule" to listOf("مسح القاعدة","Effacer la règle","Clear rule","Borrar regla","Regel löschen","Regel wissen","Rensa regel","Regel lösche","Cancella regola","Stizzar regla"),
+        "Close" to listOf("إغلاق","Fermer","Close","Cerrar","Schließen","Sluiten","Stäng","Schliesse","Chiudi","Serrar"),
+        "Save PIN" to listOf("حفظ الرمز","Enregistrer le code","Save PIN","Guardar PIN","PIN speichern","PIN opslaan","Spara PIN","PIN speichere","Salva PIN","Memorisar PIN"),
+        "Save code" to listOf("حفظ الرمز","Enregistrer le code","Save code","Guardar código","Code speichern","Code opslaan","Spara kod","Code speichere","Salva codice","Memorisar code"),
+        "Open OATEC website" to listOf("فتح موقع OATEC","Ouvrir le site OATEC","Open OATEC website","Abrir sitio OATEC","OATEC-Website öffnen","OATEC-website openen","Öppna OATEC-webbplatsen","OATEC-Websiite öffne","Apri il sito OATEC","Avrir il website OATEC"),
+        "Saved" to listOf("تم الحفظ","Enregistré","Saved","Guardado","Gespeichert","Opgeslagen","Sparat","Gspeicheret","Salvato","Memorisà"),
+        "Loading information from oatec.store" to listOf("جارٍ تحميل المعلومات من oatec.store","Chargement des informations depuis oatec.store","Loading information from oatec.store","Cargando información desde oatec.store","Informationen von oatec.store werden geladen","Informatie laden van oatec.store","Laddar information från oatec.store","Informatione vo oatec.store lade","Caricamento informazioni da oatec.store","Chargiar infurmaziuns da oatec.store"),
+        "Refresh info" to listOf("تحديث المعلومات","Actualiser les infos","Refresh info","Actualizar información","Infos aktualisieren","Info vernieuwen","Uppdatera info","Info aktualisiere","Aggiorna info","Actualisar infurmaziuns"),
+        "Visit website" to listOf("زيارة الموقع","Visiter le site","Visit website","Visitar sitio web","Website besuchen","Website bezoeken","Besök webbplatsen","Website bsueche","Visita il sito","Visitar il website"),
+        "Exit app" to listOf("الخروج من التطبيق","Quitter l’application","Exit app","Salir de la aplicación","App beenden","App afsluiten","Avsluta appen","App verlah","Esci dall’app","Sortir da l'app"),
+        "Clear watch history?" to listOf("هل تريد مسح سجل المشاهدة؟","Effacer l’historique de visionnage ?","Clear watch history?","¿Borrar el historial de reproducción?","Wiedergabeverlauf löschen?","Kijkgeschiedenis wissen?","Rensa visningshistoriken?","Verlauf lösche?","Cancellare la cronologia?","Stizzar l'istorgia da guardar?"),
+        "Clear" to listOf("مسح","Effacer","Clear","Borrar","Löschen","Wissen","Rensa","Lösche","Cancella","Stizzar"),
+        "Search" to listOf("بحث","Rechercher","Search","Buscar","Suchen","Zoeken","Sök","Sueche","Cerca","Tschertgar"),
+        "Synopsis" to listOf("القصة","Synopsis","Synopsis","Sinopsis","Zusammenfassung","Samenvatting","Synopsis","Zämefassig","Sinossi","Sinopsis"),
+        "Play" to listOf("تشغيل","Lire","Play","Reproducir","Abspielen","Afspelen","Spela","Abspiele","Riproduci","Reproducir"),
+        "Back" to listOf("رجوع","Retour","Back","Volver","Zurück","Terug","Tillbaka","Zrugg","Indietro","Enavos"),
+        "Your IPTV sources" to listOf("مصادر IPTV الخاصة بك","Vos sources IPTV","Your IPTV sources","Tus fuentes IPTV","Deine IPTV-Quellen","Je IPTV-bronnen","Dina IPTV-källor","Dini IPTV-Quälle","Le tue sorgenti IPTV","Tes funtaunas IPTV"),
+        "Import M3U file" to listOf("استيراد ملف M3U","Importer un fichier M3U","Import M3U file","Importar archivo M3U","M3U-Datei importieren","M3U-bestand importeren","Importera M3U-fil","M3U-Datei importiere","Importa file M3U","Importar datoteca M3U"),
+        "Add source" to listOf("إضافة مصدر","Ajouter une source","Add source","Añadir fuente","Quelle hinzufügen","Bron toevoegen","Lägg till källa","Quälle hinzuefüege","Aggiungi sorgente","Agiuntar funtauna"),
+        "Refresh" to listOf("تحديث","Actualiser","Refresh","Actualizar","Aktualisieren","Vernieuwen","Uppdatera","Aktualisiere","Aggiorna","Actualisar"),
+        "Remove" to listOf("إزالة","Supprimer","Remove","Eliminar","Entfernen","Verwijderen","Ta bort","Entferne","Rimuovi","Allontanar"),
+        "Add IPTV source" to listOf("إضافة مصدر IPTV","Ajouter une source IPTV","Add IPTV source","Añadir fuente IPTV","IPTV-Quelle hinzufügen","IPTV-bron toevoegen","Lägg till IPTV-källa","IPTV-Quälle hinzuefüege","Aggiungi sorgente IPTV","Agiuntar funtauna IPTV"),
+        "Source name" to listOf("اسم المصدر","Nom de la source","Source name","Nombre de la fuente","Quellenname","Bronnaam","Källnamn","Quälle-Name","Nome sorgente","Num da la funtauna"),
+        "Save" to listOf("حفظ","Enregistrer","Save","Guardar","Speichern","Opslaan","Spara","Speichere","Salva","Memorisar"),
+        "Tune" to listOf("ضبط","Régler","Tune","Sintonizar","Einstellen","Afstemmen","Ställ in","Iistelle","Sintonizza","Sintonisar"),
+        "Audio tracks" to listOf("المسارات الصوتية","Pistes audio","Audio tracks","Pistas de audio","Audiospuren","Audiotracks","Ljudspår","Tonspure","Tracce audio","Tractas audio"),
+        "Online subtitles" to listOf("ترجمة عبر الإنترنت","Sous-titres en ligne","Online subtitles","Subtítulos en línea","Online-Untertitel","Online-ondertitels","Undertexter online","Online-Untertitel","Sottotitoli online","Suttitels online"),
+        "Load subtitles" to listOf("تحميل الترجمة","Charger les sous-titres","Load subtitles","Cargar subtítulos","Untertitel laden","Ondertitels laden","Ladda undertexter","Untertitel lade","Carica sottotitoli","Chargiar suttitels"),
+        "Choose quality" to listOf("اختيار الجودة","Choisir la qualité","Choose quality","Elegir calidad","Qualität wählen","Kwaliteit kiezen","Välj kvalitet","Qualität wähle","Scegli qualità","Tscherner qualitad"),
+        "Stop" to listOf("إيقاف","Arrêter","Stop","Detener","Stopp","Stoppen","Stoppa","Stoppe","Ferma","Stoppar"),
+        "Player settings" to listOf("إعدادات المشغل","Paramètres du lecteur","Player settings","Ajustes del reproductor","Player-Einstellungen","Spelerinstellingen","Spelarinställningar","Player-Iistellige","Impostazioni lettore","Preferenzas dal player"),
+        "Retry" to listOf("إعادة المحاولة","Réessayer","Retry","Reintentar","Erneut versuchen","Opnieuw proberen","Försök igen","Nomol probiere","Riprova","Empruvar danovamain"),
     )
     val index = when (language) { "ar" -> 0; "fr" -> 1; "en" -> 2; "es" -> 3; "de" -> 4; "nl" -> 5; "sv" -> 6; "gsw" -> 7; "it" -> 8; "rm" -> 9; else -> 2 }
     return translations[source]?.get(index) ?: source
@@ -351,7 +398,7 @@ fun PlayerTvApp() {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("OATEC PlayerTv ${update.versionName}")
                     if (update.releaseNotes.isNotBlank()) Text(update.releaseNotes)
-                    Text("غادي يتحل رابط تحميل APK. من بعد التحميل ثبّت التحديث يدوياً.")
+                    Text(appText("غادي يتحل رابط تحميل APK. من بعد التحميل ثبّت التحديث يدوياً.", LocalAppLanguage.current))
                 }
             },
             confirmButton = {
@@ -1367,14 +1414,14 @@ private fun PlayerTvAppContent(appLanguage: String, onLanguageChanged: (String) 
             if (showKidsExitDialog) {
                 AlertDialog(
                     onDismissRequest = { showKidsExitDialog = false; kidsExitPinInput = ""; kidsExitPinError = "" },
-                    title = { Text("Parent PIN required") },
+                    title = { Text(appText("Parent PIN required", LocalAppLanguage.current)) },
                     text = {
                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Text("Enter the parent PIN to leave Kids Mode.", color = TextMuted, fontSize = 12.sp)
+                            Text(appText("Enter the parent PIN to leave Kids Mode.", LocalAppLanguage.current), color = TextMuted, fontSize = 12.sp)
                             OutlinedTextField(
                                 value = kidsExitPinInput,
                                 onValueChange = { value -> if (value.length <= 8 && value.all(Char::isDigit)) kidsExitPinInput = value },
-                                label = { Text("Parent PIN") },
+                                label = { Text(appText("Parent PIN", LocalAppLanguage.current)) },
                                 singleLine = true,
                                 visualTransformation = PasswordVisualTransformation(),
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
@@ -1393,7 +1440,7 @@ private fun PlayerTvAppContent(appLanguage: String, onLanguageChanged: (String) 
                                 kidsExitPinError = ""
                                 showKidsExitDialog = false
                             } else kidsExitPinError = "Incorrect PIN."
-                        }) { Text("Exit Kids Mode") }
+                        }) { Text(appText("Exit Kids Mode", LocalAppLanguage.current)) }
                     },
                     dismissButton = {
                         TextButton(onClick = { showKidsExitDialog = false; kidsExitPinInput = ""; kidsExitPinError = "" }) { Text("Cancel") }
@@ -1559,8 +1606,8 @@ private fun InitialSetupScreen(
                     horizontalArrangement = Arrangement.End,
                 ) {
                     Column(horizontalAlignment = Alignment.End) {
-                        Text("TVI PLAYER", color = Color.White, fontSize = if (compactLandscape) 22.sp else 28.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
-                        Text("ENTERTAINMENT, REFINED", color = accent, fontSize = if (compactLandscape) 9.sp else 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
+                        Text(appText("TVI PLAYER", LocalAppLanguage.current), color = Color.White, fontSize = if (compactLandscape) 22.sp else 28.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
+                        Text(appText("ENTERTAINMENT, REFINED", LocalAppLanguage.current), color = accent, fontSize = if (compactLandscape) 9.sp else 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
                     }
                     Spacer(Modifier.width(12.dp))
                     Surface(color = accent, shape = RoundedCornerShape(14.dp), modifier = Modifier.size(if (compactLandscape) 42.dp else 56.dp)) {
@@ -1586,8 +1633,8 @@ private fun InitialSetupScreen(
                         Box(Modifier.fillMaxSize().padding(if (compactLandscape) 14.dp else 24.dp)) {
                             Text("◉", color = accent, fontSize = 22.sp, modifier = Modifier.align(Alignment.TopEnd))
                             Column(Modifier.align(Alignment.CenterEnd), horizontalAlignment = Alignment.End) {
-                                Text("STANDARD PLAYER", color = Color.White, fontSize = if (compactLandscape) 18.sp else 24.sp, fontWeight = FontWeight.ExtraBold)
-                                Text("M3U  •  XTREAM CODES", color = Color(0xFFAAAAAA), fontSize = if (compactLandscape) 9.sp else 11.sp, letterSpacing = 1.sp)
+                                Text(appText("STANDARD PLAYER", LocalAppLanguage.current), color = Color.White, fontSize = if (compactLandscape) 18.sp else 24.sp, fontWeight = FontWeight.ExtraBold)
+                                Text(appText("M3U  •  XTREAM CODES", LocalAppLanguage.current), color = Color(0xFFAAAAAA), fontSize = if (compactLandscape) 9.sp else 11.sp, letterSpacing = 1.sp)
                             }
                             Text("→", color = accent, fontSize = 24.sp, modifier = Modifier.align(Alignment.BottomStart))
                         }
@@ -1603,11 +1650,11 @@ private fun InitialSetupScreen(
                             Text("✦", color = accent, fontSize = 34.sp, modifier = Modifier.align(Alignment.CenterStart))
                             Column(Modifier.align(Alignment.CenterEnd), horizontalAlignment = Alignment.End) {
                                 Surface(color = Color(0xFF310D12), shape = RoundedCornerShape(50.dp)) {
-                                    Text("PREMIUM", color = accent, fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp))
+                                    Text(appText("PREMIUM", LocalAppLanguage.current), color = accent, fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp))
                                 }
                                 Spacer(Modifier.height(8.dp))
-                                Text("OATEC PREMIUM CODE", color = Color.White, fontSize = if (compactLandscape) 17.sp else 25.sp, fontWeight = FontWeight.Black)
-                                Text("SECURE ACTIVATION", color = Color(0xFFAAAAAA), fontSize = 9.sp, letterSpacing = 1.4.sp)
+                                Text(appText("OATEC PREMIUM CODE", LocalAppLanguage.current), color = Color.White, fontSize = if (compactLandscape) 17.sp else 25.sp, fontWeight = FontWeight.Black)
+                                Text(appText("SECURE ACTIVATION", LocalAppLanguage.current), color = Color(0xFFAAAAAA), fontSize = 9.sp, letterSpacing = 1.4.sp)
                             }
                         }
                     }
@@ -1638,13 +1685,13 @@ private fun InitialSetupScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
                 horizontalAlignment = Alignment.End,
             ) {
-                Text("OATEC PREMIUM CODE", color = Color.White, fontSize = 23.sp, fontWeight = FontWeight.Black)
-                Text("دخل كود التفعيل اللي توصّلتي به من OATEC باش نربطو الحساب ديالك أوتوماتيكياً.", color = Color(0xFFBDBDBD), fontSize = 13.sp)
+                Text(appText("OATEC PREMIUM CODE", LocalAppLanguage.current), color = Color.White, fontSize = 23.sp, fontWeight = FontWeight.Black)
+                Text(appText("دخل كود التفعيل اللي توصّلتي به من OATEC باش نربطو الحساب ديالك أوتوماتيكياً.", LocalAppLanguage.current), color = Color(0xFFBDBDBD), fontSize = 13.sp)
                 OutlinedTextField(
                     value = premiumCode,
                     onValueChange = { premiumCode = it; error = "" },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Premium code") },
+                    label = { Text(appText("Premium code", LocalAppLanguage.current)) },
                     singleLine = true,
                     visualTransformation = PasswordVisualTransformation(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii),
@@ -1688,7 +1735,7 @@ private fun InitialSetupScreen(
                     OutlinedButton(onClick = { entryScreen = "welcome"; error = "" }) { Text("← رجوع") }
                     Spacer(Modifier.weight(1f))
                     Column(horizontalAlignment = Alignment.End) {
-                        Text("STANDARD PLAYER", color = Color.White, fontSize = if (compactLandscape) 18.sp else 25.sp, fontWeight = FontWeight.Black)
+                        Text(appText("STANDARD PLAYER", LocalAppLanguage.current), color = Color.White, fontSize = if (compactLandscape) 18.sp else 25.sp, fontWeight = FontWeight.Black)
                         Text("اختار طريقة الاتصال بمصدر القنوات", color = Color(0xFFBDBDBD), fontSize = if (compactLandscape) 9.sp else 12.sp)
                     }
                 }
@@ -1718,7 +1765,7 @@ private fun InitialSetupScreen(
                     }
                 }
                 if (serverUrl.startsWith("http://", true)) {
-                    Text("HTTP غير مشفر؛ استعمل HTTPS إلا كان متاح.", color = ErrorRed, fontSize = 9.sp)
+                    Text(appText("HTTP غير مشفر؛ استعمل HTTPS إلا كان متاح.", LocalAppLanguage.current), color = ErrorRed, fontSize = 9.sp)
                 }
                 if (error.isNotBlank()) Text(error, color = ErrorRed, fontSize = 11.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 Spacer(Modifier.weight(1f, fill = !compactLandscape))
@@ -1726,7 +1773,7 @@ private fun InitialSetupScreen(
                     OutlinedButton(
                         onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://oatec.store/"))) },
                         modifier = Modifier.weight(1f).height(if (compactLandscape) 42.dp else 48.dp),
-                    ) { Text("OATEC website", fontSize = 11.sp) }
+                    ) { Text(appText("OATEC website", LocalAppLanguage.current), fontSize = 11.sp) }
                     Button(
                         onClick = {
                             val rawUrl = serverUrl.trim()
@@ -1863,16 +1910,16 @@ private fun SettingsScreen(
                     } else false
                 },
                 contentPadding = PaddingValues(horizontal = 14.dp, vertical = 7.dp),
-            ) { Text(appText("← Back", selectedLanguage), fontSize = 12.sp }
+            ) { Text(appText(appText("← Back", LocalAppLanguage.current), selectedLanguage), fontSize = 12.sp }
             Column(Modifier.weight(1f)) {
-                Text(appText("SETTINGS", selectedLanguage), color = TextMain, fontSize = 24.sp, fontWeight = FontWeight.Black)
-                Text(appText("Playback, sources and OATEC preferences", selectedLanguage), color = TextMuted, fontSize = 12.sp)
+                Text(appText(appText("SETTINGS", LocalAppLanguage.current), selectedLanguage), color = TextMain, fontSize = 24.sp, fontWeight = FontWeight.Black)
+                Text(appText(appText("Playback, sources and OATEC preferences", LocalAppLanguage.current), selectedLanguage), color = TextMuted, fontSize = 12.sp)
             }
         }
         Surface(color = Panel, shape = RoundedCornerShape(10.dp), modifier = Modifier.fillMaxWidth()) {
             Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text(appText("APP LANGUAGE", selectedLanguage), color = Lime, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
-                Text(appText("Choose the language used by the app.", selectedLanguage), color = TextMuted, fontSize = 11.sp)
+                Text(appText(appText("APP LANGUAGE", LocalAppLanguage.current), selectedLanguage), color = Lime, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
+                Text(appText(appText("Choose the language used by the app.", LocalAppLanguage.current), selectedLanguage), color = TextMuted, fontSize = 11.sp)
                 val supportedLanguages = listOf(
                     "ar" to "العربية", "fr" to "Français", "en" to "English", "es" to "Español",
                     "de" to "Deutsch", "nl" to "Nederlands", "sv" to "Svenska",
@@ -1890,7 +1937,7 @@ private fun SettingsScreen(
                         }
                     }
                 }
-                Text(appText("Language preference is saved on this device.", selectedLanguage), color = TextMuted, fontSize = 10.sp)
+                Text(appText(appText("Language preference is saved on this device.", LocalAppLanguage.current), selectedLanguage), color = TextMuted, fontSize = 10.sp)
             }
         }
         Surface(color = Panel, shape = RoundedCornerShape(10.dp), modifier = Modifier.fillMaxWidth()) {
@@ -1900,19 +1947,19 @@ private fun SettingsScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
                 Column(Modifier.weight(1f)) {
-                    Text("Sources & playlists", color = TextMain, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
-                    Text("Manage existing providers or import a playlist.", color = TextMuted, fontSize = 11.sp)
+                    Text(appText("Sources & playlists", LocalAppLanguage.current), color = TextMain, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                    Text(appText("Manage existing providers or import a playlist.", LocalAppLanguage.current), color = TextMuted, fontSize = 11.sp)
                 }
-                OutlinedButton(onClick = onManageSources) { Text("Manage sources") }
+                OutlinedButton(onClick = onManageSources) { Text(appText("Manage sources", LocalAppLanguage.current)) }
             }
         }
         Surface(color = Panel, shape = RoundedCornerShape(10.dp), modifier = Modifier.fillMaxWidth()) {
             Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("PLAYBACK", color = Lime, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
+                Text(appText("PLAYBACK", LocalAppLanguage.current), color = Lime, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
-                        Text("Resume VOD playback", color = TextMain, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
-                        Text("Continue movies and episodes from the saved position.", color = TextMuted, fontSize = 11.sp)
+                        Text(appText("Resume VOD playback", LocalAppLanguage.current), color = TextMain, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                        Text(appText("Continue movies and episodes from the saved position.", LocalAppLanguage.current), color = TextMuted, fontSize = 11.sp)
                     }
                     Switch(
                         checked = resumePlayback,
@@ -1925,8 +1972,8 @@ private fun SettingsScreen(
                 HorizontalDivider(color = Color.White.copy(alpha = 0.08f))
                 var playbackEngine by remember { mutableStateOf(preferences.playbackEngine()) }
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Playback engine", color = TextMain, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
-                    Text("Choose the playback engine for Live TV, movies and series.", color = TextMuted, fontSize = 11.sp)
+                    Text(appText("Playback engine", LocalAppLanguage.current), color = TextMain, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                    Text(appText("Choose the playback engine for Live TV, movies and series.", LocalAppLanguage.current), color = TextMuted, fontSize = 11.sp)
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         listOf("exoplayer" to "Media3 / ExoPlayer", "mpv" to "MPV").forEach { (value, label) ->
                             if (playbackEngine == value) {
@@ -1940,19 +1987,19 @@ private fun SettingsScreen(
                 HorizontalDivider(color = Color.White.copy(alpha = 0.08f))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
-                        Text("Watch history", color = TextMain, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
-                        Text("History is stored on this device.", color = TextMuted, fontSize = 11.sp)
+                        Text(appText("Watch history", LocalAppLanguage.current), color = TextMain, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                        Text(appText("History is stored on this device.", LocalAppLanguage.current), color = TextMuted, fontSize = 11.sp)
                     }
-                    OutlinedButton(onClick = { confirmClearHistory = true }) { Text("Clear history") }
+                    OutlinedButton(onClick = { confirmClearHistory = true }) { Text(appText("Clear history", LocalAppLanguage.current)) }
                 }
             }
         }
         Surface(color = Panel, shape = RoundedCornerShape(10.dp), modifier = Modifier.fillMaxWidth()) {
             Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("KIDS MODE", color = GoldLight, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
+                Text(appText("KIDS MODE", LocalAppLanguage.current), color = GoldLight, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
-                        Text("Parental PIN protection", color = TextMain, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                        Text(appText("Parental PIN protection", LocalAppLanguage.current), color = TextMain, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
                         Text(
                             if (preferences.hasKidsPin()) "PIN protected. Unknown content is hidden unless classified as child-safe or allowed manually."
                             else "Set a 4–8 digit PIN before enabling Kids Mode.",
@@ -1977,7 +2024,7 @@ private fun SettingsScreen(
                     })
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(onClick = { showKidsRulesDialog = true; kidsRuleItemId = ""; kidsRuleMessage = "" }) { Text("Manage content rules") }
+                    OutlinedButton(onClick = { showKidsRulesDialog = true; kidsRuleItemId = ""; kidsRuleMessage = "" }) { Text(appText("Manage content rules", LocalAppLanguage.current)) }
                     OutlinedButton(onClick = {
                         kidsPinInput = ""
                         kidsCurrentPinInput = ""
@@ -1985,20 +2032,20 @@ private fun SettingsScreen(
                         kidsPinSaved = false
                         showKidsPinDialog = true
                     }) { Text(if (preferences.hasKidsPin()) "Set / change PIN" else "Create PIN") }
-                    if (preferences.hasKidsPin()) OutlinedButton(onClick = { clearKidsPinInput = ""; clearKidsPinError = ""; showClearKidsPinDialog = true }) { Text("Remove PIN") }
-                    if (kidsPinSaved) Text("PIN saved", color = GoldLight, fontSize = 11.sp)
+                    if (preferences.hasKidsPin()) OutlinedButton(onClick = { clearKidsPinInput = ""; clearKidsPinError = ""; showClearKidsPinDialog = true }) { Text(appText("Remove PIN", LocalAppLanguage.current)) }
+                    if (kidsPinSaved) Text(appText("PIN saved", LocalAppLanguage.current), color = GoldLight, fontSize = 11.sp)
                 }
                 if (showClearKidsPinDialog) {
                     AlertDialog(
                         onDismissRequest = { showClearKidsPinDialog = false; clearKidsPinInput = ""; clearKidsPinError = "" },
-                        title = { Text("Remove Kids Mode PIN?") },
+                        title = { Text(appText("Remove Kids Mode PIN?", LocalAppLanguage.current)) },
                         text = {
                             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                Text("You must enter the current PIN. Removing it will also turn Kids Mode off.", color = TextMuted, fontSize = 12.sp)
+                                Text(appText("You must enter the current PIN. Removing it will also turn Kids Mode off.", LocalAppLanguage.current), color = TextMuted, fontSize = 12.sp)
                                 OutlinedTextField(
                                     value = clearKidsPinInput,
                                     onValueChange = { value -> if (value.length <= 8 && value.all(Char::isDigit)) clearKidsPinInput = value },
-                                    label = { Text("Current PIN") },
+                                    label = { Text(appText("Current PIN", LocalAppLanguage.current)) },
                                     singleLine = true,
                                     visualTransformation = PasswordVisualTransformation(),
                                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
@@ -2015,7 +2062,7 @@ private fun SettingsScreen(
                                     clearKidsPinInput = ""
                                     clearKidsPinError = ""
                                 } else clearKidsPinError = "Incorrect PIN."
-                            }) { Text("Remove PIN") }
+                            }) { Text(appText("Remove PIN", LocalAppLanguage.current)) }
                         },
                         dismissButton = { TextButton(onClick = { showClearKidsPinDialog = false; clearKidsPinInput = ""; clearKidsPinError = "" }) { Text("Cancel") } },
                     )
@@ -2023,11 +2070,11 @@ private fun SettingsScreen(
                 if (showKidsRulesDialog) {
                     AlertDialog(
                         onDismissRequest = { showKidsRulesDialog = false },
-                        title = { Text("Kids Mode content rules") },
+                        title = { Text(appText("Kids Mode content rules", LocalAppLanguage.current)) },
                         text = {
                             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                Text("Enter the exact catalogue item ID to allow or block it. These rules are saved on this device.", color = TextMuted, fontSize = 12.sp)
-                                OutlinedTextField(value = kidsRuleItemId, onValueChange = { kidsRuleItemId = it.trim() }, label = { Text("Catalogue item ID") }, singleLine = true)
+                                Text(appText("Enter the exact catalogue item ID to allow or block it. These rules are saved on this device.", LocalAppLanguage.current), color = TextMuted, fontSize = 12.sp)
+                                OutlinedTextField(value = kidsRuleItemId, onValueChange = { kidsRuleItemId = it.trim() }, label = { Text(appText("Catalogue item ID", LocalAppLanguage.current)) }, singleLine = true)
                                 Text("Allowed: ${preferences.kidsAllowedItemIds().size} · Blocked: ${preferences.kidsBlockedItemIds().size}", color = TextMuted, fontSize = 11.sp)
                                 if (kidsRuleMessage.isNotBlank()) Text(kidsRuleMessage, color = GoldLight, fontSize = 12.sp)
                             }
@@ -2045,7 +2092,7 @@ private fun SettingsScreen(
                                 TextButton(onClick = {
                                     if (kidsRuleItemId.isBlank()) kidsRuleMessage = "Enter an item ID first."
                                     else kidsRuleMessage = if (preferences.clearKidsItemRule(kidsRuleItemId)) "Override cleared; automatic classification applies." else "No override exists for this item."
-                                }) { Text("Clear rule") }
+                                }) { Text(appText("Clear rule", LocalAppLanguage.current)) }
                             }
                         },
                         dismissButton = { TextButton(onClick = { showKidsRulesDialog = false }) { Text("Close") } },
@@ -2054,14 +2101,14 @@ private fun SettingsScreen(
                 if (showKidsExitDialog) {
                     AlertDialog(
                         onDismissRequest = { showKidsExitDialog = false; kidsExitPinInput = ""; kidsExitPinError = "" },
-                        title = { Text("Parent PIN required") },
+                        title = { Text(appText("Parent PIN required", LocalAppLanguage.current)) },
                         text = {
                             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                Text("Enter the parent PIN to leave Kids Mode.", color = TextMuted, fontSize = 12.sp)
+                                Text(appText("Enter the parent PIN to leave Kids Mode.", LocalAppLanguage.current), color = TextMuted, fontSize = 12.sp)
                                 OutlinedTextField(
                                     value = kidsExitPinInput,
                                     onValueChange = { value -> if (value.length <= 8 && value.all(Char::isDigit)) kidsExitPinInput = value },
-                                    label = { Text("Parent PIN") },
+                                    label = { Text(appText("Parent PIN", LocalAppLanguage.current)) },
                                     singleLine = true,
                                     visualTransformation = PasswordVisualTransformation(),
                                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
@@ -2077,7 +2124,7 @@ private fun SettingsScreen(
                                     kidsExitPinInput = ""
                                     kidsExitPinError = ""
                                 } else kidsExitPinError = "Incorrect PIN."
-                            }) { Text("Exit Kids Mode") }
+                            }) { Text(appText("Exit Kids Mode", LocalAppLanguage.current)) }
                         },
                         dismissButton = {
                             TextButton(onClick = { showKidsExitDialog = false; kidsExitPinInput = ""; kidsExitPinError = "" }) { Text("Cancel") }
@@ -2094,7 +2141,7 @@ private fun SettingsScreen(
                                     OutlinedTextField(
                                         value = kidsCurrentPinInput,
                                         onValueChange = { value -> if (value.length <= 8 && value.all(Char::isDigit)) kidsCurrentPinInput = value },
-                                        label = { Text("Current PIN") },
+                                        label = { Text(appText("Current PIN", LocalAppLanguage.current)) },
                                         singleLine = true,
                                         visualTransformation = PasswordVisualTransformation(),
                                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
@@ -2106,7 +2153,7 @@ private fun SettingsScreen(
                                         if (value.length <= 8 && value.all(Char::isDigit)) kidsPinInput = value
                                         kidsPinError = ""
                                     },
-                                    label = { Text("4–8 digit PIN") },
+                                    label = { Text(appText("4–8 digit PIN", LocalAppLanguage.current)) },
                                     singleLine = true,
                                     visualTransformation = PasswordVisualTransformation(),
                                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
@@ -2126,7 +2173,7 @@ private fun SettingsScreen(
                                     kidsCurrentPinInput = ""
                                     kidsPinError = ""
                                 } else kidsPinError = if (preferences.hasKidsPin()) "Check the current PIN and enter a new 4–8 digit PIN." else "Enter 4 to 8 digits."
-                            }) { Text("Save PIN") }
+                            }) { Text(appText("Save PIN", LocalAppLanguage.current)) }
                         },
                         dismissButton = {
                             TextButton(onClick = { showKidsPinDialog = false; kidsPinInput = ""; kidsCurrentPinInput = ""; kidsPinError = "" }) { Text("Cancel") }
@@ -2137,35 +2184,35 @@ private fun SettingsScreen(
         }
         Surface(color = Panel, shape = RoundedCornerShape(10.dp), modifier = Modifier.fillMaxWidth()) {
             Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text("OATEC PREMIUM", color = GoldLight, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
+                Text(appText("OATEC PREMIUM", LocalAppLanguage.current), color = GoldLight, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
                 OutlinedTextField(
                     value = premiumCodeInput,
                     onValueChange = { premiumCodeInput = it; premiumCodeSaved = false },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Premium code (optional)") },
+                    label = { Text(appText("Premium code (optional)", LocalAppLanguage.current)) },
                     singleLine = true,
                     visualTransformation = PasswordVisualTransformation(),
                 )
-                Text("The code is stored securely. Online verification is not available until OATEC provides an activation API.", color = TextMuted, fontSize = 10.sp)
+                Text(appText("The code is stored securely. Online verification is not available until OATEC provides an activation API.", LocalAppLanguage.current), color = TextMuted, fontSize = 10.sp)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                     Button(
                         onClick = { onSavePremiumCode(premiumCodeInput.trim()); premiumCodeSaved = true },
                         colors = ButtonDefaults.buttonColors(containerColor = Lime, contentColor = Ink),
-                    ) { Text("Save code") }
+                    ) { Text(appText("Save code", LocalAppLanguage.current)) }
                     OutlinedButton(
                         onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://oatec.store/"))) },
-                    ) { Text("Open OATEC website") }
-                    if (premiumCodeSaved) Text("Saved", color = GoldLight, fontSize = 11.sp)
+                    ) { Text(appText("Open OATEC website", LocalAppLanguage.current)) }
+                    if (premiumCodeSaved) Text(appText("Saved", LocalAppLanguage.current), color = GoldLight, fontSize = 11.sp)
                 }
             }
         }
         Surface(color = Panel, shape = RoundedCornerShape(10.dp), modifier = Modifier.fillMaxWidth()) {
             Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text("ABOUT OATEC", color = GoldLight, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
+                Text(appText("ABOUT OATEC", LocalAppLanguage.current), color = GoldLight, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
                 when {
                     loadingAbout && about == null -> Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         CircularProgressIndicator(Modifier.size(20.dp), color = Lime, strokeWidth = 2.dp)
-                        Text("Loading information from oatec.store", color = TextMuted, fontSize = 12.sp)
+                        Text(appText("Loading information from oatec.store", LocalAppLanguage.current), color = TextMuted, fontSize = 12.sp)
                     }
                     about != null -> {
                         Text(about!!.title, color = TextMain, fontSize = 18.sp, fontWeight = FontWeight.Bold)
@@ -2175,14 +2222,14 @@ private fun SettingsScreen(
                     aboutError.isNotBlank() -> Text(aboutError, color = ErrorRed, fontSize = 12.sp)
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(onClick = ::loadAbout, enabled = !loadingAbout) { Text("Refresh info") }
+                    OutlinedButton(onClick = ::loadAbout, enabled = !loadingAbout) { Text(appText("Refresh info", LocalAppLanguage.current)) }
                     Button(
                         onClick = {
                             context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(about?.website ?: "https://oatec.store/")))
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = Lime, contentColor = Ink),
-                    ) { Text("Visit website") }
-                    OutlinedButton(onClick = onExit) { Text("Exit app") }
+                    ) { Text(appText("Visit website", LocalAppLanguage.current)) }
+                    OutlinedButton(onClick = onExit) { Text(appText("Exit app", LocalAppLanguage.current)) }
                 }
             }
         }
@@ -2191,8 +2238,8 @@ private fun SettingsScreen(
     if (confirmClearHistory) {
         AlertDialog(
             onDismissRequest = { confirmClearHistory = false },
-            title = { Text("Clear watch history?") },
-            text = { Text("Saved playback positions will also be removed from this device.") },
+            title = { Text(appText("Clear watch history?", LocalAppLanguage.current)) },
+            text = { Text(appText("Saved playback positions will also be removed from this device.", LocalAppLanguage.current)) },
             confirmButton = {
                 TextButton(onClick = { preferences.clearWatchHistory(); confirmClearHistory = false }) { Text("Clear") }
             },
@@ -2238,11 +2285,11 @@ private fun HomeDashboard(
                         Text("TVI", color = Lime, fontSize = if (compact) 20.sp else 34.sp, fontWeight = FontWeight.Black, maxLines = 1)
                         Text("PLAYER", color = TextMain, fontSize = if (compact) 20.sp else 34.sp, fontWeight = FontWeight.Black, maxLines = 1)
                     }
-                    Text("Votre divertissement, simplement", color = TextMuted, fontSize = if (compact) 9.sp else 13.sp, maxLines = 1)
+                    Text(appText("Votre divertissement, simplement", LocalAppLanguage.current), color = TextMuted, fontSize = if (compact) 9.sp else 13.sp, maxLines = 1)
                     if (!sourceName.isNullOrBlank()) {
                         Text("●  ${sourceName}", color = Lime, fontSize = if (compact) 8.sp else 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     } else {
-                        Text("Aucune source connectée", color = TextMuted, fontSize = if (compact) 8.sp else 10.sp, maxLines = 1)
+                        Text(appText("Aucune source connectée", LocalAppLanguage.current), color = TextMuted, fontSize = if (compact) 8.sp else 10.sp, maxLines = 1)
                     }
                 }
                 Column(
@@ -2253,12 +2300,12 @@ private fun HomeDashboard(
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text("🛒", color = Lime, fontSize = if (compact) 17.sp else 27.sp)
                         Text("OATEC", color = GoldLight, fontSize = if (compact) 17.sp else 30.sp, fontWeight = FontWeight.Black, maxLines = 1)
-                        Text("STORE", color = TextMain.copy(alpha = 0.86f), fontSize = if (compact) 11.sp else 18.sp, fontWeight = FontWeight.Light, maxLines = 1)
+                        Text(appText("STORE", LocalAppLanguage.current), color = TextMain.copy(alpha = 0.86f), fontSize = if (compact) 11.sp else 18.sp, fontWeight = FontWeight.Light, maxLines = 1)
                     }
-                    Text("VOTRE BOUTIQUE EN LIGNE", color = Lime.copy(alpha = 0.8f), fontSize = if (compact) 7.sp else 10.sp, letterSpacing = if (compact) 1.sp else 2.sp, maxLines = 1)
+                    Text(appText("VOTRE BOUTIQUE EN LIGNE", LocalAppLanguage.current), color = Lime.copy(alpha = 0.8f), fontSize = if (compact) 7.sp else 10.sp, letterSpacing = if (compact) 1.sp else 2.sp, maxLines = 1)
                 }
                 Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                    Text("◉  WIFI", color = TextMain.copy(alpha = 0.8f), fontSize = if (compact) 9.sp else 13.sp)
+                    Text(appText("◉  WIFI", LocalAppLanguage.current), color = TextMain.copy(alpha = 0.8f), fontSize = if (compact) 9.sp else 13.sp)
                     OutlinedButton(
                         onClick = { onSelect(Section.SETTINGS) },
                         contentPadding = PaddingValues(horizontal = if (compact) 8.dp else 13.dp, vertical = 2.dp),
@@ -2348,14 +2395,14 @@ private fun HomeDashboard(
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     Box(Modifier.width(if (compact) 22.dp else 34.dp).height(2.dp).background(Lime))
                     Text("OATEC", color = Lime, fontSize = if (compact) 9.sp else 13.sp, letterSpacing = 3.sp, fontWeight = FontWeight.Bold)
-                    Text("STORE", color = TextMain, fontSize = if (compact) 9.sp else 13.sp, letterSpacing = 3.sp)
+                    Text(appText("STORE", LocalAppLanguage.current), color = TextMain, fontSize = if (compact) 9.sp else 13.sp, letterSpacing = 3.sp)
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(if (compact) 10.dp else 22.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text("♢  Service fiable", color = TextMuted, fontSize = if (compact) 8.sp else 11.sp, maxLines = 1)
-                    Text("ϟ  Accès rapide", color = TextMuted, fontSize = if (compact) 8.sp else 11.sp, maxLines = 1)
-                    Text("◉  Support 24/7", color = TextMuted, fontSize = if (compact) 8.sp else 11.sp, maxLines = 1)
+                    Text(appText("♢  Service fiable", LocalAppLanguage.current), color = TextMuted, fontSize = if (compact) 8.sp else 11.sp, maxLines = 1)
+                    Text(appText("ϟ  Accès rapide", LocalAppLanguage.current), color = TextMuted, fontSize = if (compact) 8.sp else 11.sp, maxLines = 1)
+                    Text(appText("◉  Support 24/7", LocalAppLanguage.current), color = TextMuted, fontSize = if (compact) 8.sp else 11.sp, maxLines = 1)
                 }
-                Text("Votre satisfaction est notre priorité", color = GoldLight, fontSize = if (compact) 8.sp else 13.sp, maxLines = 1)
+                Text(appText("Votre satisfaction est notre priorité", LocalAppLanguage.current), color = GoldLight, fontSize = if (compact) 8.sp else 13.sp, maxLines = 1)
             }
         }
     }
@@ -2401,7 +2448,7 @@ private fun NavigationRail(
                 }
             }
             Column(Modifier.weight(1f)) {
-                Text("TVI PLAYER", color = TextMain, fontSize = if (compact) 12.sp else 15.sp, fontWeight = FontWeight.Black, maxLines = 1)
+                Text(appText("TVI PLAYER", LocalAppLanguage.current), color = TextMain, fontSize = if (compact) 12.sp else 15.sp, fontWeight = FontWeight.Black, maxLines = 1)
                 if (!sourceName.isNullOrBlank()) Text(sourceName, color = TextMuted, fontSize = 9.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             OutlinedButton(
@@ -2415,7 +2462,7 @@ private fun NavigationRail(
                 },
                 contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp),
             ) {
-                Text(appText("← Back", LocalAppLanguage.current), fontSize = 10.sp
+                Text(appText(appText("← Back", LocalAppLanguage.current), LocalAppLanguage.current), fontSize = 10.sp
             }
             OutlinedButton(
                 onClick = onExit,
@@ -2482,7 +2529,7 @@ private fun TopBar(
             Text("CH $numberInput", color = Lime, fontSize = 15.sp, fontWeight = FontWeight.Bold)
         }
         if (title == Section.LIVE.label) {
-            OutlinedButton(onClick = onNumberPad, contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)) { Text("CH #", fontSize = 10.sp) }
+            OutlinedButton(onClick = onNumberPad, contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)) { Text(appText("CH #", LocalAppLanguage.current), fontSize = 10.sp) }
         }
         SearchField(search, onSearch, Modifier.width(if (compact) 120.dp else 220.dp))
         if (showRefresh) {
@@ -2679,7 +2726,7 @@ private fun LiveScreen(
     pendingDeleteChannel?.let { item ->
         AlertDialog(
             onDismissRequest = { pendingDeleteChannel = null },
-            title = { Text("Delete channel?") },
+            title = { Text(appText("Delete channel?", LocalAppLanguage.current)) },
             text = { Text("Remove “${preferences.channelTitle(item.id, item.title)}” from the main channel list? You can restore it later from Hidden.") },
             confirmButton = {
                 TextButton(onClick = {
@@ -3035,16 +3082,16 @@ private fun OfflineDownloadsScreen(
                         onHome()
                         true
                     } else false
-                }) { Text("← Back") }
+                }) { Text(appText("← Back", LocalAppLanguage.current)) }
             Spacer(Modifier.weight(1f))
             Column(horizontalAlignment = Alignment.End) {
-                Text("DOWNLOADS", color = TextMain, fontSize = 24.sp, fontWeight = FontWeight.Black)
+                Text(appText("DOWNLOADS", LocalAppLanguage.current), color = TextMain, fontSize = 24.sp, fontWeight = FontWeight.Black)
                 Text("المحتوى المحمّل محفوظ فذاكرة الجهاز", color = TextMuted, fontSize = 12.sp)
             }
         }
         if (downloads.isEmpty()) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("ما كاين حتى تحميل دابا. اختار فيلم واضغط Download offline.", color = TextMuted)
+                Text(appText("ما كاين حتى تحميل دابا. اختار فيلم واضغط Download offline.", LocalAppLanguage.current), color = TextMuted)
             }
         } else {
             LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -3147,8 +3194,8 @@ private fun MoviePreviewOverlay(
                 if (details.isNotBlank()) Text(details, color = TextMuted, fontSize = 13.sp)
                 if (message.isNotBlank()) Text(message, color = TextMuted, fontSize = 12.sp, maxLines = 2)
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Button(onClick = onWatch, colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Color.Black)) { Text("▶  Watch") }
-                    OutlinedButton(onClick = onDownload) { Text("⬇  Download") }
+                    Button(onClick = onWatch, colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Color.Black)) { Text(appText("▶  Watch", LocalAppLanguage.current)) }
+                    OutlinedButton(onClick = onDownload) { Text(appText("⬇  Download", LocalAppLanguage.current)) }
                     OutlinedButton(onClick = onDismiss) { Text("Back") }
                 }
             }
@@ -3226,7 +3273,7 @@ private fun MediaDetailsDialog(
                                 }
                             }
                         }
-                        Text("Synopsis", color = Lime, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                        Text(appText("Synopsis", LocalAppLanguage.current), color = Lime, fontSize = 14.sp, fontWeight = FontWeight.Bold)
                         Text(
                             entry.description.ifBlank { "No synopsis or additional details are available from this source." },
                             color = TextMain,
@@ -3234,7 +3281,7 @@ private fun MediaDetailsDialog(
                             lineHeight = 20.sp,
                         )
                         if (isSeries) {
-                            Text("Open the episodes list to browse available seasons and episodes.", color = TextMuted, fontSize = 12.sp)
+                            Text(appText("Open the episodes list to browse available seasons and episodes.", LocalAppLanguage.current), color = TextMuted, fontSize = 12.sp)
                         }
                         if (entry.kind == MediaKind.MOVIE || entry.kind == MediaKind.SERIES) {
                             OutlinedButton(onClick = { onFindTrailer(entry) }, enabled = !trailerSearchBusy) {
@@ -3247,7 +3294,7 @@ private fun MediaDetailsDialog(
                 HorizontalDivider(color = TextMain.copy(alpha = 0.1f))
                 Row(Modifier.fillMaxWidth().padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.End)) {
                     if (!isSeries && entry.kind != MediaKind.LIVE) {
-                        OutlinedButton(onClick = onDownload) { Text("⬇ Download offline") }
+                        OutlinedButton(onClick = onDownload) { Text(appText("⬇ Download offline", LocalAppLanguage.current)) }
                     }
                     Button(
                         onClick = if (isSeries) onBrowseEpisodes else onPlay,
@@ -3421,12 +3468,12 @@ private fun SourcesScreen(
     Column(Modifier.fillMaxSize().padding(28.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                Text("Your IPTV sources", color = TextMain, fontSize = 22.sp, fontWeight = FontWeight.Bold)
-                Text("Source access is provided by your IPTV provider.", color = TextMuted, fontSize = 12.sp)
+                Text(appText("Your IPTV sources", LocalAppLanguage.current), color = TextMain, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+                Text(appText("Source access is provided by your IPTV provider.", LocalAppLanguage.current), color = TextMuted, fontSize = 12.sp)
             }
-            OutlinedButton(onClick = onImport) { Text("Import M3U file") }
+            OutlinedButton(onClick = onImport) { Text(appText("Import M3U file", LocalAppLanguage.current)) }
             Spacer(Modifier.width(8.dp))
-            Button(onClick = onAdd, colors = ButtonDefaults.buttonColors(containerColor = Lime, contentColor = Ink)) { Text("Add source") }
+            Button(onClick = onAdd, colors = ButtonDefaults.buttonColors(containerColor = Lime, contentColor = Ink)) { Text(appText("Add source", LocalAppLanguage.current)) }
         }
         Spacer(Modifier.height(20.dp))
         if (sources.isEmpty()) EmptyState("No sources added", "Add an M3U playlist or an Xtream-compatible account.")
@@ -3444,7 +3491,7 @@ private fun SourcesScreen(
                             Text(source.name, color = TextMain, fontSize = 15.sp, fontWeight = FontWeight.Bold)
                             Text("${source.type.name.replace('_', ' ')} | ${source.serverUrl}", color = TextMuted, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                             if (source.serverUrl.startsWith("http://", true)) {
-                                Text("Unencrypted HTTP source", color = ErrorRed, fontSize = 10.sp)
+                                Text(appText("Unencrypted HTTP source", LocalAppLanguage.current), color = ErrorRed, fontSize = 10.sp)
                             }
                         }
                         OutlinedButton(onClick = { onRefresh(source) }, enabled = !busy) { Text("Refresh") }
@@ -3467,7 +3514,7 @@ private fun AddSourceDialog(onDismiss: () -> Unit, onSave: (PlayerSource) -> Uni
     var error by rememberSaveable { mutableStateOf("") }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Add IPTV source") },
+        title = { Text(appText("Add IPTV source", LocalAppLanguage.current)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -3475,17 +3522,17 @@ private fun AddSourceDialog(onDismiss: () -> Unit, onSave: (PlayerSource) -> Uni
                         CategoryPill(option.name, type == option.name) { type = option.name }
                     }
                 }
-                OutlinedTextField(name, { name = it }, label = { Text("Source name") }, singleLine = true)
+                OutlinedTextField(name, { name = it }, label = { Text(appText("Source name", LocalAppLanguage.current)) }, singleLine = true)
                 OutlinedTextField(url, { url = it }, label = { Text(if (type == SourceType.M3U.name) "M3U URL" else "Server URL") }, singleLine = true)
-                OutlinedTextField(epgUrl, { epgUrl = it }, label = { Text("EPG XMLTV URL (optional)") }, singleLine = true)
+                OutlinedTextField(epgUrl, { epgUrl = it }, label = { Text(appText("EPG XMLTV URL (optional)", LocalAppLanguage.current)) }, singleLine = true)
                 if (type == SourceType.XTREAM.name || type == SourceType.M3U.name) {
-                    OutlinedTextField(username, { username = it }, label = { Text("Username (optional for M3U)") }, singleLine = true)
-                    OutlinedTextField(password, { password = it }, label = { Text("Password (optional for M3U)") }, singleLine = true, visualTransformation = PasswordVisualTransformation())
+                    OutlinedTextField(username, { username = it }, label = { Text(appText("Username (optional for M3U)", LocalAppLanguage.current)) }, singleLine = true)
+                    OutlinedTextField(password, { password = it }, label = { Text(appText("Password (optional for M3U)", LocalAppLanguage.current)) }, singleLine = true, visualTransformation = PasswordVisualTransformation())
                     if (type == SourceType.M3U.name) {
-                        Text("If you enter a server address instead of a full playlist URL, the app can build the get.php M3U link using these credentials.", color = TextMuted, fontSize = 10.sp)
+                        Text(appText("If you enter a server address instead of a full playlist URL, the app can build the get.php M3U link using these credentials.", LocalAppLanguage.current), color = TextMuted, fontSize = 10.sp)
                     }
                 }
-                if (url.startsWith("http://", true)) Text("HTTP is unencrypted. Prefer HTTPS when your provider supports it.", color = ErrorRed, fontSize = 11.sp)
+                if (url.startsWith("http://", true)) Text(appText("HTTP is unencrypted. Prefer HTTPS when your provider supports it.", LocalAppLanguage.current), color = ErrorRed, fontSize = 11.sp)
                 if (error.isNotBlank()) Text(error, color = ErrorRed, fontSize = 12.sp)
             }
         },
@@ -3540,7 +3587,7 @@ private fun NumberPadDialog(
     }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Tune a channel") },
+        title = { Text(appText("Tune a channel", LocalAppLanguage.current)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(digits.ifBlank { "Enter a channel number" }, color = if (digits.isBlank()) TextMuted else Lime, fontSize = 20.sp, fontWeight = FontWeight.Bold)
@@ -3923,13 +3970,13 @@ private fun PlaybackDialog(
             if (entry.kind != MediaKind.LIVE && controlsVisible) {
             Row(Modifier.align(Alignment.TopEnd).padding(16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (entry.kind != MediaKind.LIVE) {
-                    if (activeEngine == "exoplayer") OutlinedButton(onClick = { showAudioDialog = true }) { Text("Audio tracks") }
-                    OutlinedButton(onClick = { showOnlineSubtitleDialog = true }) { Text("Online subtitles") }
-                    OutlinedButton(onClick = { subtitlePicker.launch(arrayOf("text/*", "application/x-subrip", "application/octet-stream")) }) { Text("Load subtitles") }
-                    OutlinedButton(onClick = { externalAudioPicker.launch(arrayOf("audio/*", "application/octet-stream")) }) { Text("External audio") }
+                    if (activeEngine == "exoplayer") OutlinedButton(onClick = { showAudioDialog = true }) { Text(appText("Audio tracks", LocalAppLanguage.current)) }
+                    OutlinedButton(onClick = { showOnlineSubtitleDialog = true }) { Text(appText("Online subtitles", LocalAppLanguage.current)) }
+                    OutlinedButton(onClick = { subtitlePicker.launch(arrayOf("text/*", "application/x-subrip", "application/octet-stream")) }) { Text(appText("Load subtitles", LocalAppLanguage.current)) }
+                    OutlinedButton(onClick = { externalAudioPicker.launch(arrayOf("audio/*", "application/octet-stream")) }) { Text(appText("External audio", LocalAppLanguage.current)) }
                 }
                 if (entry.kind == MediaKind.LIVE && qualityOptions.size > 1) {
-                    OutlinedButton(onClick = { showQualityDialog = true }) { Text("Choose quality") }
+                    OutlinedButton(onClick = { showQualityDialog = true }) { Text(appText("Choose quality", LocalAppLanguage.current)) }
                 }
                 if (entry.kind == MediaKind.LIVE && channels.isNotEmpty()) {
                     OutlinedButton(onClick = { showList = !showList }) { Text(if (showList) "Hide channels" else "Channels") }
@@ -3966,18 +4013,18 @@ private fun PlaybackDialog(
                         runCatching { mpvView?.paused = true }
                         onDismiss()
                     }) { Text("Stop") }
-                    OutlinedButton(onClick = { showMpvSettings = true }) { Text("Player settings") }
+                    OutlinedButton(onClick = { showMpvSettings = true }) { Text(appText("Player settings", LocalAppLanguage.current)) }
                 }
             }
             if (showMpvSettings) {
                 AlertDialog(
                     onDismissRequest = { showMpvSettings = false },
-                    title = { Text("Player settings") },
+                    title = { Text(appText("Player settings", LocalAppLanguage.current)) },
                     text = {
                         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                             HorizontalDivider()
-                            Text("Choose the playback engine or restore the default player.")
-                            Text("Current engine: MPV", color = TextMuted, fontSize = 12.sp)
+                            Text(appText("Choose the playback engine or restore the default player.", LocalAppLanguage.current))
+                            Text(appText("Current engine: MPV", LocalAppLanguage.current), color = TextMuted, fontSize = 12.sp)
                         }
                     },
                     confirmButton = {
@@ -3986,7 +4033,7 @@ private fun PlaybackDialog(
                             activeEngine = "exoplayer"
                             mpvPaused = false
                             showMpvSettings = false
-                        }) { Text("Default player (ExoPlayer)") }
+                        }) { Text(appText("Default player (ExoPlayer)", LocalAppLanguage.current)) }
                     },
                     dismissButton = {
                         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -3994,7 +4041,7 @@ private fun PlaybackDialog(
                                 mpvAttempt += 1
                                 mpvPaused = false
                                 showMpvSettings = false
-                            }) { Text("Restart MPV") }
+                            }) { Text(appText("Restart MPV", LocalAppLanguage.current)) }
                             TextButton(onClick = { showMpvSettings = false }) { Text("Close") }
                         }
                     },
@@ -4003,11 +4050,11 @@ private fun PlaybackDialog(
             if (showOnlineSubtitleDialog) {
                 AlertDialog(
                     onDismissRequest = { if (!onlineSubtitleLoading) showOnlineSubtitleDialog = false },
-                    title = { Text("Search online subtitles") },
+                    title = { Text(appText("Search online subtitles", LocalAppLanguage.current)) },
                     text = {
                         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                            OutlinedTextField(value = onlineSubtitleQuery, onValueChange = { onlineSubtitleQuery = it }, label = { Text("Movie or series title") }, singleLine = true)
-                            OutlinedTextField(value = onlineSubtitleLanguage, onValueChange = { onlineSubtitleLanguage = it.take(2).lowercase() }, label = { Text("Language code (ar, en, fr)") }, singleLine = true)
+                            OutlinedTextField(value = onlineSubtitleQuery, onValueChange = { onlineSubtitleQuery = it }, label = { Text(appText("Movie or series title", LocalAppLanguage.current)) }, singleLine = true)
+                            OutlinedTextField(value = onlineSubtitleLanguage, onValueChange = { onlineSubtitleLanguage = it.take(2).lowercase() }, label = { Text(appText("Language code (ar, en, fr)", LocalAppLanguage.current)) }, singleLine = true)
                             Text(if (BuildConfig.OPEN_SUBTITLES_API_KEY.isBlank()) "OpenSubtitles API key is not configured in GitHub Actions." else "Search OpenSubtitles and download a matching subtitle into the player.", color = TextMuted, fontSize = 12.sp)
                             if (onlineSubtitleLoading) CircularProgressIndicator()
                         }
@@ -4035,7 +4082,7 @@ private fun PlaybackDialog(
                                 }.onFailure { subtitleMessage = it.localizedMessage ?: "Could not find or download an online subtitle." }
                                 onlineSubtitleLoading = false
                             }
-                        }) { Text("Search and load") }
+                        }) { Text(appText("Search and load", LocalAppLanguage.current)) }
                     },
                     dismissButton = { TextButton(onClick = { showOnlineSubtitleDialog = false }, enabled = !onlineSubtitleLoading) { Text("Cancel") } },
                 )
@@ -4051,7 +4098,7 @@ private fun PlaybackDialog(
                     Modifier.align(Alignment.Center).background(Ink.copy(alpha = 0.94f), RoundedCornerShape(10.dp)).padding(24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    Text("Playback unavailable", color = TextMain, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                    Text(appText("Playback unavailable", LocalAppLanguage.current), color = TextMain, fontSize = 18.sp, fontWeight = FontWeight.Bold)
                     Text(error, color = TextMuted, modifier = Modifier.padding(top = 6.dp, bottom = 12.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Button(onClick = {
@@ -4063,7 +4110,7 @@ private fun PlaybackDialog(
                                 player.prepare()
                                 player.play()
                             }
-                        }) { Text("Retry") }
+                        }) { Text(appText("Retry", LocalAppLanguage.current)) }
                         OutlinedButton(onClick = {
                             val fallbackEngine = if (activeEngine == "mpv") "exoplayer" else "mpv"
                             preferences.setPlaybackEngine(fallbackEngine)
@@ -4119,9 +4166,9 @@ private fun PlaybackDialog(
         }
         AlertDialog(
             onDismissRequest = { showAudioDialog = false },
-            title = { Text("Audio tracks") },
+            title = { Text(appText("Audio tracks", LocalAppLanguage.current)) },
             text = {
-                if (audioChoices.isEmpty()) Text("No selectable audio tracks are available yet, or this stream is still loading.")
+                if (audioChoices.isEmpty()) Text(appText("No selectable audio tracks are available yet, or this stream is still loading.", LocalAppLanguage.current))
                 else Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     audioChoices.forEachIndexed { index, choice ->
                         TextButton(onClick = {
@@ -4135,7 +4182,7 @@ private fun PlaybackDialog(
                     TextButton(onClick = {
                         trackSelector.parameters = trackSelector.buildUponParameters().clearOverridesOfType(C.TRACK_TYPE_AUDIO).build()
                         showAudioDialog = false
-                    }) { Text("Automatic selection") }
+                    }) { Text(appText("Automatic selection", LocalAppLanguage.current)) }
                 }
             },
             confirmButton = { TextButton(onClick = { showAudioDialog = false }) { Text("Close") } },
@@ -4144,7 +4191,7 @@ private fun PlaybackDialog(
     if (showQualityDialog) {
         AlertDialog(
             onDismissRequest = { showQualityDialog = false },
-            title = { Text("Choose stream quality") },
+            title = { Text(appText("Choose stream quality", LocalAppLanguage.current)) },
             text = {
                 LazyColumn(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     items(qualityOptions, key = { it.id }) { option ->
@@ -4164,7 +4211,7 @@ private fun PlaybackDialog(
                     }
                 }
             },
-            confirmButton = { TextButton(onClick = { showQualityDialog = false }) { Text("Done") } },
+            confirmButton = { TextButton(onClick = { showQualityDialog = false }) { Text(appText("Done", LocalAppLanguage.current)) } },
         )
     }
 }
@@ -4186,7 +4233,7 @@ private fun OrganizeChannelDialog(
         channels.map { it.category } + preferences.customCategories()).filter(String::isNotBlank).distinct().sorted()
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Edit channel") },
+        title = { Text(appText("Edit channel", LocalAppLanguage.current)) },
         text = {
             Column(
                 Modifier.fillMaxWidth().heightIn(max = 440.dp).verticalScroll(rememberScrollState()),
@@ -4196,18 +4243,18 @@ private fun OrganizeChannelDialog(
                     value = title,
                     onValueChange = { title = it; error = "" },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Channel name") },
+                    label = { Text(appText("Channel name", LocalAppLanguage.current)) },
                     singleLine = true,
                 )
                 OutlinedTextField(
                     value = channelNumber,
                     onValueChange = { channelNumber = it.filter(Char::isDigit).take(5); error = "" },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Channel number") },
+                    label = { Text(appText("Channel number", LocalAppLanguage.current)) },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 )
-                Text("Move to category", color = TextMuted, fontSize = 11.sp)
+                Text(appText("Move to category", LocalAppLanguage.current), color = TextMuted, fontSize = 11.sp)
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
                     items(categories, key = { it }) { option ->
                         CategoryPill(option, category == option) { category = option }
@@ -4217,7 +4264,7 @@ private fun OrganizeChannelDialog(
                     OutlinedTextField(
                         newCategory,
                         { newCategory = it; error = "" },
-                        label = { Text("New category") },
+                        label = { Text(appText("New category", LocalAppLanguage.current)) },
                         singleLine = true,
                         modifier = Modifier.weight(1f),
                     )
@@ -4227,9 +4274,9 @@ private fun OrganizeChannelDialog(
                             category = newCategory.trim()
                             newCategory = ""
                         }
-                    }) { Text("Create") }
+                    }) { Text(appText("Create", LocalAppLanguage.current)) }
                 }
-                Text("If the number is in use, the two channels will swap numbers.", color = TextMuted, fontSize = 10.sp)
+                Text(appText("If the number is in use, the two channels will swap numbers.", LocalAppLanguage.current), color = TextMuted, fontSize = 10.sp)
                 if (error.isNotBlank()) Text(error, color = ErrorRed, fontSize = 11.sp)
             }
         },
@@ -4278,7 +4325,7 @@ private fun LoadingState(label: String, progress: Float? = null, loadedItems: In
         Text("${(animatedProgress * 100).toInt()}%", color = GoldLight, fontSize = 24.sp, fontWeight = FontWeight.Bold)
         if (loadedItems > 0) Text("$loadedItems items loaded", color = TextMuted, fontSize = 12.sp)
         Spacer(Modifier.height(8.dp))
-        Text("Please wait until the catalogue is ready", color = TextMuted, fontSize = 12.sp)
+        Text(appText("Please wait until the catalogue is ready", LocalAppLanguage.current), color = TextMuted, fontSize = 12.sp)
     }
 }
 
@@ -4603,11 +4650,11 @@ private fun KidsDashboard(
                 Column(Modifier.fillMaxSize().padding(if (compact) 8.dp else 16.dp), verticalArrangement = Arrangement.spacedBy(if (compact) 8.dp else 14.dp)) {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
-                            Text("🌈 TVI KIDS", color = Color(0xFFFFD76A), fontSize = if (compact) 23.sp else 34.sp, fontWeight = FontWeight.Black)
+                            Text(appText("🌈 TVI KIDS", LocalAppLanguage.current), color = Color(0xFFFFD76A), fontSize = if (compact) 23.sp else 34.sp, fontWeight = FontWeight.Black)
                             Text("اختار شنو بغيتي تتفرج اليوم ⭐", color = Color(0xFFE5F4FF), fontSize = if (compact) 11.sp else 14.sp)
                         }
                         OutlinedButton(onClick = onExit, contentPadding = PaddingValues(horizontal = 12.dp, vertical = 5.dp)) {
-                            Text("👨 Parent / PIN", fontSize = 11.sp, maxLines = 1)
+                            Text(appText("👨 Parent / PIN", LocalAppLanguage.current), fontSize = 11.sp, maxLines = 1)
                         }
                     }
                     Surface(
@@ -4618,7 +4665,7 @@ private fun KidsDashboard(
                         Box(Modifier.fillMaxSize().padding(16.dp), contentAlignment = Alignment.Center) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(7.dp)) {
                                 Text("📺", fontSize = if (compact) 42.sp else 64.sp)
-                                Text("TV LIVE", color = Color.White, fontSize = if (compact) 25.sp else 36.sp, fontWeight = FontWeight.Black)
+                                Text(appText("TV LIVE", LocalAppLanguage.current), color = Color.White, fontSize = if (compact) 25.sp else 36.sp, fontWeight = FontWeight.Black)
                                 Text("قنوات الأطفال مباشرة", color = Color(0xFFD7F4FF), fontSize = if (compact) 11.sp else 15.sp)
                             }
                         }
@@ -5037,8 +5084,8 @@ private fun YouTubeKidsSearchDialog(onDismiss: () -> Unit) {
             Column(Modifier.fillMaxSize().padding(10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
-                        Text("▶ YouTube", color = Color(0xFFFFD76A), fontSize = 18.sp, fontWeight = FontWeight.Black)
-                        Text("قلب وشاهد الفيديو هنا داخل TVI PLAYER", color = Color(0xFFE5F4FF), fontSize = 11.sp)
+                        Text(appText("▶ YouTube", LocalAppLanguage.current), color = Color(0xFFFFD76A), fontSize = 18.sp, fontWeight = FontWeight.Black)
+                        Text(appText("قلب وشاهد الفيديو هنا داخل TVI PLAYER", LocalAppLanguage.current), color = Color(0xFFE5F4FF), fontSize = 11.sp)
                     }
                     TextButton(onClick = onDismiss) { Text("رجوع ✕", color = Color.White) }
                 }
@@ -5258,8 +5305,8 @@ private fun KinoCheckTrailersScreen(
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             Column(Modifier.weight(1f)) {
-                Text("Official Trailers", color = TextMain, fontSize = 23.sp, fontWeight = FontWeight.ExtraBold)
-                Text("Latest and trending movie & series trailers", color = TextMuted, fontSize = 12.sp)
+                Text(appText("Official Trailers", LocalAppLanguage.current), color = TextMain, fontSize = 23.sp, fontWeight = FontWeight.ExtraBold)
+                Text(appText("Latest and trending movie & series trailers", LocalAppLanguage.current), color = TextMuted, fontSize = 12.sp)
             }
             OutlinedButton(onClick = { refreshToken++ }, enabled = !loading) {
                 Text(if (loading) "Loading…" else "Refresh")
@@ -5275,7 +5322,7 @@ private fun KinoCheckTrailersScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Text(error, color = ErrorRed, fontSize = 13.sp)
-                OutlinedButton(onClick = { refreshToken++ }) { Text("Try again") }
+                OutlinedButton(onClick = { refreshToken++ }) { Text(appText("Try again", LocalAppLanguage.current)) }
             }
             videos.isEmpty() -> Box(Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
                 Text("ما كايناش تريلرات متاحة دابا.", color = TextMuted)

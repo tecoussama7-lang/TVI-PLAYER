@@ -1301,7 +1301,7 @@ private fun PlayerTvAppContent(appLanguage: String, onLanguageChanged: (String) 
             Column(Modifier.fillMaxSize()) {
                 // LIVE TV is a clean, full-screen channel list: no navigation strip,
                 // title/search bar, or divider above the channels.
-                if (currentSection !in setOf(Section.LIVE, Section.MOVIES, Section.SERIES, Section.SETTINGS)) {
+                if (currentSection !in setOf(Section.LIVE, Section.MOVIES, Section.SERIES, Section.DOWNLOADS, Section.SETTINGS)) {
                     NavigationRail(
                         selected = if (currentSection == Section.SOURCES) Section.SETTINGS else currentSection,
                         sourceName = activeSource?.name,
@@ -1312,7 +1312,7 @@ private fun PlayerTvAppContent(appLanguage: String, onLanguageChanged: (String) 
                     )
                 }
                 Column(Modifier.weight(1f).fillMaxWidth()) {
-                    if (currentSection !in setOf(Section.LIVE, Section.MOVIES, Section.SERIES, Section.SETTINGS)) {
+                    if (currentSection !in setOf(Section.LIVE, Section.MOVIES, Section.SERIES, Section.DOWNLOADS, Section.SETTINGS)) {
                         TopBar(
                             title = currentSection.label,
                             sourceName = activeSource?.name,

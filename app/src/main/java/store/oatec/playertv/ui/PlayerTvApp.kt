@@ -3550,74 +3550,81 @@ private fun SeriesScreen(
         when {
             selectedSeries != null -> {
                 val series = selectedSeries
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(bottom = 20.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    item(key = "selected-series-header:${series.id}") {
-                        Row(
-                            Modifier.fillMaxWidth().padding(vertical = 8.dp),
-                            horizontalArrangement = Arrangement.spacedBy(14.dp),
-                            verticalAlignment = Alignment.Top,
+                Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(
+                        Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(14.dp),
+                        verticalAlignment = Alignment.Top,
+                    ) {
+                        Surface(
+                            color = Raised,
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier.size(if (isWideScreen) 132.dp else 104.dp).aspectRatio(1f),
                         ) {
                             if (series.logoUrl.isNotBlank()) {
-                                AsyncImage(model = series.logoUrl, contentDescription = series.title, modifier = Modifier.width(112.dp).height(158.dp), contentScale = ContentScale.Crop)
-                            }
-                            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                                Text(series.title, color = TextMain, fontSize = if (isWideScreen) 22.sp else 18.sp, fontWeight = FontWeight.Bold, maxLines = 3, overflow = TextOverflow.Ellipsis)
-                                Text(listOf(series.year, series.genre, series.rating.takeIf { it.isNotBlank() }?.let { "★ $it" }.orEmpty()).filter { it.isNotBlank() }.joinToString(" · "), color = GoldLight, fontSize = 11.sp, maxLines = 2)
-                                if (series.description.isNotBlank()) Text(series.description, color = TextMuted, fontSize = 11.sp, maxLines = 5, overflow = TextOverflow.Ellipsis)
-                                Text("${episodes.size} ${appText("Episodes", LocalAppLanguage.current)}", color = Lime, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                AsyncImage(model = series.logoUrl, contentDescription = series.title, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                            } else Box(contentAlignment = Alignment.Center) {
+                                Text(series.title.take(1).uppercase(), color = Lime, fontSize = 30.sp, fontWeight = FontWeight.Black)
                             }
                         }
-                        HorizontalDivider(color = TextMain.copy(alpha = 0.12f))
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text(series.title, color = TextMain, fontSize = if (isWideScreen) 22.sp else 18.sp, fontWeight = FontWeight.Bold, maxLines = 3, overflow = TextOverflow.Ellipsis)
+                            Text(listOf(series.year, series.genre, series.rating.takeIf { it.isNotBlank() }?.let { "★ $it" }.orEmpty()).filter { it.isNotBlank() }.joinToString(" · "), color = GoldLight, fontSize = 11.sp, maxLines = 2)
+                            if (series.description.isNotBlank()) Text(series.description, color = TextMuted, fontSize = 11.sp, maxLines = 3, overflow = TextOverflow.Ellipsis)
+                            Text("${episodes.size} ${appText("Episodes", LocalAppLanguage.current)}", color = Lime, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        }
                     }
-                    if (busy) {
-                        item { Box(Modifier.fillMaxWidth().height(140.dp), contentAlignment = Alignment.Center) { LoadingState("Loading episodes") } }
-                    } else if (orderedEpisodes.isEmpty()) {
-                        item { EmptyState("No episode data", "This provider did not return playable episodes.") }
-                    } else {
-                        seasonGroups.forEach { (season, seasonEpisodes) ->
-                            item(key = "season-heading:$season") {
-                                Text(season, color = Lime, fontSize = 15.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 10.dp, bottom = 4.dp))
-                            }
-                            items(seasonEpisodes, key = { "episode:${it.id}" }) { episode ->
-                                Row(
-                                    Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                ) {
-                                    AsyncImage(
-                                        model = episode.logoUrl.ifBlank { series.logoUrl },
-                                        contentDescription = episode.title,
-                                        modifier = Modifier.width(88.dp).height(62.dp),
-                                        contentScale = ContentScale.Crop,
-                                    )
-                                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                        Text(
-                                            "${episode.episodeNumber.padStart(2, '0')}  ${episode.title}",
-                                            color = TextMain,
-                                            fontSize = 12.sp,
-                                            fontWeight = FontWeight.SemiBold,
-                                            maxLines = 2,
-                                            overflow = TextOverflow.Ellipsis,
+                    HorizontalDivider(color = TextMain.copy(alpha = 0.12f))
+                    when {
+                        busy -> Box(Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) { LoadingState("Loading episodes") }
+                        orderedEpisodes.isEmpty() -> Box(Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
+                            EmptyState("No episode data", "This provider did not return playable episodes.")
+                        }
+                        else -> LazyVerticalGrid(
+                            columns = GridCells.Adaptive(minSize = when { screenWidthDp >= 1500 -> 190.dp; screenWidthDp >= 1000 -> 160.dp; screenWidthDp >= 700 -> 140.dp; screenWidthDp <= 360 -> 112.dp; else -> 124.dp }),
+                            modifier = Modifier.fillMaxWidth().weight(1f),
+                            contentPadding = PaddingValues(top = 3.dp, bottom = 20.dp),
+                            horizontalArrangement = Arrangement.spacedBy(if (isWideScreen) 12.dp else 8.dp),
+                            verticalArrangement = Arrangement.spacedBy(if (isWideScreen) 12.dp else 8.dp),
+                        ) {
+                            gridItems(orderedEpisodes, key = { "episode:${it.id}" }) { episode ->
+                                Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                                    Surface(
+                                        color = Raised,
+                                        shape = RoundedCornerShape(9.dp),
+                                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
+                                        modifier = Modifier.fillMaxWidth().aspectRatio(1f),
+                                    ) {
+                                        AsyncImage(
+                                            model = episode.logoUrl.ifBlank { series.logoUrl },
+                                            contentDescription = episode.title,
+                                            modifier = Modifier.fillMaxSize(),
+                                            contentScale = ContentScale.Crop,
                                         )
-                                        Text(season, color = TextMuted, fontSize = 10.sp)
-                                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                            Button(
-                                                onClick = { onPlay(episode) },
-                                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 5.dp),
-                                                colors = ButtonDefaults.buttonColors(containerColor = Lime, contentColor = Ink),
-                                            ) { Text(appText("Play", LocalAppLanguage.current), fontSize = 10.sp) }
-                                            OutlinedButton(
-                                                onClick = { onDownloadEpisode(episode) },
-                                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 5.dp),
-                                            ) { Text(appText("⬇ Download offline", LocalAppLanguage.current), fontSize = 10.sp) }
-                                        }
+                                    }
+                                    Text(
+                                        "${episode.episodeNumber.padStart(2, '0')}  ${episode.title}",
+                                        color = TextMain,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        maxLines = 2,
+                                        overflow = TextOverflow.Ellipsis,
+                                    )
+                                    Text(episode.season.ifBlank { "Season 1" }, color = TextMuted, fontSize = 9.sp, maxLines = 1)
+                                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                        Button(
+                                            onClick = { onPlay(episode) },
+                                            modifier = Modifier.weight(1f),
+                                            contentPadding = PaddingValues(horizontal = 5.dp, vertical = 3.dp),
+                                            colors = ButtonDefaults.buttonColors(containerColor = Lime, contentColor = Ink),
+                                        ) { Text(appText("Play", LocalAppLanguage.current), fontSize = 9.sp) }
+                                        OutlinedButton(
+                                            onClick = { onDownloadEpisode(episode) },
+                                            modifier = Modifier.weight(1f),
+                                            contentPadding = PaddingValues(horizontal = 5.dp, vertical = 3.dp),
+                                        ) { Text(appText("⬇ Download offline", LocalAppLanguage.current), fontSize = 8.sp, maxLines = 1) }
                                     }
                                 }
-                                HorizontalDivider(color = TextMain.copy(alpha = 0.07f))
                             }
                         }
                     }
@@ -3644,7 +3651,7 @@ private fun SeriesScreen(
                             color = Raised,
                             border = if (selected) BorderStroke(2.dp, Lime) else BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
                             shape = RoundedCornerShape(10.dp),
-                            modifier = Modifier.fillMaxWidth().aspectRatio(0.68f),
+                            modifier = Modifier.fillMaxWidth().aspectRatio(1f),
                         ) {
                             if (entry.logoUrl.isNotBlank()) AsyncImage(model = entry.logoUrl, contentDescription = entry.title, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
                             else Box(contentAlignment = Alignment.Center) { Text(entry.title.take(1).uppercase(), color = Lime, fontSize = 32.sp, fontWeight = FontWeight.Black) }

@@ -172,6 +172,21 @@ private val LocalAppLanguage = staticCompositionLocalOf { "en" }
 
 private fun appText(source: String, language: String): String {
     val translations = mapOf(
+        "🔥 Trending" to listOf("🔥 الرائج","🔥 Tendances","🔥 Trending","🔥 Tendencias","🔥 Im Trend","🔥 Trending","🔥 Trendar","🔥 Im Trend","🔥 Tendenze","🔥 Tendenzas"),
+        "⭐ Recommended" to listOf("⭐ مقترح لك","⭐ Recommandé","⭐ Recommended","⭐ Recomendado","⭐ Empfohlen","⭐ Aanbevolen","⭐ Rekommenderat","⭐ Empfohle","⭐ Consigliati","⭐ Recumandà"),
+        "All" to listOf("الكل","Tout","All","Todo","Alle","Alles","Alla","Alli","Tutti","Tuts"),
+        "Favorites" to listOf("المفضلة","Favoris","Favorites","Favoritos","Favoriten","Favorieten","Favoriter","Favoritä","Preferiti","Favurits"),
+        "Hidden" to listOf("المخفية","Masquées","Hidden","Ocultos","Ausgeblendet","Verborgen","Dolda","Versteckt","Nascosti"," zuppentads"),
+        "Sports" to listOf("رياضة","Sports","Sports","Deportes","Sport","Sport","Sport","Sport","Sport","Sport"),
+        "News" to listOf("أخبار","Actualités","News","Noticias","Nachrichten","Nieuws","Nyheter","Nachrichte","Notizie","Novitads"),
+        "Entertainment" to listOf("ترفيه","Divertissement","Entertainment","Entretenimiento","Unterhaltung","Amusement","Underhållning","Unterhaltig","Intrattenimento","Divertiment"),
+        "Kids" to listOf("أطفال","Enfants","Kids","Infantil","Kinder","Kinderen","Barn","Chind","Bambini","Uffants"),
+        "Premium code (optional)" to listOf("رمز Premium (اختياري)","Code Premium (facultatif)","Premium code (optional)","Código Premium (opcional)","Premium-Code (optional)","Premium-code (optioneel)","Premiumkod (valfritt)","Premium-Code (optional)","Codice Premium (facoltativo)","Code Premium (opziunal)"),
+        "The code is stored securely. Online verification is not available until OATEC provides an activation API." to listOf("يتم حفظ الرمز بشكل آمن. التحقق عبر الإنترنت غير متاح حتى توفر OATEC واجهة التفعيل.","Le code est stocké en toute sécurité. La vérification en ligne sera disponible lorsque OATEC fournira une API d’activation.","The code is stored securely. Online verification is not available until OATEC provides an activation API.","El código se guarda de forma segura. La verificación en línea estará disponible cuando OATEC proporcione una API de activación.","Der Code wird sicher gespeichert. Eine Online-Prüfung ist erst möglich, wenn OATEC eine Aktivierungs-API bereitstellt.","De code wordt veilig opgeslagen. Onlineverificatie is pas mogelijk wanneer OATEC een activerings-API aanbiedt.","Koden lagras säkert. Onlineverifiering blir tillgänglig när OATEC tillhandahåller ett aktiverings-API.","De Code wird sicher gspeicheret. Online-Prüefig isch erst möglich, wenn OATEC e Aktivierungs-API bereitstellt.","Il codice è salvato in modo sicuro. La verifica online sarà disponibile quando OATEC fornirà un’API di attivazione.","Il code vegn memorisà en moda segira. La verificaziun online è disponibla cura che OATEC porscha in’API d’activaziun."),
+        "Loading channels" to listOf("جارٍ تحميل القنوات","Chargement des chaînes","Loading channels","Cargando canales","Kanäle werden geladen","Kanalen laden","Laddar kanaler","Kanäl werde glade","Caricamento canali","Chargiar chanals"),
+        "Please wait until the catalogue is ready" to listOf("يرجى الانتظار حتى يصبح الكتالوغ جاهزاً","Veuillez patienter jusqu’à ce que le catalogue soit prêt","Please wait until the catalogue is ready","Espera hasta que el catálogo esté listo","Bitte warten, bis der Katalog bereit ist","Wacht tot de catalogus klaar is","Vänta tills katalogen är klar","Bitte warte, bis de Katalog parat isch","Attendi che il catalogo sia pronto","Spetga fin che il catalog è pront"),
+        "items loaded" to listOf("عنصر تم تحميله","éléments chargés","items loaded","elementos cargados","Elemente geladen","items geladen","objekt laddade","Element glade","elementi caricati","elements chargiads"),
+        "About OATEC" to listOf("حول OATEC","À propos d’OATEC","About OATEC","Acerca de OATEC","Über OATEC","Over OATEC","Om OATEC","Über OATEC","Informazioni su OATEC","Davart OATEC"),
         "Home" to listOf("الرئيسية","Accueil","Home","Inicio","Startseite","Home","Hem","Start","Home","Mussavia"),
         "Live TV" to listOf("التلفاز المباشر","TV en direct","Live TV","TV en directo","Live-TV","Live-tv","Direkt-TV","Live-TV","TV in diretta","TV directa"),
         "Movies" to listOf("الأفلام","Films","Movies","Películas","Filme","Films","Filmer","Film","Film","Films"),
@@ -4450,7 +4465,7 @@ private fun LoadingState(label: String, progress: Float? = null, loadedItems: In
         Text(label, color = TextMain, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
         Spacer(Modifier.height(8.dp))
         Text("${(animatedProgress * 100).toInt()}%", color = GoldLight, fontSize = 24.sp, fontWeight = FontWeight.Bold)
-        if (loadedItems > 0) Text("$loadedItems items loaded", color = TextMuted, fontSize = 12.sp)
+        if (loadedItems > 0) Text("$loadedItems ${appText("items loaded", LocalAppLanguage.current)}", color = TextMuted, fontSize = 12.sp)
         Spacer(Modifier.height(8.dp))
         Text(appText("Please wait until the catalogue is ready", LocalAppLanguage.current), color = TextMuted, fontSize = 12.sp)
     }
@@ -4762,10 +4777,10 @@ private fun KidsDashboard(
                                 }
                             } else {
                                 item(key = "kids-trending") {
-                                    KidsPosterShelf("🔥 Trending", trending, section, compact, kidAccent, onPlay, onPlayYoutube, onMovieDetails)
+                                    KidsPosterShelf(appText("🔥 Trending", LocalAppLanguage.current), trending, section, compact, kidAccent, onPlay, onPlayYoutube, onMovieDetails)
                                 }
                                 item(key = "kids-recommended") {
-                                    KidsPosterShelf("⭐ Recommended", recommended, section, compact, kidAccent, onPlay, onPlayYoutube, onMovieDetails)
+                                    KidsPosterShelf(appText("⭐ Recommended", LocalAppLanguage.current), recommended, section, compact, kidAccent, onPlay, onPlayYoutube, onMovieDetails)
                                 }
                             }
                         }

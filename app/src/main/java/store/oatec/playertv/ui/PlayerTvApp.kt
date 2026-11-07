@@ -187,6 +187,7 @@ private fun appText(source: String, language: String): String {
         "Searching trailer…" to listOf("جارٍ البحث عن الإعلان…", "Recherche de la bande-annonce…", "Searching trailer…", "Buscando tráiler…", "Trailer wird gesucht…", "Trailer zoeken…", "Söker trailer…", "Sueche Trailer…", "Ricerca trailer…", "Tschertga trailer…"),
         "Find trailer" to listOf("البحث عن الإعلان", "Rechercher la bande-annonce", "Find trailer", "Buscar tráiler", "Trailer suchen", "Trailer zoeken", "Sök trailer", "Trailer sueche", "Cerca trailer", "Tschertgar trailer"),
         "Episodes" to listOf("الحلقات", "Épisodes", "Episodes", "Episodios", "Folgen", "Afleveringen", "Avsnitt", "Folge", "Episodi", "Episodis"),
+        "← Back to series" to listOf("← الرجوع للمسلسلات", "← Retour aux séries", "← Back to series", "← Volver a series", "← Zurück zu Serien", "← Terug naar series", "← Tillbaka till serier", "← Zrugg zu Serie", "← Torna alle serie", "← Turnar a las serias"),
         "Play" to listOf("تشغيل", "Lire", "Play", "Reproducir", "Abspielen", "Afspelen", "Spela", "Abspiele", "Riproduci", "Reproducir"),
         "Favorite" to listOf("المفضلة", "Favori", "Favorite", "Favorito", "Favorit", "Favoriet", "Favorit", "Favorit", "Preferito", "Preferì"),
         "Saved" to listOf("تم الحفظ", "Enregistré", "Saved", "Guardado", "Gespeichert", "Opgeslagen", "Sparat", "Gspeicheret", "Salvato", "Memorisà"),
@@ -1448,10 +1449,37 @@ private fun PlayerTvAppContent(appLanguage: String, onLanguageChanged: (String) 
                             preferences = preferences,
                             onLoadMore = { loadMore(Section.SERIES) },
                             onSelect = { series ->
-                                // Show the same automatic trailer preview for a series before opening episodes.
-                                selectedDetails = series
+                                // Open the episode browser inside the Series screen, not in a dialog.
+                                val source = activeSource
+                                if (source == null || source.type != SourceType.XTREAM) {
+                                    message = "Series episodes require an Xtream source."
+                                } else {
+                                    selectedDetails = null
+                                    pendingSeries = series
+                                    episodes = emptyList()
+                                    episodesBusy = true
+                                    scope.launch {
+                                        runCatching {
+                                            withContext(Dispatchers.IO) {
+                                                repository.loadSeriesEpisodes(source, series.id.substringAfterLast(':'))
+                                            }
+                                        }.onSuccess { episodes = it }
+                                            .onFailure { message = it.message ?: "Could not load episodes." }
+                                        episodesBusy = false
+                                    }
+                                }
                             },
                             onPlay = { selectedMedia = it },
+                            onDownloadEpisode = { episode ->
+                                runCatching { offlineDownloadStore.enqueue(episode) }
+                                    .onSuccess { message = "بدأ تحميل الحلقة: ${episode.title}" }
+                                    .onFailure { message = it.message ?: "تعذر تحميل الحلقة." }
+                            },
+                            onBackToSeries = {
+                                pendingSeries = null
+                                episodes = emptyList()
+                                episodesBusy = false
+                            },
                             onFavorite = { item -> preferences.setFavorite(item.id, item.id !in preferences.favorites()); preferenceRevision++ },
                         )
                         Section.TRAILERS -> KinoCheckTrailersScreen(onPlay = { videoId -> selectedKidsYoutubeId = videoId })
@@ -3452,18 +3480,19 @@ private fun SeriesScreen(
     onLoadMore: () -> Unit,
     onSelect: (MediaEntry) -> Unit,
     onPlay: (MediaEntry) -> Unit,
+    onDownloadEpisode: (MediaEntry) -> Unit,
+    onBackToSeries: () -> Unit,
     onFavorite: (MediaEntry) -> Unit,
 ) {
     var selectedShelf by rememberSaveable { mutableStateOf(selectedProviderCategory.ifBlank { "All" }) }
     LaunchedEffect(selectedProviderCategory) { if (selectedProviderCategory.isNotBlank()) selectedShelf = selectedProviderCategory }
     val shelves = remember(entries, providerCategories) {
         if (providerCategories.isNotEmpty()) listOf("All") + providerCategories else {
-        val providerCategories = entries.map { it.category.trim() }.filter { it.isNotBlank() && !it.equals("Other", true) }.distinct().sortedBy { it.lowercase() }
-        val curated = listOf("Action", "Adventure", "Animation", "Biography", "Comedy", "Crime", "Documentary", "Drama", "Family", "Fantasy", "History", "Horror", "Mystery", "Reality", "Romance", "Sci-Fi", "Sport", "Thriller", "War", "Western")
-        val genres = entries.flatMap { it.genre.split(",", "|", "/", "·").map(String::trim) }
-            .mapNotNull { raw -> curated.firstOrNull { it.equals(raw, true) } }.distinct()
-        // Show standard genres even when the source has incomplete metadata.
-        listOf("All") + (curated + providerCategories + genres).distinct().filterNot { it.equals("All", true) }
+            val discoveredCategories = entries.map { it.category.trim() }.filter { it.isNotBlank() && !it.equals("Other", true) }.distinct().sortedBy { it.lowercase() }
+            val curated = listOf("Action", "Adventure", "Animation", "Biography", "Comedy", "Crime", "Documentary", "Drama", "Family", "Fantasy", "History", "Horror", "Mystery", "Reality", "Romance", "Sci-Fi", "Sport", "Thriller", "War", "Western")
+            val genres = entries.flatMap { it.genre.split(",", "|", "/", "·").map(String::trim) }
+                .mapNotNull { raw -> curated.firstOrNull { it.equals(raw, true) } }.distinct()
+            listOf("All") + (curated + discoveredCategories + genres).distinct().filterNot { it.equals("All", true) }
         }
     }
     val searched = entries.filter { it.title.contains(search, true) || it.category.contains(search, true) || it.genre.contains(search, true) }
@@ -3474,29 +3503,43 @@ private fun SeriesScreen(
     }
     val gridState = rememberLazyGridState()
     val lastVisible = gridState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
-    LaunchedEffect(lastVisible, entries.size, selectedShelf, search) {
-        if (entries.isNotEmpty() && (selectedShelf == "All" || selectedShelf in providerCategories) &&
+    LaunchedEffect(lastVisible, entries.size, selectedShelf, search, selectedSeries?.id) {
+        if (selectedSeries == null && entries.isNotEmpty() && (selectedShelf == "All" || selectedShelf in providerCategories) &&
             lastVisible >= gridState.layoutInfo.totalItemsCount - 6
         ) onLoadMore()
     }
     val configuration = LocalConfiguration.current
     val screenWidthDp = configuration.screenWidthDp
     val isWideScreen = (configuration.uiMode and Configuration.UI_MODE_TYPE_MASK) == Configuration.UI_MODE_TYPE_TELEVISION || screenWidthDp >= 800
-    var detailsOpen by remember(selectedSeries?.id) { mutableStateOf(selectedSeries != null) }
+    val orderedEpisodes = remember(episodes) {
+        episodes.sortedWith(
+            compareBy<MediaEntry>(
+                { Regex("\\d+").find(it.season)?.value?.toIntOrNull() ?: Int.MAX_VALUE },
+                { Regex("\\d+").find(it.episodeNumber)?.value?.toIntOrNull() ?: Int.MAX_VALUE },
+                { it.title.lowercase() },
+            )
+        )
+    }
+    val seasonGroups = remember(orderedEpisodes) { orderedEpisodes.groupBy { it.season.ifBlank { "Season 1" } } }
+
     Column(Modifier.fillMaxSize().background(Ink).padding(horizontal = when { screenWidthDp >= 1400 -> 36.dp; screenWidthDp >= 700 -> 22.dp; else -> 10.dp }, vertical = 3.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedButton(onClick = onHome, modifier = Modifier.heightIn(min = 36.dp).widthIn(min = 72.dp).onPreviewKeyEvent { event ->
-                    val key = event.nativeKeyEvent
-                    if (key.action == AndroidKeyEvent.ACTION_DOWN && key.keyCode in setOf(AndroidKeyEvent.KEYCODE_DPAD_CENTER, AndroidKeyEvent.KEYCODE_ENTER, AndroidKeyEvent.KEYCODE_NUMPAD_ENTER, AndroidKeyEvent.KEYCODE_SPACE)) {
-                        onHome()
-                        true
-                    } else false
-                }, contentPadding = PaddingValues(horizontal = 9.dp, vertical = 2.dp)) { Text(appText("← الرئيسية", LocalAppLanguage.current), fontSize = 10.sp) }
+            OutlinedButton(onClick = if (selectedSeries != null) onBackToSeries else onHome, modifier = Modifier.heightIn(min = 36.dp).widthIn(min = 72.dp).onPreviewKeyEvent { event ->
+                val key = event.nativeKeyEvent
+                if (key.action == AndroidKeyEvent.ACTION_DOWN && key.keyCode in setOf(AndroidKeyEvent.KEYCODE_DPAD_CENTER, AndroidKeyEvent.KEYCODE_ENTER, AndroidKeyEvent.KEYCODE_NUMPAD_ENTER, AndroidKeyEvent.KEYCODE_SPACE)) {
+                    if (selectedSeries != null) onBackToSeries() else onHome()
+                    true
+                } else false
+            }, contentPadding = PaddingValues(horizontal = 9.dp, vertical = 2.dp)) {
+                Text(if (selectedSeries != null) appText("← Back to series", LocalAppLanguage.current) else appText("← الرئيسية", LocalAppLanguage.current), fontSize = 10.sp)
+            }
             Spacer(Modifier.weight(1f))
-            SearchField(search, onSearch, Modifier.width(when { screenWidthDp >= 1200 -> 280.dp; screenWidthDp >= 700 -> 210.dp; else -> 135.dp }))
+            if (selectedSeries == null) {
+                SearchField(search, onSearch, Modifier.width(when { screenWidthDp >= 1200 -> 280.dp; screenWidthDp >= 700 -> 210.dp; else -> 135.dp }))
+            }
         }
         if (message.isNotBlank()) Text(message, color = ErrorRed, fontSize = 9.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        if (shelves.size > 1) {
+        if (selectedSeries == null && shelves.size > 1) {
             LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(vertical = 10.dp)) {
                 items(shelves, key = { "series-shelf:$it" }) { shelf ->
                     CategoryPill(shelf, selectedShelf == shelf) { selectedShelf = shelf }
@@ -3505,6 +3548,81 @@ private fun SeriesScreen(
         }
         Spacer(Modifier.height(2.dp))
         when {
+            selectedSeries != null -> {
+                val series = selectedSeries
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(bottom = 20.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    item(key = "selected-series-header:${series.id}") {
+                        Row(
+                            Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(14.dp),
+                            verticalAlignment = Alignment.Top,
+                        ) {
+                            if (series.logoUrl.isNotBlank()) {
+                                AsyncImage(model = series.logoUrl, contentDescription = series.title, modifier = Modifier.width(112.dp).height(158.dp), contentScale = ContentScale.Crop)
+                            }
+                            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Text(series.title, color = TextMain, fontSize = if (isWideScreen) 22.sp else 18.sp, fontWeight = FontWeight.Bold, maxLines = 3, overflow = TextOverflow.Ellipsis)
+                                Text(listOf(series.year, series.genre, series.rating.takeIf { it.isNotBlank() }?.let { "★ $it" }.orEmpty()).filter { it.isNotBlank() }.joinToString(" · "), color = GoldLight, fontSize = 11.sp, maxLines = 2)
+                                if (series.description.isNotBlank()) Text(series.description, color = TextMuted, fontSize = 11.sp, maxLines = 5, overflow = TextOverflow.Ellipsis)
+                                Text("${episodes.size} ${appText("Episodes", LocalAppLanguage.current)}", color = Lime, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                        HorizontalDivider(color = TextMain.copy(alpha = 0.12f))
+                    }
+                    if (busy) {
+                        item { Box(Modifier.fillMaxWidth().height(140.dp), contentAlignment = Alignment.Center) { LoadingState("Loading episodes") } }
+                    } else if (orderedEpisodes.isEmpty()) {
+                        item { EmptyState("No episode data", "This provider did not return playable episodes.") }
+                    } else {
+                        seasonGroups.forEach { (season, seasonEpisodes) ->
+                            item(key = "season-heading:$season") {
+                                Text(season, color = Lime, fontSize = 15.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 10.dp, bottom = 4.dp))
+                            }
+                            items(seasonEpisodes, key = { "episode:${it.id}" }) { episode ->
+                                Row(
+                                    Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    AsyncImage(
+                                        model = episode.logoUrl.ifBlank { series.logoUrl },
+                                        contentDescription = episode.title,
+                                        modifier = Modifier.width(88.dp).height(62.dp),
+                                        contentScale = ContentScale.Crop,
+                                    )
+                                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                        Text(
+                                            "${episode.episodeNumber.padStart(2, '0')}  ${episode.title}",
+                                            color = TextMain,
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                            maxLines = 2,
+                                            overflow = TextOverflow.Ellipsis,
+                                        )
+                                        Text(season, color = TextMuted, fontSize = 10.sp)
+                                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                            Button(
+                                                onClick = { onPlay(episode) },
+                                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 5.dp),
+                                                colors = ButtonDefaults.buttonColors(containerColor = Lime, contentColor = Ink),
+                                            ) { Text(appText("Play", LocalAppLanguage.current), fontSize = 10.sp) }
+                                            OutlinedButton(
+                                                onClick = { onDownloadEpisode(episode) },
+                                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 5.dp),
+                                            ) { Text(appText("⬇ Download offline", LocalAppLanguage.current), fontSize = 10.sp) }
+                                        }
+                                    }
+                                }
+                                HorizontalDivider(color = TextMain.copy(alpha = 0.07f))
+                            }
+                        }
+                    }
+                }
+            }
             filtered.isEmpty() && busy -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 LoadingState("Loading series")
             }
@@ -3521,7 +3639,7 @@ private fun SeriesScreen(
             ) {
                 gridItems(filtered, key = { it.id }) { entry ->
                     val selected = entry.id == selectedSeries?.id
-                    Column(Modifier.fillMaxWidth().clickable { onSelect(entry); detailsOpen = true }) {
+                    Column(Modifier.fillMaxWidth().clickable { onSelect(entry) }) {
                         Surface(
                             color = Raised,
                             border = if (selected) BorderStroke(2.dp, Lime) else BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
@@ -3547,39 +3665,6 @@ private fun SeriesScreen(
                 }
             }
         }
-        if (detailsOpen && selectedSeries != null) {
-            val series = selectedSeries
-            Dialog(onDismissRequest = { detailsOpen = false }) {
-                Surface(color = Panel, shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth().widthIn(max = 760.dp).heightIn(max = 760.dp)) {
-                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                            if (series.logoUrl.isNotBlank()) AsyncImage(series.logoUrl, contentDescription = series.title, modifier = Modifier.size(66.dp, 92.dp), contentScale = ContentScale.Crop)
-                            Column(Modifier.weight(1f)) {
-                                Text(series.title, color = TextMain, fontSize = if (isWideScreen) 22.sp else 18.sp, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                                Text(listOf(series.year, series.genre, series.rating.takeIf { it.isNotBlank() }?.let { "★ $it" }.orEmpty()).filter { it.isNotBlank() }.joinToString(" · "), color = GoldLight, fontSize = 11.sp, maxLines = 2)
-                                if (series.description.isNotBlank()) Text(series.description, color = TextMuted, fontSize = 11.sp, maxLines = 3, overflow = TextOverflow.Ellipsis)
-                            }
-                            TextButton(onClick = { detailsOpen = false }) { Text(appText("إغلاق", LocalAppLanguage.current)) }
-                        }
-                        when {
-                            busy -> Box(Modifier.fillMaxWidth().height(120.dp), contentAlignment = Alignment.Center) { LoadingState("Loading episodes") }
-                            episodes.isEmpty() -> Box(Modifier.fillMaxWidth().height(120.dp), contentAlignment = Alignment.Center) { EmptyState("No episode data", "This provider did not return playable episodes.") }
-                            else -> LazyColumn(Modifier.weight(1f, fill = false).heightIn(max = 500.dp)) {
-                                episodes.groupBy { it.season }.forEach { (season, seasonEpisodes) ->
-                                    item(key = "dialog-season:$season") { Text(season, color = TextMain, fontSize = 14.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(vertical = 8.dp)) }
-                                    items(seasonEpisodes, key = { it.id }) { episode ->
-                                        OutlinedButton(onClick = { onPlay(episode); detailsOpen = false }, modifier = Modifier.fillMaxWidth().padding(bottom = 5.dp)) {
-                                            Text("${episode.episodeNumber.padStart(2, '0')}  ${episode.title}", maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
     }
 }
 

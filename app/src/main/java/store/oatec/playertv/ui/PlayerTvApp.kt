@@ -2050,7 +2050,7 @@ private fun SettingsScreen(
                 horizontalArrangement = Arrangement.spacedBy(settingsGap),
                 verticalArrangement = Arrangement.spacedBy(settingsGap),
             ) {
-        Surface(color = Panel, shape = RoundedCornerShape(10.dp), modifier = Modifier.width(settingsCardWidth)) {
+        Surface(color = Panel, shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)), modifier = Modifier.width(settingsCardWidth)) {
             Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(appText("APP LANGUAGE", selectedLanguage), color = Lime, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
                 Text(appText("Choose the language used by the app.", selectedLanguage), color = TextMuted, fontSize = 11.sp)
@@ -2086,7 +2086,7 @@ private fun SettingsScreen(
                 Text(appText("Language preference is saved on this device.", selectedLanguage), color = TextMuted, fontSize = 10.sp)
             }
         }
-        Surface(color = Panel, shape = RoundedCornerShape(10.dp), modifier = Modifier.width(settingsCardWidth)) {
+        Surface(color = Panel, shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)), modifier = Modifier.width(settingsCardWidth)) {
             Row(
                 Modifier.fillMaxWidth().padding(16.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -2104,8 +2104,8 @@ private fun SettingsScreen(
                 }
             }
         }
-        Surface(color = Panel, shape = RoundedCornerShape(10.dp), modifier = Modifier.width(settingsCardWidth)) {
-            Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Surface(color = Panel, shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)), modifier = Modifier.width(settingsCardWidth)) {
+            Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(appText("PLAYBACK", LocalAppLanguage.current), color = Lime, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
@@ -2145,8 +2145,8 @@ private fun SettingsScreen(
                 }
             }
         }
-        Surface(color = Panel, shape = RoundedCornerShape(10.dp), modifier = Modifier.width(settingsCardWidth)) {
-            Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Surface(color = Panel, shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)), modifier = Modifier.width(settingsCardWidth)) {
+            Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(appText("KIDS MODE", LocalAppLanguage.current), color = GoldLight, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
@@ -2333,7 +2333,7 @@ private fun SettingsScreen(
                 }
             }
         }
-        Surface(color = Panel, shape = RoundedCornerShape(10.dp), modifier = Modifier.width(settingsCardWidth)) {
+        Surface(color = Panel, shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)), modifier = Modifier.width(settingsCardWidth)) {
             Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(appText("DISPLAY & ZOOM", selectedLanguage), color = Lime, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
                 Text(appText("Choose how video fills the screen.", selectedLanguage), color = TextMuted, fontSize = 11.sp)
@@ -2350,8 +2350,8 @@ private fun SettingsScreen(
                 Text(appText("Applied to ExoPlayer video playback.", selectedLanguage), color = TextMuted, fontSize = 10.sp)
             }
         }
-        Surface(color = Panel, shape = RoundedCornerShape(10.dp), modifier = Modifier.width(settingsCardWidth)) {
-            Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Surface(color = Panel, shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)), modifier = Modifier.width(settingsCardWidth)) {
+            Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(appText("OATEC PREMIUM", LocalAppLanguage.current), color = GoldLight, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
                 OutlinedTextField(
                     value = premiumCodeInput,
@@ -2374,8 +2374,8 @@ private fun SettingsScreen(
                 }
             }
         }
-        Surface(color = Panel, shape = RoundedCornerShape(10.dp), modifier = Modifier.width(settingsCardWidth)) {
-            Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Surface(color = Panel, shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)), modifier = Modifier.width(settingsCardWidth)) {
+            Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(appText("ABOUT OATEC", LocalAppLanguage.current), color = GoldLight, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
                 when {
                     loadingAbout && about == null -> Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {

@@ -3293,7 +3293,7 @@ private fun OfflineDownloadsScreen(
                                     Text(item.title.take(1).uppercase(), color = TextMain, fontSize = 36.sp, fontWeight = FontWeight.Black)
                                 }
                             }
-                            if (!item.isComplete && item.progress > 0) {
+                            if (item.progress > 0) {
                                 Box(
                                     Modifier.align(Alignment.BottomCenter)
                                         .fillMaxWidth()

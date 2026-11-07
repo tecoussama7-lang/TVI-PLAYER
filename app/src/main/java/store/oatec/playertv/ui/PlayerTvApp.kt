@@ -1511,6 +1511,12 @@ private fun PlayerTvAppContent(appLanguage: String, onLanguageChanged: (String) 
                             },
                             aboutRepository = aboutRepository,
                             onManageSources = { navigateTo(Section.SOURCES) },
+                            onAddSourceInline = { source ->
+                                sources.removeAll { it.id == source.id }
+                                sources += source
+                                sourceStore.save(sources)
+                                activeSourceId = source.id
+                            },
                             premiumCode = premiumCode,
                             onSavePremiumCode = { code ->
                                 sourceStore.savePremiumCode(code)
@@ -1961,6 +1967,7 @@ private fun SettingsScreen(
     onKidsModeChanged: (Boolean) -> Unit,
     aboutRepository: OatecAboutRepository,
     onManageSources: () -> Unit,
+    onAddSourceInline: (PlayerSource) -> Unit,
     premiumCode: String,
     onSavePremiumCode: (String) -> Unit,
     onExit: () -> Unit,
@@ -1990,6 +1997,8 @@ private fun SettingsScreen(
     var kidsRuleItemId by remember { mutableStateOf("") }
     var kidsRuleMessage by remember { mutableStateOf("") }
     var languageMenuExpanded by remember { mutableStateOf(false) }
+    var showInlineAddSource by remember { mutableStateOf(false) }
+    var displayZoomMode by remember { mutableStateOf(preferences.displayZoomMode()) }
 
     fun loadAbout() {
         loadingAbout = true
@@ -2005,7 +2014,7 @@ private fun SettingsScreen(
     LaunchedEffect(Unit) { loadAbout() }
 
     BoxWithConstraints(Modifier.fillMaxSize()) {
-        val settingsColumns = if (maxWidth >= 1000.dp) 3 else 2
+        val settingsColumns = if (maxWidth >= 1100.dp) 3 else 2
         val settingsGap = 10.dp
         val settingsPadding = if (maxHeight < 700.dp) 12.dp else 20.dp
         val settingsContentWidth = maxWidth - settingsPadding * 2
@@ -2036,7 +2045,7 @@ private fun SettingsScreen(
             }
         }
             androidx.compose.foundation.layout.FlowRow(
-                modifier = Modifier.fillMaxWidth().weight(1f),
+                modifier = Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState()),
                 maxItemsInEachRow = settingsColumns,
                 horizontalArrangement = Arrangement.spacedBy(settingsGap),
                 verticalArrangement = Arrangement.spacedBy(settingsGap),
@@ -2083,11 +2092,16 @@ private fun SettingsScreen(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                Column(Modifier.weight(1f)) {
-                    Text(appText("Sources & playlists", LocalAppLanguage.current), color = TextMain, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
-                    Text(appText("Manage existing providers or import a playlist.", LocalAppLanguage.current), color = TextMuted, fontSize = 11.sp)
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                    Text(appText("SOURCES & PLAYLISTS", selectedLanguage), color = Lime, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.3.sp)
+                    Text(appText("Add or update your IPTV playlist without leaving Settings.", selectedLanguage), color = TextMuted, fontSize = 11.sp)
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(onClick = { showInlineAddSource = true }, colors = ButtonDefaults.buttonColors(containerColor = Lime, contentColor = Ink)) {
+                            Text(appText("＋ Add M3U / Xtream", selectedLanguage), fontWeight = FontWeight.Bold)
+                        }
+                        OutlinedButton(onClick = onManageSources) { Text(appText("All sources", selectedLanguage)) }
+                    }
                 }
-                OutlinedButton(onClick = onManageSources) { Text(appText("Manage sources", LocalAppLanguage.current)) }
             }
         }
         Surface(color = Panel, shape = RoundedCornerShape(10.dp), modifier = Modifier.width(settingsCardWidth)) {
@@ -2320,6 +2334,23 @@ private fun SettingsScreen(
             }
         }
         Surface(color = Panel, shape = RoundedCornerShape(10.dp), modifier = Modifier.width(settingsCardWidth)) {
+            Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(appText("DISPLAY & ZOOM", selectedLanguage), color = Lime, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
+                Text(appText("Choose how video fills the screen.", selectedLanguage), color = TextMuted, fontSize = 11.sp)
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    val zoomOptions = listOf("fit" to "Fit", "zoom" to "Zoom In", "full" to "Full Zoom")
+                    zoomOptions.forEach { (mode, label) ->
+                        if (displayZoomMode == mode) {
+                            Button(onClick = { displayZoomMode = mode; preferences.setDisplayZoomMode(mode) }, modifier = Modifier.weight(1f), contentPadding = PaddingValues(horizontal = 6.dp, vertical = 8.dp), colors = ButtonDefaults.buttonColors(containerColor = Lime, contentColor = Ink)) { Text(appText(label, selectedLanguage), fontSize = 11.sp, maxLines = 1) }
+                        } else {
+                            OutlinedButton(onClick = { displayZoomMode = mode; preferences.setDisplayZoomMode(mode) }, modifier = Modifier.weight(1f), contentPadding = PaddingValues(horizontal = 6.dp, vertical = 8.dp)) { Text(appText(label, selectedLanguage), fontSize = 11.sp, maxLines = 1) }
+                        }
+                    }
+                }
+                Text(appText("Applied to ExoPlayer video playback.", selectedLanguage), color = TextMuted, fontSize = 10.sp)
+            }
+        }
+        Surface(color = Panel, shape = RoundedCornerShape(10.dp), modifier = Modifier.width(settingsCardWidth)) {
             Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(appText("OATEC PREMIUM", LocalAppLanguage.current), color = GoldLight, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
                 OutlinedTextField(
@@ -2372,6 +2403,16 @@ private fun SettingsScreen(
         }
             }
         }
+    }
+
+    if (showInlineAddSource) {
+        AddSourceDialog(
+            onDismiss = { showInlineAddSource = false },
+            onSave = { source ->
+                onAddSourceInline(source)
+                showInlineAddSource = false
+            },
+        )
     }
 
     if (confirmClearHistory) {
@@ -4287,11 +4328,22 @@ private fun PlaybackDialog(
                                     showController()
                                 }
                             }
-                            resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+                            resizeMode = when (preferences.displayZoomMode()) {
+                                "fit" -> AspectRatioFrameLayout.RESIZE_MODE_FIT
+                                "full" -> AspectRatioFrameLayout.RESIZE_MODE_FILL
+                                else -> AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+                            }
                             keepScreenOn = true
                         }
                     },
-                    update = { it.player = player },
+                    update = {
+                        it.player = player
+                        it.resizeMode = when (preferences.displayZoomMode()) {
+                            "fit" -> AspectRatioFrameLayout.RESIZE_MODE_FIT
+                            "full" -> AspectRatioFrameLayout.RESIZE_MODE_FILL
+                            else -> AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+                        }
+                    },
                     modifier = Modifier.fillMaxSize(),
                 )
             }

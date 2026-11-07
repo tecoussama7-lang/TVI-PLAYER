@@ -3225,56 +3225,135 @@ private fun OfflineDownloadsScreen(
     onMessage: (String) -> Unit,
 ) {
     var downloads by remember { mutableStateOf<List<OfflineItem>>(emptyList()) }
+    val context = androidx.compose.ui.platform.LocalContext.current
     LaunchedEffect(Unit) {
         while (true) {
             downloads = withContext(Dispatchers.IO) { store.list() }
-            delay(1200)
+            delay(800)
         }
     }
-    Column(Modifier.fillMaxSize().background(Ink).padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    Column(
+        Modifier.fillMaxSize().background(Ink).padding(horizontal = 18.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            OutlinedButton(onClick = onHome, modifier = Modifier.heightIn(min = 48.dp).widthIn(min = 76.dp).onPreviewKeyEvent { event ->
+            OutlinedButton(
+                onClick = onHome,
+                modifier = Modifier.heightIn(min = 44.dp).onPreviewKeyEvent { event ->
                     val key = event.nativeKeyEvent
-                    if (key.action == AndroidKeyEvent.ACTION_DOWN && key.keyCode in setOf(AndroidKeyEvent.KEYCODE_DPAD_CENTER, AndroidKeyEvent.KEYCODE_ENTER, AndroidKeyEvent.KEYCODE_NUMPAD_ENTER, AndroidKeyEvent.KEYCODE_SPACE)) {
+                    if (key.action == AndroidKeyEvent.ACTION_DOWN && key.keyCode in setOf(
+                            AndroidKeyEvent.KEYCODE_DPAD_CENTER,
+                            AndroidKeyEvent.KEYCODE_ENTER,
+                            AndroidKeyEvent.KEYCODE_NUMPAD_ENTER,
+                            AndroidKeyEvent.KEYCODE_SPACE
+                        )
+                    ) {
                         onHome()
                         true
                     } else false
-                }) { Text(appText("← Back", LocalAppLanguage.current)) }
+                }
+            ) { Text("← Retour") }
             Spacer(Modifier.weight(1f))
-            Column(horizontalAlignment = Alignment.End) {
-                Text(appText("DOWNLOADS", LocalAppLanguage.current), color = TextMain, fontSize = 24.sp, fontWeight = FontWeight.Black)
-                Text("المحتوى المحمّل محفوظ فذاكرة الجهاز", color = TextMuted, fontSize = 12.sp)
-            }
+            OutlinedButton(
+                onClick = { (context as? Activity)?.finish() },
+                modifier = Modifier.heightIn(min = 44.dp)
+            ) { Text("Quitter") }
         }
+
         if (downloads.isEmpty()) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text(appText("ما كاين حتى تحميل دابا. اختار فيلم واضغط Download offline.", LocalAppLanguage.current), color = TextMuted)
+                Text("Aucun téléchargement", color = TextMuted)
             }
         } else {
-            LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            LazyVerticalGrid(
+                columns = GridCells.Adaptive(minSize = 132.dp),
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(bottom = 18.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
                 items(downloads, key = { it.downloadId }) { item ->
-                    Surface(color = Panel, shape = RoundedCornerShape(12.dp), border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f))) {
-                        Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                            if (item.logoUrl.isNotBlank()) AsyncImage(model = item.logoUrl, contentDescription = item.title, modifier = Modifier.size(50.dp, 68.dp), contentScale = ContentScale.Crop)
-                            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                                Text(item.title, color = TextMain, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                                val label = when (item.status) {
-                                    android.app.DownloadManager.STATUS_SUCCESSFUL -> if (item.isComplete) "جاهز للمشاهدة بلا إنترنت" else "الملف غير موجود"
-                                    android.app.DownloadManager.STATUS_FAILED -> "فشل التحميل"
-                                    android.app.DownloadManager.STATUS_PAUSED -> "التحميل متوقف مؤقتاً"
-                                    else -> "كيتم التحميل… ${item.progress}%"
-                                }
-                                Text(label, color = if (item.isComplete) Color(0xFF70D6A2) else TextMuted, fontSize = 11.sp)
-                                if (!item.isComplete && item.status != android.app.DownloadManager.STATUS_FAILED) {
-                                    androidx.compose.material3.LinearProgressIndicator(progress = { item.progress / 100f }, modifier = Modifier.fillMaxWidth(), color = Lime)
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Box(
+                            Modifier.fillMaxWidth().aspectRatio(1f)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(Panel)
+                                .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.10f)), RoundedCornerShape(12.dp))
+                        ) {
+                            if (item.logoUrl.isNotBlank()) {
+                                AsyncImage(
+                                    model = item.logoUrl,
+                                    contentDescription = item.title,
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentScale = ContentScale.Crop
+                                )
+                            } else {
+                                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                    Text(item.title.take(1).uppercase(), color = TextMain, fontSize = 36.sp, fontWeight = FontWeight.Black)
                                 }
                             }
-                            if (item.isComplete) Button(onClick = { onPlay(item.asMediaEntry()) }, colors = ButtonDefaults.buttonColors(containerColor = Lime, contentColor = Ink)) { Text(appText(appText("Play", LocalAppLanguage.current), LocalAppLanguage.current)) }
-                            TextButton(onClick = {
-                                store.delete(item.downloadId)
-                                downloads = downloads.filterNot { it.downloadId == item.downloadId }
-                                onMessage("تحيد التحميل ديال " + item.title)
-                            }) { Text(appText("حذف", LocalAppLanguage.current), color = ErrorRed) }
+                            if (!item.isComplete && item.progress > 0) {
+                                Box(
+                                    Modifier.align(Alignment.BottomCenter)
+                                        .fillMaxWidth()
+                                        .fillMaxHeight(item.progress / 100f)
+                                        .background(Color(0xAAE50914))
+                                )
+                            }
+                            Text(
+                                if (item.isComplete) "100%" else "${item.progress}%",
+                                color = Color.White,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.align(Alignment.BottomEnd)
+                                    .padding(7.dp)
+                                    .background(Color.Black.copy(alpha = 0.68f), RoundedCornerShape(6.dp))
+                                    .padding(horizontal = 7.dp, vertical = 4.dp)
+                            )
+                            if (item.isComplete) {
+                                Box(Modifier.align(Alignment.TopEnd).padding(7.dp)
+                                    .background(Lime, CircleShape).padding(5.dp)) {
+                                    Text("✓", color = Ink, fontWeight = FontWeight.Black)
+                                }
+                            }
+                        }
+                        Text(
+                            item.title,
+                            color = TextMain,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        when {
+                            item.isComplete -> {
+                                Text("Téléchargement terminé", color = Color(0xFF70D6A2), fontSize = 10.sp)
+                                OutlinedButton(
+                                    onClick = { onPlay(item.asMediaEntry()) },
+                                    modifier = Modifier.fillMaxWidth().heightIn(min = 38.dp)
+                                ) { Text("Regarder") }
+                            }
+                            item.status == android.app.DownloadManager.STATUS_PAUSED -> {
+                                Text("Suspendu • ${item.progress}%", color = TextMuted, fontSize = 10.sp)
+                                OutlinedButton(
+                                    onClick = { store.resume(item.downloadId) },
+                                    modifier = Modifier.fillMaxWidth().heightIn(min = 38.dp)
+                                ) { Text("Reprendre") }
+                            }
+                            item.status == android.app.DownloadManager.STATUS_FAILED -> {
+                                Text("Échec du téléchargement", color = ErrorRed, fontSize = 10.sp)
+                                OutlinedButton(
+                                    onClick = { store.retry(item.downloadId) },
+                                    modifier = Modifier.fillMaxWidth().heightIn(min = 38.dp)
+                                ) { Text("Réessayer") }
+                            }
+                            else -> {
+                                Text("Téléchargement • ${item.progress}%", color = TextMuted, fontSize = 10.sp)
+                                OutlinedButton(
+                                    onClick = { store.pause(item.downloadId) },
+                                    modifier = Modifier.fillMaxWidth().heightIn(min = 38.dp)
+                                ) { Text("Suspendre") }
+                            }
                         }
                     }
                 }

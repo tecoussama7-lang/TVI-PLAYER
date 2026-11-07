@@ -27,7 +27,7 @@ data class OfflineItem(
     val totalBytes: Long,
 ) {
     val isComplete: Boolean get() = status == DownloadManager.STATUS_SUCCESSFUL && File(filePath).exists()
-    val progress: Int get() = if (totalBytes > 0) ((downloadedBytes * 100) / totalBytes).toInt().coerceIn(0, 100) else 0
+    val progress: Int get() = if (isComplete) 100 else if (totalBytes > 0) ((downloadedBytes * 100) / totalBytes).toInt().coerceIn(0, 100) else 0
     fun asMediaEntry() = MediaEntry(
         id = "offline:$downloadId",
         title = title,

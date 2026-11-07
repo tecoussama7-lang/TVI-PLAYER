@@ -446,6 +446,8 @@ fun PlayerTvApp() {
     val context = androidx.compose.ui.platform.LocalContext.current
     val languagePreferences = remember { PlayerPreferences(context) }
     var appLanguage by remember { mutableStateOf(languagePreferences.appLanguage()) }
+    var appUiScale by remember { mutableStateOf(languagePreferences.uiScale()) }
+    var appHighContrast by remember { mutableStateOf(languagePreferences.highContrastEnabled()) }
     var availableUpdate by remember { mutableStateOf<store.oatec.playertv.data.AppUpdate?>(null) }
     var dismissedVersion by rememberSaveable { mutableStateOf("") }
 
@@ -455,15 +457,29 @@ fun PlayerTvApp() {
         }.getOrNull()
     }
 
+    val baseDensity = androidx.compose.ui.platform.LocalDensity.current
     CompositionLocalProvider(
         LocalAppLanguage provides appLanguage,
         LocalLayoutDirection provides if (appLanguage == "ar") LayoutDirection.Rtl else LayoutDirection.Ltr,
+        androidx.compose.ui.platform.LocalDensity provides androidx.compose.ui.unit.Density(
+            baseDensity.density * appUiScale,
+            baseDensity.fontScale * appUiScale,
+        ),
     ) {
         PlayerTvAppContent(
             appLanguage = appLanguage,
+            highContrast = appHighContrast,
             onLanguageChanged = { selected ->
                 languagePreferences.setAppLanguage(selected)
                 appLanguage = selected
+            },
+            onUiScaleChanged = { value ->
+                languagePreferences.setUiScale(value)
+                appUiScale = value
+            },
+            onHighContrastChanged = { enabled ->
+                languagePreferences.setHighContrastEnabled(enabled)
+                appHighContrast = enabled
             },
         )
     }
@@ -496,7 +512,13 @@ fun PlayerTvApp() {
 }
 
 @Composable
-private fun PlayerTvAppContent(appLanguage: String, onLanguageChanged: (String) -> Unit) {
+private fun PlayerTvAppContent(
+    appLanguage: String,
+    highContrast: Boolean,
+    onLanguageChanged: (String) -> Unit,
+    onUiScaleChanged: (Float) -> Unit,
+    onHighContrastChanged: (Boolean) -> Unit,
+) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val configuration = LocalConfiguration.current
     val compactLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE && configuration.screenWidthDp < 900
@@ -508,6 +530,34 @@ private fun PlayerTvAppContent(appLanguage: String, onLanguageChanged: (String) 
     val offlineDownloadStore = remember { OfflineDownloadStore(context) }
     var premiumCode by remember { mutableStateOf(runCatching { sourceStore.loadPremiumCode() }.getOrNull().orEmpty()) }
     var kidsModeActive by remember { mutableStateOf(preferences.kidsModeEnabled()) }
+    var sleepTimerDeadline by remember { mutableStateOf(preferences.sleepTimerDeadline()) }
+    var scheduleBlocked by remember { mutableStateOf(kidsModeActive && preferences.kidsScheduleEnabled() && !preferences.isWithinKidsSchedule()) }
+    var scheduleOverrideUntil by remember { mutableStateOf(0L) }
+    var schedulePinInput by remember { mutableStateOf("") }
+    var schedulePinError by remember { mutableStateOf("") }
+
+    LaunchedEffect(sleepTimerDeadline) {
+        if (sleepTimerDeadline > 0L) {
+            val remaining = sleepTimerDeadline - System.currentTimeMillis()
+            if (remaining <= 0L) {
+                preferences.setSleepTimerDeadline(0L)
+                sleepTimerDeadline = 0L
+                (context as? Activity)?.finishAndRemoveTask()
+            } else {
+                delay(remaining)
+                preferences.setSleepTimerDeadline(0L)
+                sleepTimerDeadline = 0L
+                (context as? Activity)?.finishAndRemoveTask()
+            }
+        }
+    }
+    LaunchedEffect(kidsModeActive, scheduleOverrideUntil) {
+        while (true) {
+            scheduleBlocked = kidsModeActive && preferences.kidsScheduleEnabled() &&
+                !preferences.isWithinKidsSchedule() && System.currentTimeMillis() >= scheduleOverrideUntil
+            delay(30_000L)
+        }
+    }
     // Use a separate lock per source/section so a slow LIVE import cannot block Movies.
     val catalogLoadMutexes = remember { mutableMapOf<String, Mutex>() }
     val sources = remember {
@@ -1162,22 +1212,52 @@ private fun PlayerTvAppContent(appLanguage: String, onLanguageChanged: (String) 
 
     MaterialTheme(
         colorScheme = darkColorScheme(
-            primary = Lime,
+            primary = if (highContrast) Color.White else Lime,
             onPrimary = Ink,
-            secondary = GoldLight,
+            secondary = if (highContrast) Color(0xFFFFE082) else GoldLight,
             onSecondary = Ink,
-            tertiary = Color(0xFF43D19E),
+            tertiary = if (highContrast) Color(0xFF8DFFCF) else Color(0xFF43D19E),
             background = Ink,
-            onBackground = TextMain,
-            surface = Panel,
-            onSurface = TextMain,
-            surfaceVariant = Raised,
-            onSurfaceVariant = TextMuted,
-            outline = Color(0xFF303743),
+            onBackground = if (highContrast) Color.White else TextMain,
+            surface = if (highContrast) Color(0xFF101820) else Panel,
+            onSurface = if (highContrast) Color.White else TextMain,
+            surfaceVariant = if (highContrast) Color(0xFF283544) else Raised,
+            onSurfaceVariant = if (highContrast) Color(0xFFE0E6EE) else TextMuted,
+            outline = if (highContrast) Color.White else Color(0xFF303743),
             error = ErrorRed,
             onError = Ink,
         ),
     ) {
+        if (scheduleBlocked) {
+            AlertDialog(
+                onDismissRequest = { },
+                title = { Text("Kids viewing time is over") },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("Enter the parent PIN to unlock the app for 15 minutes.", color = TextMuted)
+                        OutlinedTextField(
+                            value = schedulePinInput,
+                            onValueChange = { value -> if (value.length <= 8 && value.all(Char::isDigit)) schedulePinInput = value },
+                            label = { Text("Parent PIN") },
+                            singleLine = true,
+                            visualTransformation = PasswordVisualTransformation(),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                        )
+                        if (schedulePinError.isNotBlank()) Text(schedulePinError, color = ErrorRed)
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = {
+                        if (preferences.verifyKidsPin(schedulePinInput)) {
+                            scheduleOverrideUntil = System.currentTimeMillis() + 15L * 60L * 1000L
+                            scheduleBlocked = false
+                            schedulePinInput = ""
+                            schedulePinError = ""
+                        } else schedulePinError = "Incorrect PIN."
+                    }) { Text("Unlock for 15 minutes") }
+                },
+            )
+        }
         if (selectedKidsYoutubeId.isNotBlank()) {
             KidsYouTubePlayerDialog(videoId = selectedKidsYoutubeId, onDismiss = { selectedKidsYoutubeId = "" })
         }
@@ -1505,6 +1585,15 @@ private fun PlayerTvAppContent(appLanguage: String, onLanguageChanged: (String) 
                             preferences = preferences,
                             selectedLanguage = appLanguage,
                             onLanguageChanged = onLanguageChanged,
+                            uiScale = androidx.compose.ui.platform.LocalDensity.current.fontScale,
+                            onUiScaleChanged = onUiScaleChanged,
+                            highContrast = highContrast,
+                            onHighContrastChanged = onHighContrastChanged,
+                            sleepTimerDeadline = sleepTimerDeadline,
+                            onSleepTimerChanged = { deadline ->
+                                preferences.setSleepTimerDeadline(deadline)
+                                sleepTimerDeadline = deadline
+                            },
                             onKidsModeChanged = { enabled ->
                                 kidsModeActive = enabled
                                 if (enabled) section = Section.HOME.name
@@ -1963,6 +2052,12 @@ private fun SettingsScreen(
     onHome: () -> Unit,
     preferences: PlayerPreferences,
     selectedLanguage: String,
+    uiScale: Float,
+    onUiScaleChanged: (Float) -> Unit,
+    highContrast: Boolean,
+    onHighContrastChanged: (Boolean) -> Unit,
+    sleepTimerDeadline: Long,
+    onSleepTimerChanged: (Long) -> Unit,
     onLanguageChanged: (String) -> Unit,
     onKidsModeChanged: (Boolean) -> Unit,
     aboutRepository: OatecAboutRepository,

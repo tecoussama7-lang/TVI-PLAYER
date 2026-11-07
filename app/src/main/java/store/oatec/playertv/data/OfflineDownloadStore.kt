@@ -217,7 +217,7 @@ class OfflineDownloadStore(private val context: Context) {
             }
         } catch (error: Exception) {
             if (paused.contains(id)) {
-                update(id) { it.put("status", DownloadManager.STATUS_PAUSED, "downloaded", target.length()) }
+                update(id) { it.put("status", DownloadManager.STATUS_PAUSED); it.put("downloaded", target.length()) }
             } else {
                 update(id) {
                     it.put("status", DownloadManager.STATUS_FAILED)

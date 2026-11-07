@@ -4493,10 +4493,8 @@ private fun PlaybackDialog(
                     error = "Connection lost. Reconnecting ($attempt/3)…"
                     playerScope.launch {
                         delay(attempt * 1_500L)
-                        if (!player.isReleased) {
-                            player.prepare()
-                            player.playWhenReady = true
-                        }
+                        player.prepare()
+                        player.playWhenReady = true
                     }
                     return
                 }

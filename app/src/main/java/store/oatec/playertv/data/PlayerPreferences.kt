@@ -375,6 +375,7 @@ class PlayerPreferences(context: Context) {
         val root = JSONObject().put("format", "oatec-player-settings").put("version", 1)
         val values = JSONObject()
         preferences.all.forEach { (key, value) ->
+            if (key.startsWith("kids_")) return@forEach
             val item = JSONObject()
             when (value) {
                 is String -> item.put("type", "string").put("value", value)
@@ -394,7 +395,7 @@ class PlayerPreferences(context: Context) {
         val root = JSONObject(json)
         require(root.optString("format") == "oatec-player-settings") { "This is not an OATEC settings backup." }
         val values = root.optJSONObject("preferences") ?: error("The backup has no settings.")
-        val editor = preferences.edit().clear()
+        val editor = preferences.edit()
         val keys = values.keys()
         while (keys.hasNext()) {
             val key = keys.next()

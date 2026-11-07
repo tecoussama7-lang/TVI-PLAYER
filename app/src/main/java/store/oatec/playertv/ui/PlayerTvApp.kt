@@ -469,6 +469,7 @@ fun PlayerTvApp() {
         PlayerTvAppContent(
             appLanguage = appLanguage,
             highContrast = appHighContrast,
+            uiScale = appUiScale,
             onLanguageChanged = { selected ->
                 languagePreferences.setAppLanguage(selected)
                 appLanguage = selected
@@ -515,6 +516,7 @@ fun PlayerTvApp() {
 private fun PlayerTvAppContent(
     appLanguage: String,
     highContrast: Boolean,
+    uiScale: Float,
     onLanguageChanged: (String) -> Unit,
     onUiScaleChanged: (Float) -> Unit,
     onHighContrastChanged: (Boolean) -> Unit,
@@ -1585,7 +1587,7 @@ private fun PlayerTvAppContent(
                             preferences = preferences,
                             selectedLanguage = appLanguage,
                             onLanguageChanged = onLanguageChanged,
-                            uiScale = androidx.compose.ui.platform.LocalDensity.current.fontScale,
+                            uiScale = uiScale,
                             onUiScaleChanged = onUiScaleChanged,
                             highContrast = highContrast,
                             onHighContrastChanged = onHighContrastChanged,
@@ -2094,6 +2096,55 @@ private fun SettingsScreen(
     var languageMenuExpanded by remember { mutableStateOf(false) }
     var showInlineAddSource by remember { mutableStateOf(false) }
     var displayZoomMode by remember { mutableStateOf(preferences.displayZoomMode()) }
+    var autoStartEnabled by remember { mutableStateOf(preferences.autoStartEnabled()) }
+    var autoReconnectEnabled by remember { mutableStateOf(preferences.autoReconnectEnabled()) }
+    var focusHighlightEnabled by remember { mutableStateOf(preferences.focusHighlightEnabled()) }
+    var kidsScheduleEnabled by remember { mutableStateOf(preferences.kidsScheduleEnabled()) }
+    var kidsScheduleStart by remember { mutableStateOf(preferences.kidsScheduleStart()) }
+    var kidsScheduleEnd by remember { mutableStateOf(preferences.kidsScheduleEnd()) }
+    var kidsScheduleMessage by remember { mutableStateOf("") }
+    var networkStatus by remember { mutableStateOf("Not tested yet") }
+    var backupStatus by remember { mutableStateOf("") }
+    var storageStatus by remember { mutableStateOf("") }
+    var showClearCacheConfirm by remember { mutableStateOf(false) }
+    var showResetSettingsConfirm by remember { mutableStateOf(false) }
+
+    val createBackupLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/json"),
+    ) { uri ->
+        if (uri != null) scope.launch {
+            backupStatus = "Saving backup…"
+            runCatching {
+                withContext(Dispatchers.IO) {
+                    context.contentResolver.openOutputStream(uri)?.use { output ->
+                        output.write(preferences.exportSettingsJson().toByteArray(Charsets.UTF_8))
+                    } ?: error("Could not open backup file.")
+                }
+            }.onSuccess { backupStatus = "Settings backup saved." }
+                .onFailure { backupStatus = it.message ?: "Backup failed." }
+        }
+    }
+    val restoreBackupLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument(),
+    ) { uri ->
+        if (uri != null) scope.launch {
+            backupStatus = "Restoring settings…"
+            val result = runCatching {
+                withContext(Dispatchers.IO) {
+                    context.contentResolver.openInputStream(uri)?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }
+                        ?: error("Could not read backup file.")
+                }
+            }.mapCatching { json ->
+                if (!preferences.importSettingsJson(json)) error("Invalid or unsupported backup file.")
+                preferences.uiScale().also { restoredScale ->
+                    onUiScaleChanged(restoredScale)
+                    onHighContrastChanged(preferences.highContrastEnabled())
+                    onLanguageChanged(preferences.appLanguage())
+                }
+            }
+            backupStatus = result.fold({ "Settings restored. Restart the app to apply every restored option." }, { it.message ?: "Restore failed." })
+        }
+    }
 
     fun loadAbout() {
         loadingAbout = true
@@ -2107,6 +2158,37 @@ private fun SettingsScreen(
     }
 
     LaunchedEffect(Unit) { loadAbout() }
+    
+    fun runNetworkTest() {
+        networkStatus = "Testing internet connection…"
+        scope.launch {
+            val result = withContext(Dispatchers.IO) {
+                runCatching {
+                    val started = System.nanoTime()
+                    val connection = (URL("https://www.google.com/generate_204").openConnection() as HttpURLConnection).apply {
+                        connectTimeout = 7_000
+                        readTimeout = 7_000
+                        instanceFollowRedirects = false
+                    }
+                    try {
+                        val code = connection.responseCode
+                        val elapsed = (System.nanoTime() - started) / 1_000_000L
+                        if (code in 200..399) "Internet connected · ${elapsed} ms"
+                        else "Connection test returned HTTP $code"
+                    } finally { connection.disconnect() }
+                }.getOrElse { "Connection failed: ${it.message ?: "network unavailable"}" }
+            }
+            networkStatus = result
+        }
+    }
+
+    fun cacheBytes(): Long = sequenceOf(context.cacheDir, context.externalCacheDir)
+        .filterNotNull()
+        .distinct()
+        .flatMap { root -> root.walkTopDown() }
+        .filter { it.isFile }
+        .sumOf { it.length() }
+
 
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val settingsColumns = if (maxWidth >= 1100.dp) 3 else 2
@@ -2447,6 +2529,125 @@ private fun SettingsScreen(
         }
         Surface(color = Panel, shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)), modifier = Modifier.width(settingsCardWidth)) {
             Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text("INTERFACE & ACCESSIBILITY", color = Lime, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.4.sp)
+                Text("Scale the complete interface and improve visibility on TV screens.", color = TextMuted, fontSize = 11.sp)
+                Text("Interface size · ${(uiScale * 100).toInt()}%", color = TextMain, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                Slider(value = uiScale, onValueChange = onUiScaleChanged, valueRange = 0.85f..1.25f)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text("High contrast", color = TextMain, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                        Text("Stronger text and control contrast.", color = TextMuted, fontSize = 10.sp)
+                    }
+                    Switch(checked = highContrast, onCheckedChange = onHighContrastChanged)
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text("Remote focus highlight", color = TextMain, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                        Text("Keep a clear focus colour for remote navigation.", color = TextMuted, fontSize = 10.sp)
+                    }
+                    Switch(checked = focusHighlightEnabled, onCheckedChange = {
+                        focusHighlightEnabled = it
+                        preferences.setFocusHighlightEnabled(it)
+                    })
+                }
+            }
+        }
+        Surface(color = Panel, shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)), modifier = Modifier.width(settingsCardWidth)) {
+            Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text("NETWORK & SYSTEM", color = Lime, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.4.sp)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text("Auto reconnect preference", color = TextMain, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                        Text("Save the preference for connection recovery.", color = TextMuted, fontSize = 10.sp)
+                    }
+                    Switch(checked = autoReconnectEnabled, onCheckedChange = {
+                        autoReconnectEnabled = it
+                        preferences.setAutoReconnectEnabled(it)
+                    })
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text("Start with Android TV", color = TextMain, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                        Text("Launch OATEC after device boot where Android permits it.", color = TextMuted, fontSize = 10.sp)
+                    }
+                    Switch(checked = autoStartEnabled, onCheckedChange = {
+                        autoStartEnabled = it
+                        preferences.setAutoStartEnabled(it)
+                    })
+                }
+                OutlinedButton(onClick = ::runNetworkTest, modifier = Modifier.fillMaxWidth()) { Text("Test internet connection") }
+                Text(networkStatus, color = TextMuted, fontSize = 10.sp)
+                OutlinedButton(
+                    onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/tecoussama7-lang/TVI-PLAYER/releases/latest"))) },
+                    modifier = Modifier.fillMaxWidth(),
+                ) { Text("Open update releases") }
+                Text("The app also checks for a newer release when it starts.", color = TextMuted, fontSize = 10.sp)
+            }
+        }
+        Surface(color = Panel, shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)), modifier = Modifier.width(settingsCardWidth)) {
+            Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text("BACKUP & STORAGE", color = Lime, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.4.sp)
+                Text("Back up app preferences. IPTV passwords and Premium credentials stay in the encrypted source store and are not exported.", color = TextMuted, fontSize = 10.sp)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(onClick = { createBackupLauncher.launch("oatec-settings-backup.json") }) { Text("Export settings") }
+                    OutlinedButton(onClick = { restoreBackupLauncher.launch(arrayOf("application/json", "text/*")) }) { Text("Restore") }
+                }
+                Text("Cache: ${cacheBytes() / (1024 * 1024)} MB", color = TextMain, fontSize = 12.sp)
+                OutlinedButton(onClick = { showClearCacheConfirm = true }) { Text("Clear temporary cache") }
+                if (backupStatus.isNotBlank()) Text(backupStatus, color = Lime, fontSize = 10.sp)
+                if (storageStatus.isNotBlank()) Text(storageStatus, color = TextMuted, fontSize = 10.sp)
+                OutlinedButton(onClick = { showResetSettingsConfirm = true }) { Text("Reset interface settings") }
+            }
+        }
+        Surface(color = Panel, shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)), modifier = Modifier.width(settingsCardWidth)) {
+            Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text("PARENTAL SCHEDULE & SLEEP TIMER", color = GoldLight, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.1.sp)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text("Kids Mode allowed hours", color = TextMain, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                        Text("Outside this window, Kids Mode is locked until a parent enters the PIN.", color = TextMuted, fontSize = 10.sp)
+                    }
+                    Switch(checked = kidsScheduleEnabled, onCheckedChange = { kidsScheduleEnabled = it })
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = kidsScheduleStart,
+                        onValueChange = { kidsScheduleStart = it.take(5); kidsScheduleMessage = "" },
+                        label = { Text("Start HH:mm") },
+                        singleLine = true,
+                        modifier = Modifier.weight(1f),
+                    )
+                    OutlinedTextField(
+                        value = kidsScheduleEnd,
+                        onValueChange = { kidsScheduleEnd = it.take(5); kidsScheduleMessage = "" },
+                        label = { Text("End HH:mm") },
+                        singleLine = true,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+                Button(onClick = {
+                    if (preferences.setKidsSchedule(kidsScheduleEnabled, kidsScheduleStart, kidsScheduleEnd)) {
+                        kidsScheduleMessage = "Parental schedule saved."
+                    } else kidsScheduleMessage = "Use valid 24-hour times, for example 08:00 and 20:00."
+                }) { Text("Save schedule") }
+                if (kidsScheduleMessage.isNotBlank()) Text(kidsScheduleMessage, color = GoldLight, fontSize = 10.sp)
+                HorizontalDivider(color = Color.White.copy(alpha = 0.08f))
+                Text("Sleep timer", color = TextMain, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                Text(
+                    if (sleepTimerDeadline > System.currentTimeMillis()) "App will close in ${((sleepTimerDeadline - System.currentTimeMillis()) / 60_000L).coerceAtLeast(1)} minutes."
+                    else "No sleep timer is active.",
+                    color = TextMuted, fontSize = 10.sp,
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    listOf(15, 30, 60, 90).forEach { minutes ->
+                        OutlinedButton(onClick = { onSleepTimerChanged(System.currentTimeMillis() + minutes * 60_000L) }, contentPadding = PaddingValues(horizontal = 9.dp, vertical = 6.dp)) { Text("${minutes}m") }
+                    }
+                    OutlinedButton(onClick = { onSleepTimerChanged(0L) }, contentPadding = PaddingValues(horizontal = 9.dp, vertical = 6.dp)) { Text("Off") }
+                }
+            }
+        }
+        Surface(color = Panel, shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)), modifier = Modifier.width(settingsCardWidth)) {
+            Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(appText("OATEC PREMIUM", LocalAppLanguage.current), color = GoldLight, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
                 OutlinedTextField(
                     value = premiumCodeInput,
@@ -2510,6 +2711,58 @@ private fun SettingsScreen(
         )
     }
 
+    if (showClearCacheConfirm) {
+        AlertDialog(
+            onDismissRequest = { showClearCacheConfirm = false },
+            title = { Text("Clear temporary cache?") },
+            text = { Text("This removes temporary files only. Downloaded movies and playlists are kept.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showClearCacheConfirm = false
+                    scope.launch {
+                        val removed = withContext(Dispatchers.IO) {
+                            listOfNotNull(context.cacheDir, context.externalCacheDir).distinct().sumOf { dir ->
+                                val before = dir.walkTopDown().filter { it.isFile }.sumOf { it.length() }
+                                dir.deleteRecursively()
+                                before
+                            }
+                        }
+                        storageStatus = "Cleared ${removed / (1024 * 1024)} MB of temporary cache."
+                    }
+                }) { Text("Clear cache") }
+            },
+            dismissButton = { TextButton(onClick = { showClearCacheConfirm = false }) { Text("Cancel") } },
+        )
+    }
+    if (showResetSettingsConfirm) {
+        AlertDialog(
+            onDismissRequest = { showResetSettingsConfirm = false },
+            title = { Text("Reset interface settings?") },
+            text = { Text("Language, display, playback preferences, auto-start and timers return to defaults. Sources, channel lists, Kids PIN and downloads are kept.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    preferences.resetInterfaceSettings()
+                    onLanguageChanged("en")
+                    onUiScaleChanged(1f)
+                    onHighContrastChanged(false)
+                    resumePlayback = true
+                    preferences.setResumePlayback(true)
+                    displayZoomMode = "zoom"
+                    preferences.setDisplayZoomMode("zoom")
+                    autoStartEnabled = false
+                    autoReconnectEnabled = true
+                    focusHighlightEnabled = true
+                    kidsScheduleEnabled = false
+                    kidsScheduleStart = "08:00"
+                    kidsScheduleEnd = "20:00"
+                    onSleepTimerChanged(0L)
+                    showResetSettingsConfirm = false
+                    backupStatus = "Interface settings reset to defaults."
+                }) { Text("Reset") }
+            },
+            dismissButton = { TextButton(onClick = { showResetSettingsConfirm = false }) { Text("Cancel") } },
+        )
+    }
     if (confirmClearHistory) {
         AlertDialog(
             onDismissRequest = { confirmClearHistory = false },

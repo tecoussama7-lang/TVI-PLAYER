@@ -187,6 +187,7 @@ private fun appText(source: String, language: String): String {
         "Please wait until the catalogue is ready" to listOf("يرجى الانتظار حتى يصبح الكتالوغ جاهزاً","Veuillez patienter jusqu’à ce que le catalogue soit prêt","Please wait until the catalogue is ready","Espera hasta que el catálogo esté listo","Bitte warten, bis der Katalog bereit ist","Wacht tot de catalogus klaar is","Vänta tills katalogen är klar","Bitte warte, bis de Katalog parat isch","Attendi che il catalogo sia pronto","Spetga fin che il catalog è pront"),
         "items loaded" to listOf("عنصر تم تحميله","éléments chargés","items loaded","elementos cargados","Elemente geladen","items geladen","objekt laddade","Element glade","elementi caricati","elements chargiads"),
         "About OATEC" to listOf("حول OATEC","À propos d’OATEC","About OATEC","Acerca de OATEC","Über OATEC","Over OATEC","Om OATEC","Über OATEC","Informazioni su OATEC","Davart OATEC"),
+        "DOWNLOADS" to listOf("التنزيلات","TÉLÉCHARGEMENTS","DOWNLOADS","DESCARGAS","DOWNLOADS","DOWNLOADS","NEDLADDNINGAR","DOWNLOADS","DOWNLOAD","TELECARGIADAS"),
         "Home" to listOf("الرئيسية","Accueil","Home","Inicio","Startseite","Home","Hem","Start","Home","Mussavia"),
         "Live TV" to listOf("التلفاز المباشر","TV en direct","Live TV","TV en directo","Live-TV","Live-tv","Direkt-TV","Live-TV","TV in diretta","TV directa"),
         "Movies" to listOf("الأفلام","Films","Movies","Películas","Filme","Films","Filmer","Film","Film","Films"),
@@ -2897,7 +2898,7 @@ private fun CategoryPill(label: String, selected: Boolean, onClick: () -> Unit) 
         shape = RoundedCornerShape(10.dp),
         modifier = Modifier.focusable().clickable(onClick = onClick),
     ) {
-        Text(label, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 13.dp, vertical = 8.dp))
+        Text(appText(label, LocalAppLanguage.current), fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 13.dp, vertical = 8.dp))
     }
 }
 

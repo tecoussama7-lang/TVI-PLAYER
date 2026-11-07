@@ -328,7 +328,123 @@ class PlayerPreferences(context: Context) {
         }
     }
 
+
+    fun uiScale(): Float = preferences.getFloat(UI_SCALE_KEY, 1f).coerceIn(0.85f, 1.25f)
+    fun setUiScale(value: Float) { preferences.edit().putFloat(UI_SCALE_KEY, value.coerceIn(0.85f, 1.25f)).apply() }
+
+    fun highContrastEnabled(): Boolean = preferences.getBoolean(HIGH_CONTRAST_KEY, false)
+    fun setHighContrastEnabled(enabled: Boolean) { preferences.edit().putBoolean(HIGH_CONTRAST_KEY, enabled).apply() }
+
+    fun focusHighlightEnabled(): Boolean = preferences.getBoolean(FOCUS_HIGHLIGHT_KEY, true)
+    fun setFocusHighlightEnabled(enabled: Boolean) { preferences.edit().putBoolean(FOCUS_HIGHLIGHT_KEY, enabled).apply() }
+
+    fun autoReconnectEnabled(): Boolean = preferences.getBoolean(AUTO_RECONNECT_KEY, true)
+    fun setAutoReconnectEnabled(enabled: Boolean) { preferences.edit().putBoolean(AUTO_RECONNECT_KEY, enabled).apply() }
+
+    fun autoStartEnabled(): Boolean = preferences.getBoolean(AUTO_START_KEY, false)
+    fun setAutoStartEnabled(enabled: Boolean) { preferences.edit().putBoolean(AUTO_START_KEY, enabled).apply() }
+
+    fun sleepTimerDeadline(): Long = preferences.getLong(SLEEP_TIMER_DEADLINE_KEY, 0L)
+    fun setSleepTimerDeadline(deadlineMillis: Long) { preferences.edit().putLong(SLEEP_TIMER_DEADLINE_KEY, deadlineMillis.coerceAtLeast(0L)).apply() }
+
+    fun kidsScheduleEnabled(): Boolean = preferences.getBoolean(KIDS_SCHEDULE_ENABLED_KEY, false)
+    fun kidsScheduleStart(): String = preferences.getString(KIDS_SCHEDULE_START_KEY, "08:00") ?: "08:00"
+    fun kidsScheduleEnd(): String = preferences.getString(KIDS_SCHEDULE_END_KEY, "20:00") ?: "20:00"
+    fun setKidsSchedule(enabled: Boolean, start: String, end: String): Boolean {
+        val valid = Regex("^([01]\\d|2[0-3]):[0-5]\\d$")
+        if (!valid.matches(start) || !valid.matches(end) || start == end) return false
+        preferences.edit()
+            .putBoolean(KIDS_SCHEDULE_ENABLED_KEY, enabled)
+            .putString(KIDS_SCHEDULE_START_KEY, start)
+            .putString(KIDS_SCHEDULE_END_KEY, end)
+            .apply()
+        return true
+    }
+
+    fun isWithinKidsSchedule(nowMinutes: Int = java.time.LocalTime.now().let { it.hour * 60 + it.minute }): Boolean {
+        if (!kidsScheduleEnabled()) return true
+        fun minutes(value: String): Int = value.substringBefore(":").toIntOrNull()?.times(60)
+            ?.plus(value.substringAfter(":", "").toIntOrNull() ?: 0) ?: 0
+        val start = minutes(kidsScheduleStart())
+        val end = minutes(kidsScheduleEnd())
+        return if (start < end) nowMinutes in start until end else nowMinutes >= start || nowMinutes < end
+    }
+
+    /** Export only this app's preferences; encrypted IPTV credentials live in a separate keystore-backed store. */
+    fun exportSettingsJson(): String {
+        val root = JSONObject().put("format", "oatec-player-settings").put("version", 1)
+        val values = JSONObject()
+        preferences.all.forEach { (key, value) ->
+            val item = JSONObject()
+            when (value) {
+                is String -> item.put("type", "string").put("value", value)
+                is Boolean -> item.put("type", "boolean").put("value", value)
+                is Int -> item.put("type", "int").put("value", value)
+                is Long -> item.put("type", "long").put("value", value)
+                is Float -> item.put("type", "float").put("value", value.toDouble())
+                is Set<*> -> item.put("type", "string_set").put("value", JSONArray(value.filterIsInstance<String>()))
+                else -> return@forEach
+            }
+            values.put(key, item)
+        }
+        return root.put("preferences", values).toString(2)
+    }
+
+    fun importSettingsJson(json: String): Boolean = runCatching {
+        val root = JSONObject(json)
+        require(root.optString("format") == "oatec-player-settings") { "This is not an OATEC settings backup." }
+        val values = root.optJSONObject("preferences") ?: error("The backup has no settings.")
+        val editor = preferences.edit().clear()
+        val keys = values.keys()
+        while (keys.hasNext()) {
+            val key = keys.next()
+            val item = values.optJSONObject(key) ?: continue
+            when (item.optString("type")) {
+                "string" -> editor.putString(key, item.optString("value"))
+                "boolean" -> editor.putBoolean(key, item.optBoolean("value"))
+                "int" -> editor.putInt(key, item.optInt("value"))
+                "long" -> editor.putLong(key, item.optLong("value"))
+                "float" -> editor.putFloat(key, item.optDouble("value").toFloat())
+                "string_set" -> {
+                    val array = item.optJSONArray("value") ?: JSONArray()
+                    editor.putStringSet(key, (0 until array.length()).map { array.optString(it) }.toSet())
+                }
+            }
+        }
+        editor.apply()
+        true
+    }.getOrDefault(false)
+
+    /** Reset interface and convenience options without deleting channels, parental PIN, history or favourites. */
+    fun resetInterfaceSettings() {
+        preferences.edit()
+            .remove(APP_LANGUAGE_KEY)
+            .remove(RESUME_PLAYBACK_KEY)
+            .remove(PLAYBACK_ENGINE_KEY)
+            .remove(DISPLAY_ZOOM_MODE_KEY)
+            .remove(UI_SCALE_KEY)
+            .remove(HIGH_CONTRAST_KEY)
+            .remove(FOCUS_HIGHLIGHT_KEY)
+            .remove(AUTO_RECONNECT_KEY)
+            .remove(AUTO_START_KEY)
+            .remove(SLEEP_TIMER_DEADLINE_KEY)
+            .remove(KIDS_SCHEDULE_ENABLED_KEY)
+            .remove(KIDS_SCHEDULE_START_KEY)
+            .remove(KIDS_SCHEDULE_END_KEY)
+            .apply()
+    }
+
     private companion object {
+
+        const val UI_SCALE_KEY = "ui_scale"
+        const val HIGH_CONTRAST_KEY = "high_contrast"
+        const val FOCUS_HIGHLIGHT_KEY = "focus_highlight"
+        const val AUTO_RECONNECT_KEY = "auto_reconnect"
+        const val AUTO_START_KEY = "auto_start"
+        const val SLEEP_TIMER_DEADLINE_KEY = "sleep_timer_deadline"
+        const val KIDS_SCHEDULE_ENABLED_KEY = "kids_schedule_enabled"
+        const val KIDS_SCHEDULE_START_KEY = "kids_schedule_start"
+        const val KIDS_SCHEDULE_END_KEY = "kids_schedule_end"
         const val APP_LANGUAGE_KEY = "app_language"
         const val FAVORITES_KEY = "favorite_ids"
         const val KIDS_MODE_ENABLED_KEY = "kids_mode_enabled"

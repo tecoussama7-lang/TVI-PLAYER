@@ -448,6 +448,7 @@ fun PlayerTvApp() {
     var appLanguage by remember { mutableStateOf(languagePreferences.appLanguage()) }
     var appUiScale by remember { mutableStateOf(languagePreferences.uiScale()) }
     var appHighContrast by remember { mutableStateOf(languagePreferences.highContrastEnabled()) }
+    var appFocusHighlight by remember { mutableStateOf(languagePreferences.focusHighlightEnabled()) }
     var availableUpdate by remember { mutableStateOf<store.oatec.playertv.data.AppUpdate?>(null) }
     var dismissedVersion by rememberSaveable { mutableStateOf("") }
 
@@ -469,6 +470,7 @@ fun PlayerTvApp() {
         PlayerTvAppContent(
             appLanguage = appLanguage,
             highContrast = appHighContrast,
+            focusHighlight = appFocusHighlight,
             uiScale = appUiScale,
             onLanguageChanged = { selected ->
                 languagePreferences.setAppLanguage(selected)
@@ -481,6 +483,10 @@ fun PlayerTvApp() {
             onHighContrastChanged = { enabled ->
                 languagePreferences.setHighContrastEnabled(enabled)
                 appHighContrast = enabled
+            },
+            onFocusHighlightChanged = { enabled ->
+                languagePreferences.setFocusHighlightEnabled(enabled)
+                appFocusHighlight = enabled
             },
         )
     }
@@ -516,10 +522,12 @@ fun PlayerTvApp() {
 private fun PlayerTvAppContent(
     appLanguage: String,
     highContrast: Boolean,
+    focusHighlight: Boolean,
     uiScale: Float,
     onLanguageChanged: (String) -> Unit,
     onUiScaleChanged: (Float) -> Unit,
     onHighContrastChanged: (Boolean) -> Unit,
+    onFocusHighlightChanged: (Boolean) -> Unit,
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val configuration = LocalConfiguration.current
@@ -1214,7 +1222,7 @@ private fun PlayerTvAppContent(
 
     MaterialTheme(
         colorScheme = darkColorScheme(
-            primary = if (highContrast) Color.White else Lime,
+            primary = if (!focusHighlight) Color(0xFF75808D) else if (highContrast) Color.White else Lime,
             onPrimary = Ink,
             secondary = if (highContrast) Color(0xFFFFE082) else GoldLight,
             onSecondary = Ink,
@@ -1591,6 +1599,8 @@ private fun PlayerTvAppContent(
                             onUiScaleChanged = onUiScaleChanged,
                             highContrast = highContrast,
                             onHighContrastChanged = onHighContrastChanged,
+                            focusHighlightEnabled = focusHighlight,
+                            onFocusHighlightChanged = onFocusHighlightChanged,
                             sleepTimerDeadline = sleepTimerDeadline,
                             onSleepTimerChanged = { deadline ->
                                 preferences.setSleepTimerDeadline(deadline)
@@ -2058,6 +2068,8 @@ private fun SettingsScreen(
     onUiScaleChanged: (Float) -> Unit,
     highContrast: Boolean,
     onHighContrastChanged: (Boolean) -> Unit,
+    focusHighlightEnabled: Boolean,
+    onFocusHighlightChanged: (Boolean) -> Unit,
     sleepTimerDeadline: Long,
     onSleepTimerChanged: (Long) -> Unit,
     onLanguageChanged: (String) -> Unit,
@@ -2098,7 +2110,6 @@ private fun SettingsScreen(
     var displayZoomMode by remember { mutableStateOf(preferences.displayZoomMode()) }
     var autoStartEnabled by remember { mutableStateOf(preferences.autoStartEnabled()) }
     var autoReconnectEnabled by remember { mutableStateOf(preferences.autoReconnectEnabled()) }
-    var focusHighlightEnabled by remember { mutableStateOf(preferences.focusHighlightEnabled()) }
     var kidsScheduleEnabled by remember { mutableStateOf(preferences.kidsScheduleEnabled()) }
     var kidsScheduleStart by remember { mutableStateOf(preferences.kidsScheduleStart()) }
     var kidsScheduleEnd by remember { mutableStateOf(preferences.kidsScheduleEnd()) }
@@ -2106,6 +2117,7 @@ private fun SettingsScreen(
     var networkStatus by remember { mutableStateOf("Not tested yet") }
     var backupStatus by remember { mutableStateOf("") }
     var storageStatus by remember { mutableStateOf("") }
+    var cacheSizeBytes by remember { mutableStateOf(0L) }
     var showClearCacheConfirm by remember { mutableStateOf(false) }
     var showResetSettingsConfirm by remember { mutableStateOf(false) }
 
@@ -2139,6 +2151,7 @@ private fun SettingsScreen(
                 preferences.uiScale().also { restoredScale ->
                     onUiScaleChanged(restoredScale)
                     onHighContrastChanged(preferences.highContrastEnabled())
+                    onFocusHighlightChanged(preferences.focusHighlightEnabled())
                     onLanguageChanged(preferences.appLanguage())
                 }
             }
@@ -2189,6 +2202,9 @@ private fun SettingsScreen(
         .filter { it.isFile }
         .sumOf { it.length() }
 
+    LaunchedEffect(Unit) {
+        cacheSizeBytes = withContext(Dispatchers.IO) { cacheBytes() }
+    }
 
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val settingsColumns = if (maxWidth >= 1100.dp) 3 else 2
@@ -2545,10 +2561,7 @@ private fun SettingsScreen(
                         Text("Remote focus highlight", color = TextMain, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
                         Text("Keep a clear focus colour for remote navigation.", color = TextMuted, fontSize = 10.sp)
                     }
-                    Switch(checked = focusHighlightEnabled, onCheckedChange = {
-                        focusHighlightEnabled = it
-                        preferences.setFocusHighlightEnabled(it)
-                    })
+                    Switch(checked = focusHighlightEnabled, onCheckedChange = onFocusHighlightChanged)
                 }
             }
         }
@@ -2592,7 +2605,7 @@ private fun SettingsScreen(
                     Button(onClick = { createBackupLauncher.launch("oatec-settings-backup.json") }) { Text("Export settings") }
                     OutlinedButton(onClick = { restoreBackupLauncher.launch(arrayOf("application/json", "text/*")) }) { Text("Restore") }
                 }
-                Text("Cache: ${cacheBytes() / (1024 * 1024)} MB", color = TextMain, fontSize = 12.sp)
+                Text("Cache: ${cacheSizeBytes / (1024 * 1024)} MB", color = TextMain, fontSize = 12.sp)
                 OutlinedButton(onClick = { showClearCacheConfirm = true }) { Text("Clear temporary cache") }
                 if (backupStatus.isNotBlank()) Text(backupStatus, color = Lime, fontSize = 10.sp)
                 if (storageStatus.isNotBlank()) Text(storageStatus, color = TextMuted, fontSize = 10.sp)
@@ -2727,6 +2740,7 @@ private fun SettingsScreen(
                                 before
                             }
                         }
+                        cacheSizeBytes = 0L
                         storageStatus = "Cleared ${removed / (1024 * 1024)} MB of temporary cache."
                     }
                 }) { Text("Clear cache") }
@@ -2745,13 +2759,13 @@ private fun SettingsScreen(
                     onLanguageChanged("en")
                     onUiScaleChanged(1f)
                     onHighContrastChanged(false)
+                    onFocusHighlightChanged(true)
                     resumePlayback = true
                     preferences.setResumePlayback(true)
                     displayZoomMode = "zoom"
                     preferences.setDisplayZoomMode("zoom")
                     autoStartEnabled = false
                     autoReconnectEnabled = true
-                    focusHighlightEnabled = true
                     kidsScheduleEnabled = false
                     kidsScheduleStart = "08:00"
                     kidsScheduleEnd = "20:00"
@@ -4442,11 +4456,14 @@ private fun PlaybackDialog(
     val latestEntry by rememberUpdatedState(entry)
     val latestPreferences by rememberUpdatedState(preferences)
     val latestEngine by rememberUpdatedState(activeEngine)
+    val playerScope = rememberCoroutineScope()
+    var autoReconnectAttempt by remember(entry.id) { mutableStateOf(0) }
 
     DisposableEffect(player) {
         val listener = object : Player.Listener {
             override fun onPlaybackStateChanged(playbackState: Int) {
                 loading = playbackState == Player.STATE_BUFFERING || playbackState == Player.STATE_IDLE
+                if (playbackState == Player.STATE_READY) autoReconnectAttempt = 0
                 if (playbackState == Player.STATE_ENDED && latestEntry.kind != MediaKind.LIVE && latestEngine == "exoplayer") {
                     latestPreferences.saveProgress(latestEntry.id, 0L, player.duration.coerceAtLeast(0L))
                 }
@@ -4469,6 +4486,19 @@ private fun PlaybackDialog(
                 }
                 if (latestEntry.kind != MediaKind.LIVE && latestEngine == "exoplayer" && latestPreferences.resumePlayback()) {
                     latestPreferences.saveProgress(latestEntry.id, player.currentPosition.coerceAtLeast(0L), player.duration.coerceAtLeast(0L))
+                }
+                if (latestPreferences.autoReconnectEnabled() && autoReconnectAttempt < 3) {
+                    autoReconnectAttempt += 1
+                    val attempt = autoReconnectAttempt
+                    error = "Connection lost. Reconnecting ($attempt/3)…"
+                    playerScope.launch {
+                        delay(attempt * 1_500L)
+                        if (!player.isReleased) {
+                            player.prepare()
+                            player.playWhenReady = true
+                        }
+                    }
+                    return
                 }
                 // Retry failed movie/series and live streams with MPV; it supports additional
                 // containers, codecs, and IPTV stream formats that may fail in Media3.

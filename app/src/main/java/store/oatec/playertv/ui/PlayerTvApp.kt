@@ -3273,7 +3273,7 @@ private fun OfflineDownloadsScreen(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
-                items(downloads, key = { it.downloadId }) { item ->
+                gridItems(downloads, key = { it.downloadId }) { item ->
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Box(
                             Modifier.fillMaxWidth().aspectRatio(1f)

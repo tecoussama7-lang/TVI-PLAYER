@@ -26,6 +26,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
 import androidx.compose.foundation.background
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.alpha
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.grid.items as gridItems
@@ -2207,8 +2208,9 @@ private fun SettingsScreen(
     }
 
     BoxWithConstraints(Modifier.fillMaxSize()) {
-        val settingsColumns = if (maxWidth >= 1100.dp) 3 else 2
+        val settingsColumns = when { maxWidth >= 1100.dp -> 3; maxWidth >= 600.dp -> 2; else -> 1 }
         val settingsGap = 10.dp
+        val settingsCardHeight = when { maxHeight < 620.dp -> 270.dp; maxHeight < 760.dp -> 300.dp; else -> 340.dp }
         val settingsPadding = if (maxHeight < 700.dp) 12.dp else 20.dp
         val settingsContentWidth = maxWidth - settingsPadding * 2
         val settingsCardWidth = (settingsContentWidth - settingsGap * (settingsColumns - 1)) / settingsColumns
@@ -2243,8 +2245,8 @@ private fun SettingsScreen(
                 horizontalArrangement = Arrangement.spacedBy(settingsGap),
                 verticalArrangement = Arrangement.spacedBy(settingsGap),
             ) {
-        Surface(color = Panel, shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)), modifier = Modifier.width(settingsCardWidth)) {
-            Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Surface(color = Panel, shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)), modifier = Modifier.width(settingsCardWidth).height(settingsCardHeight)) {
+            Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(appText("APP LANGUAGE", selectedLanguage), color = Lime, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
                 Text(appText("Choose the language used by the app.", selectedLanguage), color = TextMuted, fontSize = 11.sp)
                 val supportedLanguages = listOf(
@@ -2279,7 +2281,7 @@ private fun SettingsScreen(
                 Text(appText("Language preference is saved on this device.", selectedLanguage), color = TextMuted, fontSize = 10.sp)
             }
         }
-        Surface(color = Panel, shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)), modifier = Modifier.width(settingsCardWidth)) {
+        Surface(color = Panel, shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)), modifier = Modifier.width(settingsCardWidth).height(settingsCardHeight)) {
             Row(
                 Modifier.fillMaxWidth().padding(16.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -2297,8 +2299,8 @@ private fun SettingsScreen(
                 }
             }
         }
-        Surface(color = Panel, shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)), modifier = Modifier.width(settingsCardWidth)) {
-            Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Surface(color = Panel, shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)), modifier = Modifier.width(settingsCardWidth).height(settingsCardHeight)) {
+            Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(appText("PLAYBACK", LocalAppLanguage.current), color = Lime, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
@@ -2338,8 +2340,8 @@ private fun SettingsScreen(
                 }
             }
         }
-        Surface(color = Panel, shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)), modifier = Modifier.width(settingsCardWidth)) {
-            Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Surface(color = Panel, shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)), modifier = Modifier.width(settingsCardWidth).height(settingsCardHeight)) {
+            Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(appText("KIDS MODE", LocalAppLanguage.current), color = GoldLight, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
@@ -2526,8 +2528,8 @@ private fun SettingsScreen(
                 }
             }
         }
-        Surface(color = Panel, shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)), modifier = Modifier.width(settingsCardWidth)) {
-            Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Surface(color = Panel, shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)), modifier = Modifier.width(settingsCardWidth).height(settingsCardHeight)) {
+            Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(appText("DISPLAY & ZOOM", selectedLanguage), color = Lime, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
                 Text(appText("Choose how video fills the screen.", selectedLanguage), color = TextMuted, fontSize = 11.sp)
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -2543,8 +2545,8 @@ private fun SettingsScreen(
                 Text(appText("Applied to ExoPlayer video playback.", selectedLanguage), color = TextMuted, fontSize = 10.sp)
             }
         }
-        Surface(color = Panel, shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)), modifier = Modifier.width(settingsCardWidth)) {
-            Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Surface(color = Panel, shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)), modifier = Modifier.width(settingsCardWidth).height(settingsCardHeight)) {
+            Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text("INTERFACE & ACCESSIBILITY", color = Lime, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.4.sp)
                 Text("Scale the complete interface and improve visibility on TV screens.", color = TextMuted, fontSize = 11.sp)
                 Text("Interface size · ${(uiScale * 100).toInt()}%", color = TextMain, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
@@ -2565,8 +2567,8 @@ private fun SettingsScreen(
                 }
             }
         }
-        Surface(color = Panel, shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)), modifier = Modifier.width(settingsCardWidth)) {
-            Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Surface(color = Panel, shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)), modifier = Modifier.width(settingsCardWidth).height(settingsCardHeight)) {
+            Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text("NETWORK & SYSTEM", color = Lime, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.4.sp)
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
@@ -2597,8 +2599,8 @@ private fun SettingsScreen(
                 Text("The app also checks for a newer release when it starts.", color = TextMuted, fontSize = 10.sp)
             }
         }
-        Surface(color = Panel, shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)), modifier = Modifier.width(settingsCardWidth)) {
-            Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Surface(color = Panel, shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)), modifier = Modifier.width(settingsCardWidth).height(settingsCardHeight)) {
+            Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text("BACKUP & STORAGE", color = Lime, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.4.sp)
                 Text("Back up app preferences. IPTV passwords and Premium credentials stay in the encrypted source store and are not exported.", color = TextMuted, fontSize = 10.sp)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -2612,8 +2614,8 @@ private fun SettingsScreen(
                 OutlinedButton(onClick = { showResetSettingsConfirm = true }) { Text("Reset interface settings") }
             }
         }
-        Surface(color = Panel, shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)), modifier = Modifier.width(settingsCardWidth)) {
-            Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Surface(color = Panel, shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)), modifier = Modifier.width(settingsCardWidth).height(settingsCardHeight)) {
+            Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text("PARENTAL SCHEDULE & SLEEP TIMER", color = GoldLight, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.1.sp)
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
@@ -2659,8 +2661,8 @@ private fun SettingsScreen(
                 }
             }
         }
-        Surface(color = Panel, shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)), modifier = Modifier.width(settingsCardWidth)) {
-            Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Surface(color = Panel, shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)), modifier = Modifier.width(settingsCardWidth).height(settingsCardHeight)) {
+            Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(appText("OATEC PREMIUM", LocalAppLanguage.current), color = GoldLight, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
                 OutlinedTextField(
                     value = premiumCodeInput,
@@ -2683,8 +2685,8 @@ private fun SettingsScreen(
                 }
             }
         }
-        Surface(color = Panel, shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)), modifier = Modifier.width(settingsCardWidth)) {
-            Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Surface(color = Panel, shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)), modifier = Modifier.width(settingsCardWidth).height(settingsCardHeight)) {
+            Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(appText("ABOUT OATEC", LocalAppLanguage.current), color = GoldLight, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
                 when {
                     loadingAbout && about == null -> Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -3809,9 +3811,17 @@ private fun MoviePreviewOverlay(
         properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
     ) {
         Box(Modifier.fillMaxSize().background(Color.Transparent)) {
+            if (entry.logoUrl.isNotBlank()) {
+                AsyncImage(
+                    model = entry.logoUrl,
+                    contentDescription = entry.title,
+                    modifier = Modifier.fillMaxSize().alpha(0.34f),
+                    contentScale = ContentScale.Crop,
+                )
+            }
             if (trailerVideoId.isNotBlank()) {
                 AndroidView(
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier.fillMaxSize().alpha(0.82f),
                     factory = { ctx ->
                         WebView(ctx).apply {
                             setBackgroundColor(android.graphics.Color.TRANSPARENT)
@@ -3849,8 +3859,8 @@ private fun MoviePreviewOverlay(
                 )
                 Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.48f), Color.Transparent, Color(0xE609090B)))))
             } else {
-                Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xFF24201A), Color(0xFF09090B)))), contentAlignment = Alignment.Center) {
-                    Text(if (searching) "Finding trailer…" else "Trailer preview unavailable", color = TextMuted)
+                Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.40f), Color(0xE609090B)))), contentAlignment = Alignment.Center) {
+                    if (entry.logoUrl.isBlank()) Text(if (searching) "Finding trailer…" else "Trailer preview unavailable", color = TextMuted)
                 }
             }
             Column(
@@ -3859,7 +3869,8 @@ private fun MoviePreviewOverlay(
             ) {
                 Text(entry.title, color = TextMain, fontSize = 28.sp, fontWeight = FontWeight.Black, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 val details = listOf(entry.year.ifBlank { entry.releaseDate.take(4) }, entry.genre, entry.rating).filter { it.isNotBlank() }.joinToString("  ·  ")
-                if (details.isNotBlank()) Text(details, color = TextMuted, fontSize = 13.sp)
+                if (details.isNotBlank()) Text(details, color = GoldLight, fontSize = 13.sp)
+                if (entry.description.isNotBlank()) Text(entry.description, color = TextMain.copy(alpha = 0.88f), fontSize = 12.sp, maxLines = 3, overflow = TextOverflow.Ellipsis)
                 if (message.isNotBlank()) Text(message, color = TextMuted, fontSize = 12.sp, maxLines = 2)
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     Button(onClick = onWatch, colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Color.Black)) { Text(appText("▶  Watch", LocalAppLanguage.current)) }
@@ -4061,7 +4072,17 @@ private fun SeriesScreen(
         when {
             selectedSeries != null -> {
                 val series = selectedSeries
-                Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Box(Modifier.fillMaxSize()) {
+                    if (series.logoUrl.isNotBlank()) {
+                        AsyncImage(
+                            model = series.logoUrl,
+                            contentDescription = series.title,
+                            modifier = Modifier.fillMaxSize().alpha(0.22f),
+                            contentScale = ContentScale.Crop,
+                        )
+                    }
+                    Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.52f), Ink.copy(alpha = 0.94f)))))
+                    Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Row(
                         Modifier.fillMaxWidth().padding(vertical = 8.dp),
                         horizontalArrangement = Arrangement.spacedBy(14.dp),
@@ -4140,6 +4161,7 @@ private fun SeriesScreen(
                         }
                     }
                 }
+                }
             }
             filtered.isEmpty() && busy -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 LoadingState("Loading series")
@@ -4162,7 +4184,7 @@ private fun SeriesScreen(
                             color = Raised,
                             border = if (selected) BorderStroke(2.dp, Lime) else BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
                             shape = RoundedCornerShape(10.dp),
-                            modifier = Modifier.fillMaxWidth().aspectRatio(1f),
+                            modifier = Modifier.fillMaxWidth().aspectRatio(0.68f),
                         ) {
                             if (entry.logoUrl.isNotBlank()) AsyncImage(model = entry.logoUrl, contentDescription = entry.title, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
                             else Box(contentAlignment = Alignment.Center) { Text(entry.title.take(1).uppercase(), color = Lime, fontSize = 32.sp, fontWeight = FontWeight.Black) }

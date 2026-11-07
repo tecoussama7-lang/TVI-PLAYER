@@ -176,10 +176,14 @@ class OfflineDownloadStore(private val context: Context) {
             val code = connection.responseCode
             if (code !in 200..299) throw IllegalStateException("HTTP $code")
             val append = existing > 0 && code == HttpURLConnection.HTTP_PARTIAL
+            // Read Content-Length as text to remain compatible with minSdk 23.
+            val responseLength = connection.getHeaderField("Content-Length")?.toLongOrNull()
+                ?: connection.contentLength.toLong()
             val total = if (append) {
                 val range = connection.getHeaderField("Content-Range")
-                range?.substringAfterLast('/')?.toLongOrNull() ?: (existing + connection.contentLengthLong)
-            } else connection.contentLengthLong
+                range?.substringAfterLast('/')?.toLongOrNull()
+                    ?: if (responseLength >= 0L) existing + responseLength else -1L
+            } else responseLength
             if (!append && existing > 0) target.delete()
             update(id) {
                 it.put("status", DownloadManager.STATUS_RUNNING)

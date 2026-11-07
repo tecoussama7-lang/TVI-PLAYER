@@ -172,6 +172,34 @@ private val LocalAppLanguage = staticCompositionLocalOf { "en" }
 
 private fun appText(source: String, language: String): String {
     val translations = mapOf(
+        "Set / change PIN" to listOf("تعيين / تغيير الرمز", "Définir / modifier le PIN", "Set / change PIN", "Configurar / cambiar PIN", "PIN festlegen / ändern", "PIN instellen / wijzigen", "Ställ in / ändra PIN", "PIN setze / ändere", "Imposta / cambia PIN", "Definir / midar il PIN"),
+        "Create PIN" to listOf("إنشاء رمز", "Créer un PIN", "Create PIN", "Crear PIN", "PIN erstellen", "PIN aanmaken", "Skapa PIN", "PIN erstelle", "Crea PIN", "Crear PIN"),
+        "Set a new Kids Mode PIN" to listOf("تعيين رمز جديد لوضع الأطفال", "Définir un nouveau PIN du mode enfants", "Set a new Kids Mode PIN", "Configura un nuevo PIN del modo infantil", "Neue Kindermodus-PIN festlegen", "Nieuwe PIN voor kindermodus instellen", "Ange en ny PIN för barnläget", "Neue PIN fürs Chindermodus setze", "Imposta un nuovo PIN modalità bambini", "Definir in nov PIN per il modus d’uffants"),
+        "Create Kids Mode PIN" to listOf("إنشاء رمز وضع الأطفال", "Créer le PIN du mode enfants", "Create Kids Mode PIN", "Crear PIN del modo infantil", "Kindermodus-PIN erstellen", "PIN voor kindermodus aanmaken", "Skapa PIN för barnläget", "PIN fürs Chindermodus erstelle", "Crea PIN modalità bambini", "Crear PIN dal modus d’uffants"),
+        "Settings" to listOf("الإعدادات", "Paramètres", "Settings", "Ajustes", "Einstellungen", "Instellingen", "Inställningar", "Iistellige", "Impostazioni", "Impostaziuns"),
+        "Add an IPTV source to begin" to listOf("أضف مصدراً لـ IPTV للبدء", "Ajoutez une source IPTV pour commencer", "Add an IPTV source to begin", "Añade una fuente IPTV para comenzar", "Füge eine IPTV-Quelle hinzu", "Voeg een IPTV-bron toe om te beginnen", "Lägg till en IPTV-källa för att börja", "Füeg e IPTV-Quelle dezue", "Aggiungi una fonte IPTV per iniziare", "Agiunta ina funtauna IPTV per cumenzar"),
+        "Load" to listOf("تحميل", "Charger", "Load", "Cargar", "Laden", "Laden", "Ladda", "Lade", "Carica", "Chargiar"),
+        "Refresh" to listOf("تحديث", "Actualiser", "Refresh", "Actualizar", "Aktualisieren", "Vernieuwen", "Uppdatera", "Aktualisiere", "Aggiorna", "Actualisar"),
+        "Add" to listOf("إضافة", "Ajouter", "Add", "Añadir", "Hinzufügen", "Toevoegen", "Lägg till", "Dezuefüege", "Aggiungi", "Agiuntar"),
+        "Add source" to listOf("إضافة مصدر", "Ajouter une source", "Add source", "Añadir fuente", "Quelle hinzufügen", "Bron toevoegen", "Lägg till källa", "Quelle dezuefüege", "Aggiungi fonte", "Agiuntar funtauna"),
+        "Delete" to listOf("حذف", "Supprimer", "Delete", "Eliminar", "Löschen", "Verwijderen", "Ta bort", "Lösche", "Elimina", "Stizzar"),
+        "Trailer preview unavailable" to listOf("معاينة الإعلان غير متاحة", "Aperçu de la bande-annonce indisponible", "Trailer preview unavailable", "Vista previa del tráiler no disponible", "Trailer-Vorschau nicht verfügbar", "Trailerpreview niet beschikbaar", "Förhandsvisning av trailer inte tillgänglig", "Trailer-Vorschau nid verfüegbar", "Anteprima trailer non disponibile", "Prevista dal trailer betg disponibla"),
+        "Searching trailer…" to listOf("جارٍ البحث عن الإعلان…", "Recherche de la bande-annonce…", "Searching trailer…", "Buscando tráiler…", "Trailer wird gesucht…", "Trailer zoeken…", "Söker trailer…", "Sueche Trailer…", "Ricerca trailer…", "Tschertga trailer…"),
+        "Find trailer" to listOf("البحث عن الإعلان", "Rechercher la bande-annonce", "Find trailer", "Buscar tráiler", "Trailer suchen", "Trailer zoeken", "Sök trailer", "Trailer sueche", "Cerca trailer", "Tschertgar trailer"),
+        "Episodes" to listOf("الحلقات", "Épisodes", "Episodes", "Episodios", "Folgen", "Afleveringen", "Avsnitt", "Folge", "Episodi", "Episodis"),
+        "Play" to listOf("تشغيل", "Lire", "Play", "Reproducir", "Abspielen", "Afspelen", "Spela", "Abspiele", "Riproduci", "Reproducir"),
+        "Favorite" to listOf("المفضلة", "Favori", "Favorite", "Favorito", "Favorit", "Favoriet", "Favorit", "Favorit", "Preferito", "Preferì"),
+        "Saved" to listOf("تم الحفظ", "Enregistré", "Saved", "Guardado", "Gespeichert", "Opgeslagen", "Sparat", "Gspeicheret", "Salvato", "Memorisà"),
+        "Enter a channel number" to listOf("أدخل رقم القناة", "Entrez un numéro de chaîne", "Enter a channel number", "Introduce un número de canal", "Kanalnummer eingeben", "Voer een kanaalnummer in", "Ange ett kanalnummer", "Kanalnummer iigeh", "Inserisci il numero del canale", "Endatescha il numer dal chanàl"),
+        "No channel with that number" to listOf("لا توجد قناة بهذا الرقم", "Aucune chaîne avec ce numéro", "No channel with that number", "No hay ningún canal con ese número", "Kein Sender mit dieser Nummer", "Geen kanaal met dat nummer", "Ingen kanal med det numret", "Kei Sender mit dere Nummer", "Nessun canale con questo numero", "Nagina chanàl cun quest numer"),
+        "Channels" to listOf("القنوات", "Chaînes", "Channels", "Canales", "Kanäle", "Kanalen", "Kanaler", "Kanäl", "Canali", "Chanals"),
+        "Hide channels" to listOf("إخفاء القنوات", "Masquer les chaînes", "Hide channels", "Ocultar canales", "Kanäle ausblenden", "Kanalen verbergen", "Dölj kanaler", "Kanäl verstecke", "Nascondi canali", "Zuppentar chanals"),
+        "Resume" to listOf("استئناف", "Reprendre", "Resume", "Reanudar", "Fortsetzen", "Hervatten", "Återuppta", "Fortsetze", "Riprendi", "Cuntinuar"),
+        "Pause" to listOf("إيقاف مؤقت", "Pause", "Pause", "Pausar", "Pause", "Pauzeren", "Pausa", "Pause", "Pausa", "Pausa"),
+        "Try default player" to listOf("تجربة المشغل الافتراضي", "Essayer le lecteur par défaut", "Try default player", "Probar reproductor predeterminado", "Standardplayer testen", "Standaardspeler proberen", "Prova standardspelaren", "Standardplayer teste", "Prova il lettore predefinito", "Empruvar il player standard"),
+        "Try MPV" to listOf("تجربة MPV", "Essayer MPV", "Try MPV", "Probar MPV", "MPV testen", "MPV proberen", "Prova MPV", "MPV teste", "Prova MPV", "Empruvar MPV"),
+        "Quality not identified" to listOf("الجودة غير محددة", "Qualité non identifiée", "Quality not identified", "Calidad no identificada", "Qualität nicht erkannt", "Kwaliteit niet herkend", "Kvalitet okänd", "Qualität nid erkannt", "Qualità non identificata", "Qualitad betg identifitgada"),
+        "Official trailer" to listOf("الإعلان الرسمي", "Bande-annonce officielle", "Official trailer", "Tráiler oficial", "Offizieller Trailer", "Officiële trailer", "Officiell trailer", "Offizielle Trailer", "Trailer ufficiale", "Trailer uffizial"),
         "🔥 Trending" to listOf("🔥 الرائج","🔥 Tendances","🔥 Trending","🔥 Tendencias","🔥 Im Trend","🔥 Trending","🔥 Trendar","🔥 Im Trend","🔥 Tendenze","🔥 Tendenzas"),
         "⭐ Recommended" to listOf("⭐ مقترح لك","⭐ Recommandé","⭐ Recommended","⭐ Recomendado","⭐ Empfohlen","⭐ Aanbevolen","⭐ Rekommenderat","⭐ Empfohle","⭐ Consigliati","⭐ Recumandà"),
         "All" to listOf("الكل","Tout","All","Todo","Alle","Alles","Alla","Alli","Tutti","Tuts"),
@@ -2256,7 +2284,7 @@ private fun SettingsScreen(
                     OutlinedButton(
                         onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://oatec.store/"))) },
                     ) { Text(appText("Open OATEC website", LocalAppLanguage.current)) }
-                    if (premiumCodeSaved) Text(appText("Saved", LocalAppLanguage.current), color = GoldLight, fontSize = 11.sp)
+                    if (premiumCodeSaved) Text(appText(appText("Saved", LocalAppLanguage.current), LocalAppLanguage.current), color = GoldLight, fontSize = 11.sp)
                 }
             }
         }
@@ -2537,7 +2565,7 @@ private fun NavigationRail(
                 Section.MOVIES to appText("Movies", LocalAppLanguage.current),
                 Section.SERIES to appText("Series", LocalAppLanguage.current),
                 Section.TRAILERS to appText("Trailers", LocalAppLanguage.current),
-                Section.SETTINGS to appText("Settings", LocalAppLanguage.current),
+                Section.SETTINGS to appText(appText("Settings", LocalAppLanguage.current), LocalAppLanguage.current),
                 Section.SOURCES to appText("Sources", LocalAppLanguage.current),
             ).forEach { (destination, label) ->
                 OutlinedButton(
@@ -2833,7 +2861,7 @@ private fun LiveScreen(
                 TextButton(onClick = {
                     onDelete(item)
                     pendingDeleteChannel = null
-                }) { Text("Delete", color = ErrorRed) }
+                }) { Text(appText("Delete", LocalAppLanguage.current), color = ErrorRed) }
             },
             dismissButton = {
                 TextButton(onClick = { pendingDeleteChannel = null }) { Text(appText("Cancel", LocalAppLanguage.current)) }
@@ -3213,7 +3241,7 @@ private fun OfflineDownloadsScreen(
                                     androidx.compose.material3.LinearProgressIndicator(progress = { item.progress / 100f }, modifier = Modifier.fillMaxWidth(), color = Lime)
                                 }
                             }
-                            if (item.isComplete) Button(onClick = { onPlay(item.asMediaEntry()) }, colors = ButtonDefaults.buttonColors(containerColor = Lime, contentColor = Ink)) { Text(appText("Play", LocalAppLanguage.current)) }
+                            if (item.isComplete) Button(onClick = { onPlay(item.asMediaEntry()) }, colors = ButtonDefaults.buttonColors(containerColor = Lime, contentColor = Ink)) { Text(appText(appText("Play", LocalAppLanguage.current), LocalAppLanguage.current)) }
                             TextButton(onClick = {
                                 store.delete(item.downloadId)
                                 downloads = downloads.filterNot { it.downloadId == item.downloadId }
@@ -3574,7 +3602,7 @@ private fun SourcesScreen(
             }
             OutlinedButton(onClick = onImport) { Text(appText("Import M3U file", LocalAppLanguage.current)) }
             Spacer(Modifier.width(8.dp))
-            Button(onClick = onAdd, colors = ButtonDefaults.buttonColors(containerColor = Lime, contentColor = Ink)) { Text(appText("Add source", LocalAppLanguage.current)) }
+            Button(onClick = onAdd, colors = ButtonDefaults.buttonColors(containerColor = Lime, contentColor = Ink)) { Text(appText(appText("Add source", LocalAppLanguage.current), LocalAppLanguage.current)) }
         }
         Spacer(Modifier.height(20.dp))
         if (sources.isEmpty()) EmptyState("No sources added", "Add an M3U playlist or an Xtream-compatible account.")
@@ -3595,7 +3623,7 @@ private fun SourcesScreen(
                                 Text(appText("Unencrypted HTTP source", LocalAppLanguage.current), color = ErrorRed, fontSize = 10.sp)
                             }
                         }
-                        OutlinedButton(onClick = { onRefresh(source) }, enabled = !busy) { Text(appText("Refresh", LocalAppLanguage.current)) }
+                        OutlinedButton(onClick = { onRefresh(source) }, enabled = !busy) { Text(appText(appText("Refresh", LocalAppLanguage.current), LocalAppLanguage.current)) }
                         TextButton(onClick = { onDelete(source) }) { Text(appText("Remove", LocalAppLanguage.current), color = ErrorRed) }
                     }
                 }

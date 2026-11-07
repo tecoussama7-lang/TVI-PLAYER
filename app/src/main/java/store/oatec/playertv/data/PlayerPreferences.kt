@@ -306,6 +306,17 @@ class PlayerPreferences(context: Context) {
     }
 
     /** Selected playback engine: exoplayer (default) or mpv. */
+    fun displayZoomMode(): String = preferences.getString(DISPLAY_ZOOM_MODE_KEY, "zoom")
+        ?.lowercase()
+        ?.takeIf { it in setOf("fit", "zoom", "full") } ?: "zoom"
+
+    fun setDisplayZoomMode(mode: String) {
+        val normalized = mode.trim().lowercase()
+        if (normalized in setOf("fit", "zoom", "full")) {
+            preferences.edit().putString(DISPLAY_ZOOM_MODE_KEY, normalized).apply()
+        }
+    }
+
     fun playbackEngine(): String = preferences.getString(PLAYBACK_ENGINE_KEY, "exoplayer")
         ?.lowercase()
         ?.takeIf { it in setOf("exoplayer", "mpv") } ?: "exoplayer"
@@ -331,6 +342,7 @@ class PlayerPreferences(context: Context) {
         const val HISTORY_KEY = "watch_history"
         const val RESUME_PLAYBACK_KEY = "resume_playback"
         const val PLAYBACK_ENGINE_KEY = "playback_engine"
+        const val DISPLAY_ZOOM_MODE_KEY = "display_zoom_mode"
         const val MAX_HISTORY_ITEMS = 30
         const val MIN_RESUME_POSITION_MS = 60_000L
     }

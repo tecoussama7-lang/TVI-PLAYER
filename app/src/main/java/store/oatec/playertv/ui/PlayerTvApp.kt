@@ -1989,6 +1989,7 @@ private fun SettingsScreen(
     var showKidsRulesDialog by remember { mutableStateOf(false) }
     var kidsRuleItemId by remember { mutableStateOf("") }
     var kidsRuleMessage by remember { mutableStateOf("") }
+    var languageMenuExpanded by remember { mutableStateOf(false) }
 
     fun loadAbout() {
         loadingAbout = true
@@ -2006,9 +2007,11 @@ private fun SettingsScreen(
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val settingsColumns = if (maxWidth >= 1000.dp) 3 else 2
         val settingsGap = 10.dp
-        val settingsCardWidth = (maxWidth - settingsGap * (settingsColumns - 1)) / settingsColumns
+        val settingsPadding = if (maxHeight < 700.dp) 12.dp else 20.dp
+        val settingsContentWidth = maxWidth - settingsPadding * 2
+        val settingsCardWidth = (settingsContentWidth - settingsGap * (settingsColumns - 1)) / settingsColumns
         Column(
-            Modifier.fillMaxSize().padding(if (maxHeight < 700.dp) 12.dp else 20.dp),
+            Modifier.fillMaxSize().padding(settingsPadding),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
         Row(
@@ -2047,15 +2050,27 @@ private fun SettingsScreen(
                     "de" to "Deutsch", "nl" to "Nederlands", "sv" to "Svenska",
                     "gsw" to "Schweizerdeutsch", "it" to "Italiano", "rm" to "Rumantsch",
                 )
-                androidx.compose.foundation.layout.FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    supportedLanguages.forEach { (code, label) ->
-                        if (selectedLanguage == code) {
-                            Button(onClick = { onLanguageChanged(code) }) { Text(label) }
-                        } else {
-                            OutlinedButton(onClick = { onLanguageChanged(code) }) { Text(label) }
+                Box {
+                    OutlinedButton(
+                        onClick = { languageMenuExpanded = true },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        val selectedLanguageLabel = supportedLanguages.firstOrNull { it.first == selectedLanguage }?.second ?: selectedLanguage
+                        Text(selectedLanguageLabel, modifier = Modifier.weight(1f))
+                        Text("▾")
+                    }
+                    androidx.compose.material3.DropdownMenu(
+                        expanded = languageMenuExpanded,
+                        onDismissRequest = { languageMenuExpanded = false },
+                    ) {
+                        supportedLanguages.forEach { (code, label) ->
+                            androidx.compose.material3.DropdownMenuItem(
+                                text = { Text(label) },
+                                onClick = {
+                                    onLanguageChanged(code)
+                                    languageMenuExpanded = false
+                                },
+                            )
                         }
                     }
                 }

@@ -5,6 +5,7 @@ on:
     branches:
       - feature/prompt-full-implementation
       - fix/player-layout-kids-ui-2026-10
+      - feature/kids-mode-category-discovery
   pull_request:
     branches:
       - feature/prompt-full-implementation

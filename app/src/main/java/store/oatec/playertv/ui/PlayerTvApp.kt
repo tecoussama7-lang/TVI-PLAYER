@@ -2002,10 +2002,14 @@ private fun SettingsScreen(
 
     LaunchedEffect(Unit) { loadAbout() }
 
-    Column(
-        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(28.dp),
-        verticalArrangement = Arrangement.spacedBy(18.dp),
-    ) {
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        val settingsColumns = if (maxWidth >= 1000.dp) 3 else 2
+        val settingsGap = 10.dp
+        val settingsCardWidth = (maxWidth - settingsGap * (settingsColumns - 1)) / settingsColumns
+        Column(
+            Modifier.fillMaxSize().padding(if (maxHeight < 700.dp) 12.dp else 20.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
         Row(
             Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
@@ -2027,7 +2031,13 @@ private fun SettingsScreen(
                 Text(appText("Playback, sources and OATEC preferences", selectedLanguage), color = TextMuted, fontSize = 12.sp)
             }
         }
-        Surface(color = Panel, shape = RoundedCornerShape(10.dp), modifier = Modifier.fillMaxWidth()) {
+            androidx.compose.foundation.layout.FlowRow(
+                modifier = Modifier.fillMaxWidth().weight(1f),
+                maxItemsInEachRow = settingsColumns,
+                horizontalArrangement = Arrangement.spacedBy(settingsGap),
+                verticalArrangement = Arrangement.spacedBy(settingsGap),
+            ) {
+        Surface(color = Panel, shape = RoundedCornerShape(10.dp), modifier = Modifier.width(settingsCardWidth)) {
             Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(appText("APP LANGUAGE", selectedLanguage), color = Lime, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
                 Text(appText("Choose the language used by the app.", selectedLanguage), color = TextMuted, fontSize = 11.sp)
@@ -2051,7 +2061,7 @@ private fun SettingsScreen(
                 Text(appText("Language preference is saved on this device.", selectedLanguage), color = TextMuted, fontSize = 10.sp)
             }
         }
-        Surface(color = Panel, shape = RoundedCornerShape(10.dp), modifier = Modifier.fillMaxWidth()) {
+        Surface(color = Panel, shape = RoundedCornerShape(10.dp), modifier = Modifier.width(settingsCardWidth)) {
             Row(
                 Modifier.fillMaxWidth().padding(16.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -2064,7 +2074,7 @@ private fun SettingsScreen(
                 OutlinedButton(onClick = onManageSources) { Text(appText("Manage sources", LocalAppLanguage.current)) }
             }
         }
-        Surface(color = Panel, shape = RoundedCornerShape(10.dp), modifier = Modifier.fillMaxWidth()) {
+        Surface(color = Panel, shape = RoundedCornerShape(10.dp), modifier = Modifier.width(settingsCardWidth)) {
             Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(appText("PLAYBACK", LocalAppLanguage.current), color = Lime, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -2105,7 +2115,7 @@ private fun SettingsScreen(
                 }
             }
         }
-        Surface(color = Panel, shape = RoundedCornerShape(10.dp), modifier = Modifier.fillMaxWidth()) {
+        Surface(color = Panel, shape = RoundedCornerShape(10.dp), modifier = Modifier.width(settingsCardWidth)) {
             Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text(appText("KIDS MODE", LocalAppLanguage.current), color = GoldLight, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -2293,7 +2303,7 @@ private fun SettingsScreen(
                 }
             }
         }
-        Surface(color = Panel, shape = RoundedCornerShape(10.dp), modifier = Modifier.fillMaxWidth()) {
+        Surface(color = Panel, shape = RoundedCornerShape(10.dp), modifier = Modifier.width(settingsCardWidth)) {
             Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(appText("OATEC PREMIUM", LocalAppLanguage.current), color = GoldLight, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
                 OutlinedTextField(
@@ -2317,7 +2327,7 @@ private fun SettingsScreen(
                 }
             }
         }
-        Surface(color = Panel, shape = RoundedCornerShape(10.dp), modifier = Modifier.fillMaxWidth()) {
+        Surface(color = Panel, shape = RoundedCornerShape(10.dp), modifier = Modifier.width(settingsCardWidth)) {
             Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(appText("ABOUT OATEC", LocalAppLanguage.current), color = GoldLight, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
                 when {
@@ -2342,6 +2352,8 @@ private fun SettingsScreen(
                     ) { Text(appText("Visit website", LocalAppLanguage.current)) }
                     OutlinedButton(onClick = onExit) { Text(appText("Exit app", LocalAppLanguage.current)) }
                 }
+            }
+        }
             }
         }
     }

@@ -3176,8 +3176,8 @@ private fun LiveScreen(
                 textStyle = MaterialTheme.typography.bodyMedium.copy(color = TextMain), shape = RoundedCornerShape(10.dp),
             )
         }
-        LazyRow(Modifier.fillMaxWidth().padding(top = 2.dp, bottom = 3.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            items(categories, key = { it }) { item -> CategoryPill(item, category == item) { onCategory(item) } }
+        if (!isWideScreen) {
+            CategoryNavigation(categories, category, Lime, onCategory, vertical = false)
         }
         // Keep channel-manager actions reachable on phones as well as TV/desktop layouts.
         if (!isWideScreen && selectedChannel != null) {
@@ -3209,6 +3209,9 @@ private fun LiveScreen(
             busy && catalog.liveChannels.isEmpty() -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { LoadingState("Loading channels", catalogProgress, catalogLoadedItems) }
             channels.isEmpty() -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { EmptyState("No channels available", message.ifBlank { "Add or refresh an IPTV source to load channels." }) }
             else -> Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                if (isWideScreen) {
+                    CategoryNavigation(categories, category, Lime, onCategory, vertical = true, modifier = Modifier.width(190.dp).fillMaxHeight())
+                }
                 LazyVerticalGrid(
                 columns = GridCells.Adaptive(minSize = when { screenWidthDp >= 1500 -> 230.dp; screenWidthDp >= 1000 -> 190.dp; screenWidthDp >= 700 -> 155.dp; screenWidthDp <= 360 -> 118.dp; else -> 132.dp }),
                 state = listState, modifier = Modifier.weight(1f),
@@ -3381,6 +3384,73 @@ private fun ChannelMiniPreview(entry: MediaEntry, playing: Boolean) {
     )
 }
 @Composable
+private fun CategoryNavigation(
+    categories: List<String>,
+    selected: String,
+    accent: Color,
+    onSelect: (String) -> Unit,
+    vertical: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    if (vertical) {
+        Column(modifier.background(Color(0xFF111B2B), RoundedCornerShape(16.dp)).padding(10.dp)) {
+            Text("CATEGORIES", color = TextMuted, fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, modifier = Modifier.padding(start = 8.dp, bottom = 10.dp))
+            LazyColumn(verticalArrangement = Arrangement.spacedBy(7.dp), contentPadding = PaddingValues(bottom = 10.dp)) {
+                items(categories.distinct(), key = { "nav:$it" }) { category ->
+                    CategoryNavigationItem(category, selected == category, accent) { onSelect(category) }
+                }
+            }
+        }
+    } else {
+        LazyRow(modifier.fillMaxWidth().padding(vertical = 7.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            items(categories.distinct(), key = { "nav:$it" }) { category ->
+                CategoryNavigationItem(category, selected == category, accent) { onSelect(category) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CategoryNavigationItem(label: String, selected: Boolean, accent: Color, onClick: () -> Unit) {
+    var focused by remember { mutableStateOf(false) }
+    val borderColor = when {
+        focused -> Color.White
+        selected -> accent
+        else -> Color.White.copy(alpha = 0.10f)
+    }
+    val background = when {
+        focused -> accent.copy(alpha = 0.34f)
+        selected -> accent.copy(alpha = 0.20f)
+        else -> Color(0xFF1A2638)
+    }
+    Surface(
+        color = background,
+        contentColor = Color.White,
+        shape = RoundedCornerShape(11.dp),
+        border = BorderStroke(if (focused || selected) 2.dp else 1.dp, borderColor),
+        modifier = Modifier.fillMaxWidth()
+            .onFocusChanged { focused = it.isFocused }
+            .focusable()
+            .clickable(onClick = onClick),
+    ) {
+        Row(Modifier.padding(horizontal = 12.dp, vertical = 11.dp), verticalAlignment = Alignment.CenterVertically) {
+            if (selected) {
+                Box(Modifier.width(4.dp).height(22.dp).background(accent, RoundedCornerShape(3.dp)))
+                Spacer(Modifier.width(9.dp))
+            }
+            Text(appText(label, LocalAppLanguage.current), color = Color.White, fontSize = 12.sp, fontWeight = if (selected || focused) FontWeight.ExtraBold else FontWeight.Medium, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+            if (focused) {
+                Spacer(Modifier.width(5.dp))
+                Text("›", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Black)
+            } else if (selected) {
+                Spacer(Modifier.width(5.dp))
+                Text("✓", color = accent, fontSize = 13.sp, fontWeight = FontWeight.Black)
+            }
+        }
+    }
+}
+
+@Composable
 private fun CategoryPill(label: String, selected: Boolean, onClick: () -> Unit) {
     Surface(
         color = if (selected) Lime else Panel,
@@ -3500,13 +3570,14 @@ private fun MediaScreen(
             }))
         }
         if (message.isNotBlank()) Text(message, color = TextMuted, fontSize = 9.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        if (shelves.size > 1) {
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(vertical = 10.dp)) {
-                items(shelves, key = { "shelf:$it" }) { shelf ->
-                    CategoryPill(shelf, selectedShelf == shelf) { selectedShelf = shelf; if (shelf in providerCategories) onCategory(shelf) }
-                }
+        Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(if (isWideScreen) 16.dp else 0.dp)) {
+            if (isWideScreen && shelves.size > 1) {
+                CategoryNavigation(shelves, selectedShelf, accent, { shelf -> selectedShelf = shelf; if (shelf in providerCategories) onCategory(shelf) }, vertical = true, modifier = Modifier.width(205.dp).fillMaxHeight())
             }
-        }
+            Column(Modifier.weight(1f).fillMaxHeight()) {
+                if (!isWideScreen && shelves.size > 1) {
+                    CategoryNavigation(shelves, selectedShelf, accent, { shelf -> selectedShelf = shelf; if (shelf in providerCategories) onCategory(shelf) }, vertical = false)
+                }
         if (isMovies && search.isBlank() && selectedShelf == "All") {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(bottom = 8.dp)) {
                 listOf("4K", "UHD", "1080p", "HD").forEach { quality ->
@@ -3541,6 +3612,7 @@ private fun MediaScreen(
                 if (busy) item(key = "catalog-loading") {
                     Box(Modifier.fillMaxWidth().padding(12.dp), contentAlignment = Alignment.Center) { LoadingState("Loading more titles", catalogProgress, catalogLoadedItems) }
                 }
+            }
             }
         }
     }
@@ -4061,13 +4133,14 @@ private fun SeriesScreen(
             }
         }
         if (message.isNotBlank()) Text(message, color = ErrorRed, fontSize = 9.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        if (selectedSeries == null && shelves.size > 1) {
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(vertical = 10.dp)) {
-                items(shelves, key = { "series-shelf:$it" }) { shelf ->
-                    CategoryPill(shelf, selectedShelf == shelf) { selectedShelf = shelf }
-                }
+        Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(if (isWideScreen) 16.dp else 0.dp)) {
+            if (selectedSeries == null && isWideScreen && shelves.size > 1) {
+                CategoryNavigation(shelves, selectedShelf, Color(0xFF8B5CF6), { shelf -> selectedShelf = shelf; if (shelf in providerCategories) onCategory(shelf) }, vertical = true, modifier = Modifier.width(205.dp).fillMaxHeight())
             }
-        }
+            Column(Modifier.weight(1f).fillMaxHeight()) {
+                if (selectedSeries == null && !isWideScreen && shelves.size > 1) {
+                    CategoryNavigation(shelves, selectedShelf, Color(0xFF8B5CF6), { shelf -> selectedShelf = shelf; if (shelf in providerCategories) onCategory(shelf) }, vertical = false)
+                }
         Spacer(Modifier.height(2.dp))
         when {
             selectedSeries != null -> {
@@ -5959,6 +6032,7 @@ private fun YouTubeKidsSearchDialog(onDismiss: () -> Unit) {
                         if (webViewRef === view) webViewRef = null
                     },
                 )
+            }
             }
         }
     }

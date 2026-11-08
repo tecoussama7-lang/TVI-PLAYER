@@ -37,6 +37,11 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -2826,8 +2831,27 @@ private fun HomeDashboard(
     onExit: () -> Unit,
 ) {
     var selectedHomeCard by remember { mutableStateOf(Section.LIVE) }
+    // A restrained always-on neon pulse gives OATEC a living receiver-style identity
+    // without flashing or reducing text contrast on TV screens.
+    val neonTransition = rememberInfiniteTransition()
+    val neonPulse by neonTransition.animateFloat(
+        initialValue = 0.28f,
+        targetValue = 0.88f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 2600, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse,
+        ),
+    )
+    val neonCyan = Color(0xFF35D9FF)
+    val neonViolet = Color(0xFF9A6BFF)
     // Keep the home surface simple and cheap to render on Android TV devices.
-    Box(Modifier.fillMaxSize().background(Ink)) {
+    Box(Modifier.fillMaxSize().background(
+        Brush.radialGradient(
+            colors = listOf(Color(0xFF111C2A), Ink, Color(0xFF05070C)),
+            center = Offset(0.82f, 0.12f),
+            radius = 1250f,
+        )
+    )) {
         Column(
             Modifier.fillMaxSize().padding(horizontal = if (compact) 16.dp else 34.dp, vertical = if (compact) 12.dp else 22.dp),
             verticalArrangement = Arrangement.spacedBy(if (compact) 10.dp else 18.dp),
@@ -2840,8 +2864,21 @@ private fun HomeDashboard(
                 Surface(
                     color = Color(0xFF090B0E),
                     shape = RoundedCornerShape(if (compact) 12.dp else 18.dp),
-                    border = BorderStroke(2.dp, Brush.linearGradient(listOf(GoldLight, Lime, Color(0xFF8B5812)))),
-                    modifier = Modifier.size(if (compact) 48.dp else 76.dp),
+                    border = BorderStroke(2.dp, Brush.linearGradient(listOf(
+                        GoldLight.copy(alpha = neonPulse),
+                        neonCyan.copy(alpha = 0.45f + neonPulse * 0.45f),
+                        neonViolet.copy(alpha = 0.35f + neonPulse * 0.5f),
+                        Lime,
+                    ))),
+                    modifier = Modifier.size(if (compact) 48.dp else 76.dp)
+                        .drawBehind {
+                            drawCircle(
+                                Brush.radialGradient(
+                                    listOf(neonCyan.copy(alpha = neonPulse * 0.13f), Color.Transparent),
+                                    radius = size.maxDimension * 0.95f,
+                                ),
+                            )
+                        },
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
@@ -2902,8 +2939,16 @@ private fun HomeDashboard(
                         shape = RoundedCornerShape(if (compact) 12.dp else 20.dp),
                         border = BorderStroke(
                             if (active) 2.dp else 1.dp,
-                            if (active) Brush.linearGradient(listOf(GoldLight, Lime, Color(0xFFB87816)))
-                            else Brush.linearGradient(listOf(Color(0xFF41434A), Color(0xFF20242B))),
+                            if (active) Brush.linearGradient(listOf(
+                                GoldLight.copy(alpha = 0.72f + neonPulse * 0.28f),
+                                neonCyan.copy(alpha = 0.55f + neonPulse * 0.4f),
+                                neonViolet.copy(alpha = 0.48f + neonPulse * 0.42f),
+                                Lime,
+                            )) else Brush.linearGradient(listOf(
+                                neonCyan.copy(alpha = 0.12f + neonPulse * 0.16f),
+                                Color(0xFF303746),
+                                neonViolet.copy(alpha = 0.10f + neonPulse * 0.14f),
+                            )),
                         ),
                         modifier = Modifier.weight(1f).fillMaxHeight()
                             .onFocusChanged { if (it.isFocused) selectedHomeCard = card.section }
@@ -2913,15 +2958,20 @@ private fun HomeDashboard(
                                 onSelect(card.section)
                             }
                             .drawBehind {
-                                if (active) {
-                                    drawRect(
-                                        Brush.radialGradient(
-                                            colors = listOf(Color(0x44E8B83E), Color.Transparent),
-                                            center = Offset(size.width * 0.5f, size.height * 0.28f),
-                                            radius = size.maxDimension * 0.65f,
+                                drawRect(
+                                    Brush.radialGradient(
+                                        colors = if (active) listOf(
+                                            GoldLight.copy(alpha = 0.10f + neonPulse * 0.10f),
+                                            neonCyan.copy(alpha = 0.035f + neonPulse * 0.055f),
+                                            Color.Transparent,
+                                        ) else listOf(
+                                            neonCyan.copy(alpha = 0.012f + neonPulse * 0.018f),
+                                            Color.Transparent,
                                         ),
-                                    )
-                                }
+                                        center = Offset(size.width * 0.5f, size.height * 0.28f),
+                                        radius = size.maxDimension * 0.72f,
+                                    ),
+                                )
                             },
                     ) {
                         Column(
@@ -2942,8 +2992,21 @@ private fun HomeDashboard(
                                     maxLines = 1,
                                 )
                                 Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                                    Text(card.symbol, color = Lime, fontSize = if (compact) 37.sp else 62.sp, fontWeight = FontWeight.Bold)
-                                    Box(Modifier.width(if (compact) 35.dp else 54.dp).height(3.dp).background(Brush.horizontalGradient(listOf(Color.Transparent, Lime, GoldLight, Color.Transparent))))
+                                    Text(
+                                        card.symbol,
+                                        color = if (active && neonPulse > 0.56f) neonCyan else Lime,
+                                        fontSize = if (compact) 37.sp else 62.sp,
+                                        fontWeight = FontWeight.Bold,
+                                    )
+                                    Box(
+                                        Modifier.width(if (compact) 35.dp else 54.dp).height(3.dp)
+                                            .background(Brush.horizontalGradient(listOf(
+                                                Color.Transparent,
+                                                if (active) neonCyan.copy(alpha = neonPulse) else Lime.copy(alpha = 0.45f),
+                                                GoldLight,
+                                                Color.Transparent,
+                                            )))
+                                    )
                                 }
                             }
                             Spacer(Modifier.height(if (compact) 6.dp else 12.dp))

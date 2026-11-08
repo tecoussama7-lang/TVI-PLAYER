@@ -634,11 +634,13 @@ private fun PlayerTvAppContent(
             }.getOrNull()
             if (!linkedUrl.isNullOrBlank()) {
                 val linkedSource = PlayerSource(
-                    id = "oatec-standard-playlist",
+                    id = "oatec-standard-${linkedUrl.hashCode()}",
                     name = "OATEC Standard Playlist",
                     type = SourceType.M3U,
                     serverUrl = linkedUrl,
                 )
+                // A changed URL gets a fresh source/cache identity so the new playlist is fetched.
+                sources.removeAll { it.name == "OATEC Standard Playlist" && it.id != linkedSource.id }
                 val existingIndex = sources.indexOfFirst { it.id == linkedSource.id }
                 if (existingIndex >= 0) sources[existingIndex] = linkedSource else sources.add(linkedSource)
                 sourceStore.save(sources.toList())

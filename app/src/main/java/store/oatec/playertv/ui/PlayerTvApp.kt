@@ -629,6 +629,7 @@ private fun PlayerTvAppContent(
     var kidsExitPinInput by remember { mutableStateOf("") }
     var kidsExitPinError by remember { mutableStateOf("") }
     var numberInput by rememberSaveable { mutableStateOf("") }
+    var allLiveChannelIds by remember(activeSourceId) { mutableStateOf<List<String>>(emptyList()) }
 
     var selectedChannelId by rememberSaveable { mutableStateOf("") }
     var epgPrograms by remember(activeSourceId) { mutableStateOf<List<EpgProgram>>(emptyList()) }
@@ -656,8 +657,14 @@ private fun PlayerTvAppContent(
         }
     }
 
-    LaunchedEffect(catalog.liveChannels.map { it.id }, preferences.customChannels().map { it.id }) {
-        preferences.normalizeChannelNumbers((catalog.liveChannels + preferences.customChannels()).map { it.id })
+    LaunchedEffect(activeSourceId, catalog.liveChannels.size, preferences.customChannels().map { it.id }) {
+        val sourceId = activeSourceId
+        val storedIds = if (sourceId.isBlank()) emptyList() else withContext(Dispatchers.IO) {
+            mediaCatalogStore.allIds(sourceId, CatalogSection.LIVE.name)
+        }
+        val mergedIds = (storedIds + catalog.liveChannels.map { it.id } + preferences.customChannels().map { it.id }).distinct()
+        allLiveChannelIds = mergedIds
+        preferences.normalizeChannelNumbers(mergedIds)
         preferenceRevision++
     }
 
@@ -1730,7 +1737,7 @@ private fun PlayerTvAppContent(
                     onSave = { title, category, number, streamUrl, logoUrl ->
                         preferences.setChannelTitle(channel.id, title)
                         preferences.moveToCategory(channel.id, category)
-                        preferences.moveChannelToNumber(channel.id, number, (catalog.liveChannels + preferences.customChannels()).map { it.id })
+                        preferences.moveChannelToNumber(channel.id, number, (allLiveChannelIds + catalog.liveChannels.map { it.id } + preferences.customChannels().map { it.id }).distinct())
                         if (channel.id.startsWith("manual:")) preferences.saveCustomChannel(channel.copy(title = title, category = category, streamUrl = streamUrl, logoUrl = logoUrl))
                         preferenceRevision++
                         organizingChannel = null
@@ -3236,9 +3243,8 @@ private fun LiveScreen(
     var channelActionsTarget by remember { mutableStateOf<MediaEntry?>(null) }
     var showAddChannelDialog by remember { mutableStateOf(false) }
     val categories = remember(availableCategories, allLiveChannels, preferenceRevision) {
-        (listOf("All", "Favorites", "Hidden") + AUTO_CHANNEL_CATEGORIES + availableCategories +
-            allLiveChannels.map { preferences.categoryFor(it.id, automaticChannelCategory(it)) } +
-            preferences.customCategories()
+        (listOf("All") + preferences.customCategories() + listOf("Favorites", "Hidden") + AUTO_CHANNEL_CATEGORIES + availableCategories +
+            allLiveChannels.map { preferences.categoryFor(it.id, automaticChannelCategory(it)) }
         ).filter(String::isNotBlank).distinct()
     }
     val listState = rememberLazyGridState()
@@ -3591,7 +3597,7 @@ private fun MediaScreen(
     var selectedShelf by rememberSaveable(title) { mutableStateOf(selectedProviderCategory.ifBlank { "All" }) }
     LaunchedEffect(selectedProviderCategory) { if (selectedProviderCategory.isNotBlank()) selectedShelf = selectedProviderCategory }
     val shelves = remember(entries, title, providerCategories) {
-        if (providerCategories.isNotEmpty()) listOf("All") + providerCategories else {
+        if (providerCategories.isNotEmpty()) listOf("All", "Favorites") + providerCategories else {
         val providerCategories = entries.map { it.category.trim() }.filter { it.isNotBlank() && !it.equals("Other", true) }.distinct().sortedBy { it.lowercase() }
         val curated = listOf("Action", "Adventure", "Animation", "Biography", "Comedy", "Crime", "Documentary", "Drama", "Family", "Fantasy", "History", "Horror", "Music", "Mystery", "Romance", "Sci-Fi", "Sport", "Thriller", "War", "Western")
         val knownGenres = entries.flatMap { entry -> (entry.genre + "," + entry.title).split(",", "|", "/", "·").map { it.trim() } }
@@ -3600,7 +3606,8 @@ private fun MediaScreen(
         }
     }
     val searched = entries.filter { it.title.contains(search, true) || it.category.contains(search, true) || it.genre.contains(search, true) }
-    val filtered = if (selectedShelf == "All") searched else if (selectedShelf in listOf("4K", "UHD", "1080p", "HD")) {
+    val filtered = if (selectedShelf == "Favorites") searched.filter { it.id in preferences.favorites() }
+    else if (selectedShelf == "All") searched else if (selectedShelf in listOf("4K", "UHD", "1080p", "HD")) {
         searched.filter { qualityLabel(it).equals(selectedShelf, true) || (selectedShelf == "HD" && qualityLabel(it) == "1080p") }
     } else searched.filter { entry ->
         entry.category.equals(selectedShelf, true) ||
@@ -4190,7 +4197,7 @@ private fun SeriesScreen(
     var selectedShelf by rememberSaveable { mutableStateOf(selectedProviderCategory.ifBlank { "All" }) }
     LaunchedEffect(selectedProviderCategory) { if (selectedProviderCategory.isNotBlank()) selectedShelf = selectedProviderCategory }
     val shelves = remember(entries, providerCategories) {
-        if (providerCategories.isNotEmpty()) listOf("All") + providerCategories else {
+        if (providerCategories.isNotEmpty()) listOf("All", "Favorites") + providerCategories else {
             val discoveredCategories = entries.map { it.category.trim() }.filter { it.isNotBlank() && !it.equals("Other", true) }.distinct().sortedBy { it.lowercase() }
             val curated = listOf("Action", "Adventure", "Animation", "Biography", "Comedy", "Crime", "Documentary", "Drama", "Family", "Fantasy", "History", "Horror", "Mystery", "Reality", "Romance", "Sci-Fi", "Sport", "Thriller", "War", "Western")
             val genres = entries.flatMap { it.genre.split(",", "|", "/", "·").map(String::trim) }
@@ -4199,7 +4206,8 @@ private fun SeriesScreen(
         }
     }
     val searched = entries.filter { it.title.contains(search, true) || it.category.contains(search, true) || it.genre.contains(search, true) }
-    val filtered = if (selectedShelf == "All") searched else searched.filter { entry ->
+    val filtered = if (selectedShelf == "Favorites") searched.filter { it.id in preferences.favorites() }
+    else if (selectedShelf == "All") searched else searched.filter { entry ->
         entry.category.equals(selectedShelf, true) ||
             entry.genre.split(",", "|", "/", "·").any { it.trim().equals(selectedShelf, true) } ||
             entry.title.contains(selectedShelf, true)

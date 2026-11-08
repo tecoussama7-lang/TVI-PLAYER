@@ -3602,7 +3602,7 @@ private fun MediaScreen(
         val curated = listOf("Action", "Adventure", "Animation", "Biography", "Comedy", "Crime", "Documentary", "Drama", "Family", "Fantasy", "History", "Horror", "Music", "Mystery", "Romance", "Sci-Fi", "Sport", "Thriller", "War", "Western")
         val knownGenres = entries.flatMap { entry -> (entry.genre + "," + entry.title).split(",", "|", "/", "·").map { it.trim() } }
             .mapNotNull { raw -> curated.firstOrNull { it.equals(raw, true) } }.distinct()
-        listOf("All") + (curated + providerCategories + knownGenres).distinct().filterNot { it.equals("All", true) }
+        listOf("All", "Favorites") + (curated + providerCategories + knownGenres).distinct().filterNot { it.equals("All", true) || it.equals("Favorites", true) }
         }
     }
     val searched = entries.filter { it.title.contains(search, true) || it.category.contains(search, true) || it.genre.contains(search, true) }
@@ -4202,7 +4202,7 @@ private fun SeriesScreen(
             val curated = listOf("Action", "Adventure", "Animation", "Biography", "Comedy", "Crime", "Documentary", "Drama", "Family", "Fantasy", "History", "Horror", "Mystery", "Reality", "Romance", "Sci-Fi", "Sport", "Thriller", "War", "Western")
             val genres = entries.flatMap { it.genre.split(",", "|", "/", "·").map(String::trim) }
                 .mapNotNull { raw -> curated.firstOrNull { it.equals(raw, true) } }.distinct()
-            listOf("All") + (curated + discoveredCategories + genres).distinct().filterNot { it.equals("All", true) }
+            listOf("All", "Favorites") + (curated + discoveredCategories + genres).distinct().filterNot { it.equals("All", true) || it.equals("Favorites", true) }
         }
     }
     val searched = entries.filter { it.title.contains(search, true) || it.category.contains(search, true) || it.genre.contains(search, true) }

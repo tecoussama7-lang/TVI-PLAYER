@@ -380,7 +380,7 @@ class PlayerPreferences(context: Context) {
     private fun derivePinHash(pin: String, salt: ByteArray): ByteArray {
         val spec = javax.crypto.spec.PBEKeySpec(pin.toCharArray(), salt, PIN_HASH_ITERATIONS, 256)
         return try {
-            javax.crypto.SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256")
+            javax.crypto.SecretKeyFactory.getInstance("PBKDF2WithHmacSHA1")
                 .generateSecret(spec).encoded
         } finally { spec.clearPassword() }
     }

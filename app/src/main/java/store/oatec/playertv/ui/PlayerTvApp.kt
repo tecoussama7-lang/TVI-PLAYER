@@ -2221,7 +2221,7 @@ private fun InitialSetupScreen(
                             )
                         },
                         modifier = Modifier.weight(1f).height(if (compactLandscape) 42.dp else 48.dp),
-                    ) { Text("ربط M3U من الموقع", fontSize = 11.sp) }
+                    ) { Text("متابعة للربط من الموقع", fontSize = 11.sp) }
                     Button(
                         onClick = {
                             val rawUrl = serverUrl.trim()

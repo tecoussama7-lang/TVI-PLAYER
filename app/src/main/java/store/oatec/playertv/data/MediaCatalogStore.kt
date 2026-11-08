@@ -349,6 +349,23 @@ class MediaCatalogStore(context: Context) : SQLiteOpenHelper(
         return results
     }
 
+    /** Lightweight ordered IDs for global receiver numbering without loading full media rows. */
+    fun allIds(sourceId: String, section: String): List<String> {
+        val result = ArrayList<String>()
+        readableDatabase.query(
+            TABLE,
+            arrayOf("item_id"),
+            "source_id=? AND section=?",
+            arrayOf(sourceId, section),
+            null,
+            null,
+            "rowid ASC",
+        ).use { cursor ->
+            while (cursor.moveToNext()) result += cursor.getString(0)
+        }
+        return result
+    }
+
     fun count(sourceId: String, section: String, search: String = "", category: String? = null): Long {
         val where = StringBuilder("source_id=? AND section=?")
         val args = mutableListOf(sourceId, section)

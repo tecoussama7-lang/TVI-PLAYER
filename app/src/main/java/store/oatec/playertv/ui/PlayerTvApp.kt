@@ -634,7 +634,7 @@ private fun PlayerTvAppContent(
             }.getOrNull()
             if (!linkedUrl.isNullOrBlank()) {
                 val linkedSource = PlayerSource(
-                    id = "oatec-standard-${linkedUrl.hashCode()}",
+                    id = "oatec-standard-${UUID.nameUUIDFromBytes(linkedUrl.toByteArray())}",
                     name = "OATEC Standard Playlist",
                     type = SourceType.M3U,
                     serverUrl = linkedUrl,

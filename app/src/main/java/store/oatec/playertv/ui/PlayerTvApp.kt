@@ -641,49 +641,36 @@ private fun PlayerTvAppContent(
     var catalog by remember { mutableStateOf(SourceCatalog()) }
         var loadedCatalogs by remember { mutableStateOf<Set<String>>(emptySet()) }
 
-    // Standard devices fetch the website-linked playlist on startup. Premium sources are untouched.
+    // Standard devices sync the linked M3U once at startup and periodically while open.
+    // A URL-derived source ID invalidates only that playlist's cache when the website link changes.
     LaunchedEffect(standardModeActive) {
         if (standardModeActive) {
-            val linkedUrl = runCatching {
-                withContext(Dispatchers.IO) { standardEntitlementRepository.getStandardPlaylistUrl() }
-            }.getOrNull()
-            if (!linkedUrl.isNullOrBlank()) {
-                val linkedSource = PlayerSource(
-                    id = "oatec-standard-${UUID.nameUUIDFromBytes(linkedUrl.toByteArray())}",
-                    name = "OATEC Standard Playlist",
-                    type = SourceType.M3U,
-                    serverUrl = linkedUrl,
-                )
-                // A changed URL gets a fresh source/cache identity so the new playlist is fetched.
-                sources.removeAll { it.name == "OATEC Standard Playlist" && it.id != linkedSource.id }
-                val existingIndex = sources.indexOfFirst { it.id == linkedSource.id }
-                if (existingIndex >= 0) sources[existingIndex] = linkedSource else sources.add(linkedSource)
-                sourceStore.save(sources.toList())
-                activeSourceId = linkedSource.id
+            while (true) {
+                val linkedUrl = runCatching {
+                    withContext(Dispatchers.IO) { standardEntitlementRepository.getStandardPlaylistUrl() }
+                }.getOrNull()
+                if (!linkedUrl.isNullOrBlank()) {
+                    val linkedSource = PlayerSource(
+                        id = "oatec-standard-${UUID.nameUUIDFromBytes(linkedUrl.toByteArray())}",
+                        name = "OATEC Standard Playlist",
+                        type = SourceType.M3U,
+                        serverUrl = linkedUrl,
+                    )
+                    val currentLinked = sources.firstOrNull { it.name == "OATEC Standard Playlist" }
+                    if (currentLinked?.id != linkedSource.id || currentLinked.serverUrl != linkedUrl) {
+                        sources.removeAll { it.name == "OATEC Standard Playlist" }
+                        sources.add(linkedSource)
+                        sourceStore.save(sources.toList())
+                        activeSourceId = linkedSource.id
+                    } else if (activeSourceId != linkedSource.id) {
+                        activeSourceId = linkedSource.id
+                    }
+                }
+                delay(30_000L)
             }
         }
     }
 
-    // Standard devices fetch the website-linked playlist on startup. Premium sources are untouched.
-    LaunchedEffect(standardModeActive) {
-        if (standardModeActive) {
-            val linkedUrl = runCatching {
-                withContext(Dispatchers.IO) { standardEntitlementRepository.getStandardPlaylistUrl() }
-            }.getOrNull()
-            if (!linkedUrl.isNullOrBlank()) {
-                val linkedSource = PlayerSource(
-                    id = "oatec-standard-playlist",
-                    name = "OATEC Standard Playlist",
-                    type = SourceType.M3U,
-                    serverUrl = linkedUrl,
-                )
-                val existingIndex = sources.indexOfFirst { it.id == linkedSource.id }
-                if (existingIndex >= 0) sources[existingIndex] = linkedSource else sources.add(linkedSource)
-                sourceStore.save(sources.toList())
-                activeSourceId = linkedSource.id
-            }
-        }
-    }
     // DB pagination offset must count raw rows, before Kids Mode filtering.
     var catalogPageOffsets by remember { mutableStateOf<Map<String, Int>>(emptyMap()) }
     // Open directly on the live channel list; users can switch straight to Movies, Series, or Settings.

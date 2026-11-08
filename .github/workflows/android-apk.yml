@@ -10,6 +10,7 @@ on:
       - feature/isolated-category-cache
       - feature/kids-mode-category-discovery
       - security-hardening-non-provider
+      - feat/oatec-standard-user
   workflow_dispatch:
 
 permissions:

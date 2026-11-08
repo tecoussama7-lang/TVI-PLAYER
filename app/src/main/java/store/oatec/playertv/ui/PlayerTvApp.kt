@@ -1456,6 +1456,7 @@ private fun PlayerTvAppContent(
                             search = search,
                             preferences = preferences,
                             preferenceRevision = preferenceRevision,
+                            numberInput = numberInput,
                             onSearch = { search = it },
                             onHome = { goBack() },
                             message = message,
@@ -3140,6 +3141,7 @@ private fun LiveScreen(
     search: String,
     preferences: PlayerPreferences,
     preferenceRevision: Int,
+    numberInput: String,
     message: String,
     busy: Boolean,
     catalogProgress: Float,
@@ -3194,6 +3196,9 @@ private fun LiveScreen(
                 } else false
             }, contentPadding = PaddingValues(horizontal = 9.dp, vertical = 2.dp)) { Text(appText("← الرئيسية", LocalAppLanguage.current), fontSize = 10.sp) }
             Spacer(Modifier.weight(1f))
+            if (numberInput.isNotEmpty()) {
+                Text("CH $numberInput", color = Lime, fontSize = 14.sp, fontWeight = FontWeight.Black)
+            }
             OutlinedButton(onClick = { showAddChannelDialog = true }, contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)) { Text(appText("＋ قناة", LocalAppLanguage.current), fontSize = 11.sp) }
             OutlinedTextField(
                 value = search, onValueChange = onSearch, modifier = Modifier.width(when { screenWidthDp >= 1200 -> 300.dp; screenWidthDp >= 700 -> 230.dp; else -> 145.dp }).heightIn(max = 54.dp),

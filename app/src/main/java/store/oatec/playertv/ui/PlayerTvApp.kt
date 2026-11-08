@@ -641,8 +641,8 @@ private fun PlayerTvAppContent(
     var catalog by remember { mutableStateOf(SourceCatalog()) }
         var loadedCatalogs by remember { mutableStateOf<Set<String>>(emptySet()) }
 
-    // Standard devices sync the linked M3U once at startup and periodically while open.
-    // A URL-derived source ID invalidates only that playlist's cache when the website link changes.
+    // Standard devices sync the website playlist and recognize Xtream get.php links.
+    // Plain M3U URLs remain M3U; get.php URLs with credentials become native Xtream sources.
     LaunchedEffect(standardModeActive) {
         if (standardModeActive) {
             while (true) {
@@ -650,14 +650,43 @@ private fun PlayerTvAppContent(
                     withContext(Dispatchers.IO) { standardEntitlementRepository.getStandardPlaylistUrl() }
                 }.getOrNull()
                 if (!linkedUrl.isNullOrBlank()) {
-                    val linkedSource = PlayerSource(
-                        id = "oatec-standard-${UUID.nameUUIDFromBytes(linkedUrl.toByteArray())}",
-                        name = "OATEC Standard Playlist",
-                        type = SourceType.M3U,
-                        serverUrl = linkedUrl,
-                    )
+                    val playlistUri = runCatching { Uri.parse(linkedUrl) }.getOrNull()
+                    val isXtreamGetPhp = playlistUri?.lastPathSegment.equals("get.php", ignoreCase = true)
+                    val xtreamUsername = playlistUri?.getQueryParameter("username").orEmpty()
+                    val xtreamPassword = playlistUri?.getQueryParameter("password").orEmpty()
+                    val useXtream = isXtreamGetPhp &&
+                        !playlistUri?.host.isNullOrBlank() &&
+                        playlistUri?.scheme in setOf("http", "https") &&
+                        xtreamUsername.isNotBlank() &&
+                        xtreamPassword.isNotBlank()
+                    val xtreamServer = if (useXtream) {
+                        linkedUrl.substringBefore('?').substringBeforeLast('/')
+                    } else ""
+                    val linkedSourceId = "oatec-standard-${UUID.nameUUIDFromBytes(linkedUrl.toByteArray())}"
+                    val linkedSource = if (useXtream) {
+                        PlayerSource(
+                            id = linkedSourceId,
+                            name = "OATEC Standard Playlist",
+                            type = SourceType.XTREAM,
+                            serverUrl = xtreamServer,
+                            username = xtreamUsername,
+                            password = xtreamPassword,
+                        )
+                    } else {
+                        PlayerSource(
+                            id = linkedSourceId,
+                            name = "OATEC Standard Playlist",
+                            type = SourceType.M3U,
+                            serverUrl = linkedUrl,
+                        )
+                    }
                     val currentLinked = sources.firstOrNull { it.name == "OATEC Standard Playlist" }
-                    if (currentLinked?.id != linkedSource.id || currentLinked.serverUrl != linkedUrl) {
+                    val sourceChanged = currentLinked?.id != linkedSource.id ||
+                        currentLinked.type != linkedSource.type ||
+                        currentLinked.serverUrl != linkedSource.serverUrl ||
+                        currentLinked.username != linkedSource.username ||
+                        currentLinked.password != linkedSource.password
+                    if (sourceChanged) {
                         sources.removeAll { it.name == "OATEC Standard Playlist" }
                         sources.add(linkedSource)
                         sourceStore.save(sources.toList())

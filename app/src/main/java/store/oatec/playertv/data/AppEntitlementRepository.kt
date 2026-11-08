@@ -28,16 +28,20 @@ class AppEntitlementRepository(context: Context) {
      * before public commercial release.
      */
     fun getOrStartTrial(nowMillis: Long = System.currentTimeMillis()): TrialStatus {
-        val startedAt = prefs.getLong(KEY_TRIAL_STARTED_AT, 0L).let { saved ->
-            if (saved > 0L) saved else nowMillis.also {
-                prefs.edit().putLong(KEY_TRIAL_STARTED_AT, it).apply()
-            }
+        val savedStart = prefs.getLong(KEY_TRIAL_STARTED_AT, 0L)
+        val startedAt = if (savedStart > 0L) savedStart else nowMillis.also {
+            prefs.edit().putLong(KEY_TRIAL_STARTED_AT, it).apply()
         }
+        // Prevent a simple device-clock rollback from extending the local UX trial.
+        // This is still not a server-grade entitlement decision.
+        val lastSeen = prefs.getLong(KEY_LAST_SEEN_AT, 0L)
+        val effectiveNow = maxOf(nowMillis, lastSeen)
+        if (effectiveNow > lastSeen) prefs.edit().putLong(KEY_LAST_SEEN_AT, effectiveNow).apply()
         val expiresAt = startedAt + TRIAL_DURATION_MILLIS
         return TrialStatus(
             startedAtMillis = startedAt,
             expiresAtMillis = expiresAt,
-            remainingMillis = (expiresAt - nowMillis).coerceAtLeast(0L),
+            remainingMillis = (expiresAt - effectiveNow).coerceAtLeast(0L),
         )
     }
 
@@ -62,5 +66,6 @@ class AppEntitlementRepository(context: Context) {
         const val ENTITLEMENT_ACTIVATE_PATH = "/entitlement/activate"
         private const val PREFS_NAME = "oatec_app_entitlement"
         private const val KEY_TRIAL_STARTED_AT = "trial_started_at"
+        private const val KEY_LAST_SEEN_AT = "trial_last_seen_at"
     }
 }

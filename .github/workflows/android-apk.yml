@@ -12,6 +12,7 @@ on:
       - security-hardening-non-provider
       - feat/oatec-standard-user
       - feat/standard-device-identity
+      - feat/standard-m3u-website-link
   workflow_dispatch:
 
 permissions:

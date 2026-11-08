@@ -2903,7 +2903,10 @@ private fun SettingsScreen(
             Surface(color = Panel, shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)), modifier = Modifier.width(settingsCardWidth).height(settingsCardHeight)) {
                 Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text("STANDARD PLAYER — WEBSITE ACCESS", color = Lime, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.2.sp)
-                    Text("استعمل هاد المعطيات فموقع OATEC باش تربط ملف M3U بهاد الجهاز.", color = TextMuted, fontSize = 12.sp)
+                    Text("استعمل هاد المعطيات فموقع OATEC باش تربط رابط M3U بهاد الجهاز.", color = TextMuted, fontSize = 12.sp)
+                    OutlinedButton(onClick = {
+                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://oatec.store/standard-player")))
+                    }) { Text("فتح صفحة ربط M3U") }
                     when {
                         standardIdentityLoading -> Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                             CircularProgressIndicator(Modifier.size(18.dp), color = Lime, strokeWidth = 2.dp)

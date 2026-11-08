@@ -585,6 +585,21 @@ private fun PlayerTvAppContent(
     }
     val standardEntitlementRepository = remember { store.oatec.playertv.data.AppEntitlementRepository(context) }
     val standardModeActive = sources.isNotEmpty() && sources.none { it.name == "OATEC Subscription" }
+    var standardWelcomeIdentity by remember { mutableStateOf<store.oatec.playertv.data.StandardDeviceIdentity?>(null) }
+    var showStandardWelcomeDialog by remember { mutableStateOf(false) }
+    LaunchedEffect(standardModeActive) {
+        if (standardModeActive) {
+            runCatching { standardEntitlementRepository.getStandardDeviceIdentity() }
+                .onSuccess { identity ->
+                    standardWelcomeIdentity = identity
+                    val welcomePrefs = context.getSharedPreferences("oatec_standard_welcome", Context.MODE_PRIVATE)
+                    if (!welcomePrefs.getBoolean("shown", false)) {
+                        showStandardWelcomeDialog = true
+                        welcomePrefs.edit().putBoolean("shown", true).apply()
+                    }
+                }
+        }
+    }
     var standardTrialStatus by remember { mutableStateOf<store.oatec.playertv.data.ServerTrialStatus?>(null) }
     var standardTrialLoading by remember { mutableStateOf(false) }
     var standardTrialError by remember { mutableStateOf("") }
@@ -815,6 +830,34 @@ private fun PlayerTvAppContent(
 
     // Keep children inside Kids Mode when Back is pressed, including from LIVE.
     // A normal app cannot block Android Home/Recents without device kiosk/lock-task setup.
+    if (showStandardWelcomeDialog && standardWelcomeIdentity != null) {
+        val identity = standardWelcomeIdentity!!
+        AlertDialog(
+            onDismissRequest = { showStandardWelcomeDialog = false },
+            title = { Text("عرض تجريبي — Standard Player", color = GoldLight) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("مرحبا بك! هاد المعلومات خاصة بهاد الجهاز. استعملها فالموقع لربط رابط M3U.", color = TextMuted)
+                    Text("Device ID", color = TextMuted, fontSize = 11.sp)
+                    SelectionContainer { Text(identity.id, color = Color.White, fontWeight = FontWeight.Bold) }
+                    Text("Device Key", color = TextMuted, fontSize = 11.sp)
+                    SelectionContainer { Text(identity.key, color = Color.White, fontWeight = FontWeight.Bold) }
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedButton(onClick = {
+                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                            clipboard.setPrimaryClip(android.content.ClipData.newPlainText("Standard Device ID", identity.id))
+                        }) { Text("نسخ ID") }
+                        OutlinedButton(onClick = {
+                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                            clipboard.setPrimaryClip(android.content.ClipData.newPlainText("Standard Device Key", identity.key))
+                        }) { Text("نسخ Key") }
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = { showStandardWelcomeDialog = false }) { Text("متابعة") } },
+        )
+    }
+
     BackHandler(enabled = true) {
         if (kidsModeActive) {
             section = Section.HOME.name

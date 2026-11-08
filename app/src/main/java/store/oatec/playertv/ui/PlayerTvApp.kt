@@ -609,7 +609,10 @@ private fun PlayerTvAppContent(
                     standardTrialStatus = status
                     standardTrialError = ""
                 }.onFailure { failure ->
+                    standardTrialStatus = null
                     standardTrialError = failure.message ?: "تعذر تحديث حالة التجربة."
+                    standardTrialLoading = false
+                    break
                 }
             }
         } else {

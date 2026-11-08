@@ -582,6 +582,42 @@ private fun PlayerTvAppContent(
             addAll(runCatching { sourceStore.load() }.getOrDefault(emptyList()))
         }
     }
+    val standardEntitlementRepository = remember { store.oatec.playertv.data.AppEntitlementRepository(context) }
+    val standardModeActive = sources.isNotEmpty() && sources.none { it.name == "OATEC Subscription" }
+    var standardTrialStatus by remember { mutableStateOf<store.oatec.playertv.data.ServerTrialStatus?>(null) }
+    var standardTrialLoading by remember { mutableStateOf(false) }
+    var standardTrialError by remember { mutableStateOf("") }
+    var standardTrialRetry by remember { mutableStateOf(0) }
+    LaunchedEffect(standardModeActive, standardTrialRetry) {
+        if (standardModeActive) {
+            standardTrialLoading = true
+            standardTrialError = ""
+            runCatching {
+                standardEntitlementRepository.startOrGetStandardTrial()
+            }.onSuccess { status ->
+                standardTrialStatus = status
+            }.onFailure { failure ->
+                standardTrialStatus = null
+                standardTrialError = failure.message ?: "تعذر الاتصال بسيرفر الترخيص."
+            }
+            standardTrialLoading = false
+            while (standardModeActive && standardTrialStatus?.active == true) {
+                delay(60_000L)
+                runCatching {
+                    standardEntitlementRepository.getStandardTrialStatus()
+                }.onSuccess { status ->
+                    standardTrialStatus = status
+                    standardTrialError = ""
+                }.onFailure { failure ->
+                    standardTrialError = failure.message ?: "تعذر تحديث حالة التجربة."
+                }
+            }
+        } else {
+            standardTrialStatus = null
+            standardTrialError = ""
+            standardTrialLoading = false
+        }
+    }
     var activeSourceId by rememberSaveable { mutableStateOf(sources.firstOrNull()?.id.orEmpty()) }
     val activeSource = sources.firstOrNull { it.id == activeSourceId }
     var catalog by remember { mutableStateOf(SourceCatalog()) }
@@ -1331,6 +1367,13 @@ private fun PlayerTvAppContent(
                     section = Section.HOME.name
                 },
             )
+        } else if (standardModeActive && (standardTrialLoading || standardTrialStatus?.active != true)) {
+            StandardTrialGateScreen(
+                loading = standardTrialLoading,
+                error = standardTrialError,
+                expired = standardTrialStatus != null && !standardTrialStatus!!.active,
+                onRetry = { standardTrialRetry++ },
+            )
         } else {
         Box(
             Modifier
@@ -1826,6 +1869,54 @@ private fun PlayerTvAppContent(
 }
 
 @Composable
+private fun StandardTrialGateScreen(
+    loading: Boolean,
+    error: String,
+    expired: Boolean,
+    onRetry: () -> Unit,
+) {
+    Box(
+        Modifier.fillMaxSize().background(Color(0xFF090909)).padding(24.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(
+            modifier = Modifier.widthIn(max = 520.dp).fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            Text("STANDARD PLAYER", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Black)
+            Text(
+                when {
+                    loading -> "جارٍ التحقق من صلاحية التجربة..."
+                    expired -> "انتهت الفترة التجريبية المجانية لمدة 7 أيام."
+                    else -> "تعذر التحقق من صلاحية Standard. يلزم الاتصال بالإنترنت للمتابعة."
+                },
+                color = Color(0xFFCCCCCC),
+                fontSize = 15.sp,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+            )
+            if (error.isNotBlank()) {
+                Text(error, color = ErrorRed, fontSize = 12.sp, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+            }
+            if (!loading) {
+                Button(
+                    onClick = onRetry,
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE50920), contentColor = Color.White),
+                ) { Text("إعادة التحقق") }
+            } else {
+                CircularProgressIndicator(color = Color(0xFFE50920))
+            }
+            Text(
+                "للاستمرار في استخدام Standard Player، يرجى التواصل مع OATEC لتفعيل الاستخدام.",
+                color = Color(0xFF999999),
+                fontSize = 11.sp,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+            )
+        }
+    }
+}
+
+@Composable
 private fun InitialSetupScreen(
     savedPremiumCode: String,
     onComplete: (String, PlayerSource) -> Unit,
@@ -1843,6 +1934,7 @@ private fun InitialSetupScreen(
     var password by rememberSaveable { mutableStateOf("") }
     var error by rememberSaveable { mutableStateOf("") }
     var activationBusy by rememberSaveable { mutableStateOf(false) }
+    var standardTrialBusy by rememberSaveable { mutableStateOf(false) }
     val activationScope = rememberCoroutineScope()
     val isXtream = sourceType == SourceType.XTREAM.name
     val accent = Color(0xFFE50920)
@@ -1884,6 +1976,16 @@ private fun InitialSetupScreen(
                     Text("شاشتك.\nتجربتك المميزة.", color = Color.White, fontSize = if (compactLandscape) 23.sp else 32.sp, fontWeight = FontWeight.Black, lineHeight = if (compactLandscape) 27.sp else 38.sp)
                     Text("وجهتك الأنيقة للتلفاز المباشر والأفلام والمسلسلات.", color = Color(0xFFBDBDBD), fontSize = if (compactLandscape) 10.sp else 14.sp)
                 }
+                if (standardTrialBusy) {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
+                        CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp, color = accent)
+                        Spacer(Modifier.width(8.dp))
+                        Text("جارٍ التحقق من التجربة المجانية…", color = Color(0xFFBDBDBD), fontSize = 11.sp)
+                    }
+                }
+                if (error.isNotBlank()) {
+                    Text(error, color = ErrorRed, fontSize = 11.sp, modifier = Modifier.fillMaxWidth())
+                }
                 Row(
                     Modifier.fillMaxWidth().weight(1f),
                     horizontalArrangement = Arrangement.spacedBy(14.dp),
@@ -1894,7 +1996,23 @@ private fun InitialSetupScreen(
                         shape = RoundedCornerShape(20.dp),
                         border = BorderStroke(1.dp, Color(0xFF393939)),
                         modifier = Modifier.weight(1f).fillMaxHeight(0.88f)
-                            .clickable { entryScreen = "standard" },
+                            .clickable(enabled = !standardTrialBusy) {
+                                standardTrialBusy = true
+                                error = ""
+                                activationScope.launch {
+                                    runCatching {
+                                        withContext(Dispatchers.IO) {
+                                            store.oatec.playertv.data.AppEntitlementRepository(context).startOrGetStandardTrial()
+                                        }
+                                    }.onSuccess { trial ->
+                                        if (trial.active) entryScreen = "standard"
+                                        else error = "انتهت الفترة التجريبية المجانية لهذا الجهاز."
+                                    }.onFailure { failure ->
+                                        error = failure.message ?: "تعذر التحقق من التجربة. تحقق من اتصال الإنترنت."
+                                    }
+                                    standardTrialBusy = false
+                                }
+                            },
                     ) {
                         Box(Modifier.fillMaxSize().padding(if (compactLandscape) 14.dp else 24.dp)) {
                             Text("◉", color = accent, fontSize = 22.sp, modifier = Modifier.align(Alignment.TopEnd))

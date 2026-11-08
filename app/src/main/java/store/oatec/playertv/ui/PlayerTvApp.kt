@@ -612,7 +612,6 @@ private fun PlayerTvAppContent(
                     standardTrialStatus = null
                     standardTrialError = failure.message ?: "تعذر تحديث حالة التجربة."
                     standardTrialLoading = false
-                    break
                 }
             }
         } else {

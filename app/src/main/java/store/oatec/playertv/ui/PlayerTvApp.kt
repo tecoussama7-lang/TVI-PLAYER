@@ -1302,7 +1302,7 @@ private fun PlayerTvAppContent(
         }
     }
 
-    val needsInitialSetup = sources.isEmpty()
+    var showInitialSetup by rememberSaveable { mutableStateOf(sources.isEmpty()) }
 
     MaterialTheme(
         colorScheme = darkColorScheme(
@@ -1356,7 +1356,7 @@ private fun PlayerTvAppContent(
             KidsYouTubePlayerDialog(videoId = selectedKidsYoutubeId, onDismiss = { selectedKidsYoutubeId = "" })
         }
         // Trailer previews appear in the selected title overlay, not in a separate page.
-        if (needsInitialSetup) {
+        if (showInitialSetup) {
             InitialSetupScreen(
                 savedPremiumCode = premiumCode,
                 onComplete = { code, source ->
@@ -1367,6 +1367,7 @@ private fun PlayerTvAppContent(
                     sourceStore.save(sources)
                     activeSourceId = source.id
                     section = Section.HOME.name
+                    showInitialSetup = false
                 },
             )
         } else if (standardModeActive && (standardTrialLoading || standardTrialStatus?.active != true)) {
@@ -1375,6 +1376,7 @@ private fun PlayerTvAppContent(
                 error = standardTrialError,
                 expired = standardTrialStatus != null && !standardTrialStatus!!.active,
                 onRetry = { standardTrialRetry++ },
+                onPremium = { showInitialSetup = true },
             )
         } else {
         Box(
@@ -1876,6 +1878,7 @@ private fun StandardTrialGateScreen(
     error: String,
     expired: Boolean,
     onRetry: () -> Unit,
+    onPremium: () -> Unit,
 ) {
     Box(
         Modifier.fillMaxSize().background(Color(0xFF090909)).padding(24.dp),
@@ -1907,6 +1910,9 @@ private fun StandardTrialGateScreen(
                 ) { Text("إعادة التحقق") }
             } else {
                 CircularProgressIndicator(color = Color(0xFFE50920))
+            }
+            OutlinedButton(onClick = onPremium) {
+                Text("عندي OATEC Premium Code")
             }
             Text(
                 "للاستمرار في استخدام Standard Player، يرجى التواصل مع OATEC لتفعيل الاستخدام.",

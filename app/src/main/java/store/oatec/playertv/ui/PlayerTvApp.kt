@@ -5217,7 +5217,7 @@ private fun OrganizeChannelDialog(
                         }
                     }) { Text(appText("Create", LocalAppLanguage.current)) }
                 }
-                Text(appText("If the number is in use, the two channels will swap numbers.", LocalAppLanguage.current), color = TextMuted, fontSize = 10.sp)
+                Text(appText("The channel moves to this position and the other channels shift automatically.", LocalAppLanguage.current), color = TextMuted, fontSize = 10.sp)
                 if (error.isNotBlank()) Text(error, color = ErrorRed, fontSize = 11.sp)
             }
         },

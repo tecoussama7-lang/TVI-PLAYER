@@ -19,8 +19,14 @@ class SecureSourceStore(context: Context) {
 
     fun load(): List<PlayerSource> {
         val encrypted = preferences.getString(SOURCES_KEY, null) ?: return emptyList()
-        val json = decrypt(encrypted)
-        val array = JSONArray(json)
+        val json = runCatching { decrypt(encrypted) }.getOrElse {
+            preferences.edit().remove(SOURCES_KEY).apply()
+            return emptyList()
+        }
+        val array = runCatching { JSONArray(json) }.getOrElse {
+            preferences.edit().remove(SOURCES_KEY).apply()
+            return emptyList()
+        }
         return buildList {
             for (index in 0 until array.length()) {
                 val item = array.optJSONObject(index) ?: continue
@@ -57,7 +63,13 @@ class SecureSourceStore(context: Context) {
         preferences.edit().putString(SOURCES_KEY, encrypt(array.toString())).apply()
     }
 
-    fun loadPremiumCode(): String? = preferences.getString(PREMIUM_CODE_KEY, null)?.let(::decrypt)
+    fun loadPremiumCode(): String? {
+        val encrypted = preferences.getString(PREMIUM_CODE_KEY, null) ?: return null
+        return runCatching { decrypt(encrypted) }.getOrElse {
+            preferences.edit().remove(PREMIUM_CODE_KEY).apply()
+            null
+        }
+    }
 
     fun savePremiumCode(code: String) {
         if (code.isBlank()) {
@@ -76,6 +88,7 @@ class SecureSourceStore(context: Context) {
 
     private fun decrypt(value: String): String {
         val payload = Base64.decode(value, Base64.NO_WRAP)
+        require(payload.size > GCM_IV_LENGTH + 16) { "Encrypted value is incomplete." }
         val iv = payload.copyOfRange(0, GCM_IV_LENGTH)
         val encrypted = payload.copyOfRange(GCM_IV_LENGTH, payload.size)
         val cipher = Cipher.getInstance(TRANSFORMATION)

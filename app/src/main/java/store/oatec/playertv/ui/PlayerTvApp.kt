@@ -397,7 +397,8 @@ private fun activateOatecCode(context: Context, code: String): PlayerSource {
         val getPhpBase = if (isXtreamGetPhp) m3uUrl.substringBefore('?').substringBeforeLast('/') else ""
         when {
             sourceType == "xtream" && validXtream -> PlayerSource(
-                id = UUID.randomUUID().toString(),                name = "OATEC Subscription",
+                id = UUID.randomUUID().toString(),
+                name = "OATEC Subscription",
                 type = SourceType.XTREAM,
                 serverUrl = server,
                 username = username,
@@ -796,7 +797,8 @@ private fun PlayerTvAppContent(
                             selectedCategory = "All"
                         }
                         CatalogSection.MOVIES -> {
-                            movieCategories = categories                            selectedMovieCategory = "All"
+                            movieCategories = categories
+                            selectedMovieCategory = "All"
                         }
                         CatalogSection.SERIES -> {
                             seriesCategories = categories
@@ -1195,7 +1197,8 @@ private fun PlayerTvAppContent(
                 runCatching { searchYouTubeKidsTrending(Section.SERIES) }.getOrDefault(emptyList()),
             )
         }
-        kidsYoutubeMovies = trendingBySection.first        kidsYoutubeSeries = trendingBySection.second
+        kidsYoutubeMovies = trendingBySection.first
+        kidsYoutubeSeries = trendingBySection.second
     }
 
     val filePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
@@ -1594,7 +1597,8 @@ private fun PlayerTvAppContent(
                             selectedLanguage = appLanguage,
                             onLanguageChanged = onLanguageChanged,
                             uiScale = uiScale,
-                            onUiScaleChanged = onUiScaleChanged,                            highContrast = highContrast,
+                            onUiScaleChanged = onUiScaleChanged,
+                            highContrast = highContrast,
                             onHighContrastChanged = onHighContrastChanged,
                             focusHighlightEnabled = focusHighlight,
                             onFocusHighlightChanged = onFocusHighlightChanged,
@@ -1993,7 +1997,8 @@ private fun InitialSetupScreen(
                     Button(
                         onClick = {
                             val rawUrl = serverUrl.trim()
-                            val parsed = Uri.parse(rawUrl)                            val queryUser = parsed.getQueryParameter("username").orEmpty().trim()
+                            val parsed = Uri.parse(rawUrl)
+                            val queryUser = parsed.getQueryParameter("username").orEmpty().trim()
                             val queryPassword = parsed.getQueryParameter("password").orEmpty()
                             val isXtreamPlaylistUrl =
                                 parsed.lastPathSegment.equals("get.php", ignoreCase = true) &&
@@ -2392,7 +2397,8 @@ private fun SettingsScreen(
                                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
                                 )
                                 if (clearKidsPinError.isNotBlank()) Text(clearKidsPinError, color = Color(0xFFFF7777), fontSize = 12.sp)
-                            }                        },
+                            }
+                        },
                         confirmButton = {
                             TextButton(onClick = {
                                 if (preferences.clearKidsPin(clearKidsPinInput)) {
@@ -2791,7 +2797,8 @@ private fun HomeDashboard(
     compact: Boolean,
     sourceName: String?,
     onSelect: (Section) -> Unit,
-    onExit: () -> Unit,) {
+    onExit: () -> Unit,
+) {
     var selectedHomeCard by remember { mutableStateOf(Section.LIVE) }
     // Keep the home surface simple and cheap to render on Android TV devices.
     Box(Modifier.fillMaxSize().background(Ink)) {
@@ -3188,7 +3195,8 @@ private fun LiveScreen(
                 TextButton(onClick = { onFavorite(detail) }, contentPadding = PaddingValues(horizontal = 7.dp, vertical = 2.dp)) {
                     Text(if (detail.id in preferences.favorites()) "★ المفضلة" else "☆ المفضلة", color = Lime, fontSize = 11.sp)
                 }
-                TextButton(onClick = { onOrganize(detail) }, contentPadding = PaddingValues(horizontal = 7.dp, vertical = 2.dp)) {                    Text(appText("ترتيب / تصنيف", LocalAppLanguage.current), color = TextMain, fontSize = 11.sp)
+                TextButton(onClick = { onOrganize(detail) }, contentPadding = PaddingValues(horizontal = 7.dp, vertical = 2.dp) ) {
+                    Text(appText("ترتيب / تصنيف", LocalAppLanguage.current), color = TextMain, fontSize = 11.sp)
                 }
                 TextButton(onClick = { pendingDeleteChannel = detail }, contentPadding = PaddingValues(horizontal = 7.dp, vertical = 2.dp)) {
                     Text(appText("حذف", LocalAppLanguage.current), color = ErrorRed, fontSize = 11.sp)
@@ -3990,7 +3998,8 @@ private fun MediaDetailsDialog(
                         fontWeight = FontWeight.Bold,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
-                    )                    TextButton(onClick = onDismiss) { Text(appText("Close", LocalAppLanguage.current), color = GoldLight) }
+                     )
+                    TextButton(onClick = onDismiss) { Text(appText("Close", LocalAppLanguage.current), color = GoldLight) }
                 }
                 HorizontalDivider(color = TextMain.copy(alpha = 0.1f))
                 Row(
@@ -4389,7 +4398,8 @@ private fun AddSourceDialog(onDismiss: () -> Unit, onSave: (PlayerSource) -> Uni
                             epgUrl = epgUrl.trim(),
                         ),
                     )
-                }            }) { Text(appText("Save", LocalAppLanguage.current)) }
+                }
+            }) { Text(appText("Save", LocalAppLanguage.current)) }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text(appText("Cancel", LocalAppLanguage.current)) } },
     )
@@ -4788,7 +4798,8 @@ private fun PlaybackDialog(
                             controllerShowTimeoutMs = 3_500
                             controllerAutoShow = entry.kind != MediaKind.LIVE
                             setOnClickListener {
-                                if (entry.kind != MediaKind.LIVE) {                                    controlsVisible = true
+                                if (entry.kind != MediaKind.LIVE) {
+                                    controlsVisible = true
                                     showController()
                                 }
                             }
@@ -5187,7 +5198,8 @@ private fun OrganizeChannelDialog(
 private fun LoadingState(label: String, progress: Float? = null, loadedItems: Int = 0) {
     if (progress == null) {
         Column(Modifier.fillMaxWidth().padding(28.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            CircularProgressIndicator(color = Lime)            Text(label, color = TextMuted, fontSize = 13.sp)
+            CircularProgressIndicator(color = Lime)
+            Text(label, color = TextMuted, fontSize = 13.sp)
         }
         return
     }
@@ -5985,7 +5997,8 @@ private fun YouTubeKidsSearchDialog(onDismiss: () -> Unit) {
                     )
                     Button(
                         onClick = {
-                            submittedQuery = query.trim()                            val target = Uri.parse("https://m.youtube.com/").buildUpon()
+                            submittedQuery = query.trim()
+                            val target = Uri.parse("https://m.youtube.com/").buildUpon()
                                 .appendPath("search")
                                 .appendQueryParameter("q", submittedQuery)
                                 .build()

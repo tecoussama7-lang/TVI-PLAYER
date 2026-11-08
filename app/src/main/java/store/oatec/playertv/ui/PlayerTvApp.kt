@@ -5882,6 +5882,8 @@ private fun YouTubeTrailerDialog(videoId: String, onDismiss: () -> Unit) {
                         settings.mediaPlaybackRequiresUserGesture = false
                         settings.allowFileAccess = false
                         settings.allowContentAccess = false
+                        settings.allowUniversalAccessFromFileURLs = false
+                        settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_NEVER_ALLOW
                         settings.loadWithOverviewMode = true
                         settings.useWideViewPort = true
                         webViewClient = WebViewClient()
@@ -5924,6 +5926,8 @@ private fun KidsYouTubePlayerDialog(videoId: String, onDismiss: () -> Unit) {
                     settings.mediaPlaybackRequiresUserGesture = false
                     settings.allowFileAccess = false
                     settings.allowContentAccess = false
+                    settings.allowUniversalAccessFromFileURLs = false
+                    settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_NEVER_ALLOW
                     settings.loadWithOverviewMode = true
                     settings.useWideViewPort = true
                     webViewClient = WebViewClient()
@@ -6141,6 +6145,8 @@ private fun YouTubeKidsSearchDialog(onDismiss: () -> Unit) {
                             settings.domStorageEnabled = true
                             settings.allowFileAccess = false
                             settings.allowContentAccess = false
+                            settings.allowUniversalAccessFromFileURLs = false
+                            settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_NEVER_ALLOW
                             webViewClient = WebViewClient()
                             webViewRef = this
                             loadUrl("https://m.youtube.com/")

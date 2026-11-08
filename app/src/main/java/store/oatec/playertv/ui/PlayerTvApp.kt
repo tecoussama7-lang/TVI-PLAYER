@@ -585,6 +585,9 @@ private fun PlayerTvAppContent(
     }
     val standardEntitlementRepository = remember { store.oatec.playertv.data.AppEntitlementRepository(context) }
     val standardModeActive = sources.isNotEmpty() && sources.none { it.name == "OATEC Subscription" }
+    val standardPlaylistLinked = sources.any {
+        it.name == "OATEC Standard Playlist" && it.serverUrl.isNotBlank()
+    }
     var standardTrialStatus by remember { mutableStateOf<store.oatec.playertv.data.ServerTrialStatus?>(null) }
     var standardTrialLoading by remember { mutableStateOf(false) }
     var standardTrialError by remember { mutableStateOf("") }
@@ -1431,12 +1434,16 @@ private fun PlayerTvAppContent(
                     showInitialSetup = false
                 },
             )
-        } else if (standardModeActive && (standardTrialLoading || standardTrialStatus?.active != true)) {
+        } else if (standardModeActive && (!standardPlaylistLinked || standardTrialLoading || standardTrialStatus?.active != true)) {
             StandardTrialGateScreen(
+                playlistLinked = standardPlaylistLinked,
                 loading = standardTrialLoading,
                 error = standardTrialError,
                 expired = standardTrialStatus != null && !standardTrialStatus!!.active,
                 onRetry = { standardTrialRetry++ },
+                onOpenPlaylist = {
+                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://oatec.store/standard-player")))
+                },
                 onPremium = { showInitialSetup = true },
             )
         } else {
@@ -1937,10 +1944,12 @@ private fun PlayerTvAppContent(
 
 @Composable
 private fun StandardTrialGateScreen(
+    playlistLinked: Boolean,
     loading: Boolean,
     error: String,
     expired: Boolean,
     onRetry: () -> Unit,
+    onOpenPlaylist: () -> Unit,
     onPremium: () -> Unit,
 ) {
     Box(
@@ -1955,6 +1964,7 @@ private fun StandardTrialGateScreen(
             Text("STANDARD PLAYER", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Black)
             Text(
                 when {
+                    !playlistLinked -> "خاصك تزيد Playlist من موقع OATEC قبل ما تدخل للتطبيق."
                     loading -> "جارٍ التحقق من صلاحية التجربة..."
                     expired -> "انتهت الفترة التجريبية المجانية لمدة 7 أيام."
                     else -> "تعذر التحقق من صلاحية Standard. يلزم الاتصال بالإنترنت للمتابعة."
@@ -1966,7 +1976,14 @@ private fun StandardTrialGateScreen(
             if (error.isNotBlank()) {
                 Text(error, color = ErrorRed, fontSize = 12.sp, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
             }
-            if (!loading) {
+            if (!playlistLinked) {
+                Button(
+                    onClick = onOpenPlaylist,
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE50920), contentColor = Color.White),
+                ) { Text("إضافة Playlist من الموقع") }
+                Text("من بعد ما تزيدها، التطبيق غادي يتعرف عليها ويفتح بوحدو.", color = Color(0xFF999999), fontSize = 11.sp, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                OutlinedButton(onClick = onRetry) { Text("إعادة التحقق") }
+            } else if (!loading) {
                 Button(
                     onClick = onRetry,
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE50920), contentColor = Color.White),
@@ -1977,7 +1994,7 @@ private fun StandardTrialGateScreen(
             OutlinedButton(onClick = onPremium) {
                 Text("عندي OATEC Premium Code")
             }
-            Text(
+            if (playlistLinked) Text(
                 "للاستمرار في استخدام Standard Player، يرجى التواصل مع OATEC لتفعيل الاستخدام.",
                 color = Color(0xFF999999),
                 fontSize = 11.sp,
@@ -2212,7 +2229,7 @@ private fun InitialSetupScreen(
                 }
                 Text("استعمل Device ID وKey ديال هاد الجهاز باش تزيد رابط M3U من موقع OATEC.", color = Color(0xFFBDBDBD), fontSize = 13.sp)
                 Surface(
-                    modifier = Modifier.fillMaxWidth().weight(1f, fill = false),
+                    modifier = Modifier.widthIn(max = 540.dp).fillMaxWidth().align(Alignment.CenterHorizontally),
                     color = panel,
                     shape = RoundedCornerShape(18.dp),
                     border = BorderStroke(1.dp, Color(0xFF393939)),
@@ -2220,7 +2237,7 @@ private fun InitialSetupScreen(
                     Column(
                         Modifier.fillMaxWidth().padding(if (compactLandscape) 14.dp else 22.dp),
                         verticalArrangement = Arrangement.spacedBy(if (compactLandscape) 7.dp else 11.dp),
-                        horizontalAlignment = Alignment.End,
+                        horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
                         when {
                             standardIdentityLoading -> Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -2228,18 +2245,36 @@ private fun InitialSetupScreen(
                                 Text("جارٍ تحميل بيانات الجهاز...", color = Color(0xFFBDBDBD), fontSize = 12.sp)
                             }
                             standardIdentity != null -> {
-                                Text("DEVICE ID", color = Color(0xFFAAAAAA), fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                                SelectionContainer { Text(standardIdentity!!.id, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold) }
-                                OutlinedButton(onClick = {
-                                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-                                    clipboard.setPrimaryClip(android.content.ClipData.newPlainText("OATEC Standard ID", standardIdentity!!.id))
-                                }) { Text("نسخ Device ID") }
-                                Text("DEVICE KEY", color = Color(0xFFAAAAAA), fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                                SelectionContainer { Text(standardIdentity!!.key, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold) }
-                                OutlinedButton(onClick = {
-                                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-                                    clipboard.setPrimaryClip(android.content.ClipData.newPlainText("OATEC Standard Key", standardIdentity!!.key))
-                                }) { Text("نسخ Key") }
+                                Text("DEVICE ID", color = Color(0xFFAAAAAA), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                Surface(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    color = Color(0xFF1B1B1B),
+                                    shape = RoundedCornerShape(12.dp),
+                                    border = BorderStroke(1.dp, Color(0xFF444444)),
+                                ) {
+                                    Column(Modifier.fillMaxWidth().padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                                        SelectionContainer { Text(standardIdentity!!.id, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold, textAlign = androidx.compose.ui.text.style.TextAlign.Center) }
+                                        OutlinedButton(onClick = {
+                                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                                            clipboard.setPrimaryClip(android.content.ClipData.newPlainText("OATEC Standard ID", standardIdentity!!.id))
+                                        }) { Text("نسخ Device ID") }
+                                    }
+                                }
+                                Text("DEVICE KEY", color = Color(0xFFAAAAAA), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                Surface(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    color = Color(0xFF1B1B1B),
+                                    shape = RoundedCornerShape(12.dp),
+                                    border = BorderStroke(1.dp, Color(0xFF444444)),
+                                ) {
+                                    Column(Modifier.fillMaxWidth().padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                                        SelectionContainer { Text(standardIdentity!!.key, color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.Bold, textAlign = androidx.compose.ui.text.style.TextAlign.Center) }
+                                        OutlinedButton(onClick = {
+                                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                                            clipboard.setPrimaryClip(android.content.ClipData.newPlainText("OATEC Standard Key", standardIdentity!!.key))
+                                        }) { Text("نسخ Key") }
+                                    }
+                                }
                             }
                             standardIdentityError.isNotBlank() -> Text(standardIdentityError, color = ErrorRed, fontSize = 12.sp)
                         }

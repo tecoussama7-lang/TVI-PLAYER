@@ -33,8 +33,8 @@ android {
 
     buildTypes {
         getByName("release") {
-            // CI builds remain test-installable with the debug key. Public releases must use
-            // a private upload/release keystore supplied through protected CI secrets.
+            // Temporary CI/test signing only. Replace with a private release keystore before store publication.
+            signingConfig = signingConfigs.getByName("debug")
             isMinifyEnabled = true
             isShrinkResources = true
         }

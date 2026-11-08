@@ -242,27 +242,46 @@ class PlayerPreferences(context: Context) {
 
     fun setKidsPin(pin: String): Boolean {
         val normalized = pin.trim()
-        if (normalized.length !in 4..8 || normalized.any { !it.isDigit() }) return false
+        if (!isValidKidsPin(normalized)) return false
         preferences.edit()
-            .putString(KIDS_PIN_HASH_KEY, pinDigest(normalized))
+            .putString(KIDS_PIN_HASH_KEY, createPinHash(normalized))
+            .putInt(KIDS_PIN_FAILED_ATTEMPTS_KEY, 0)
+            .remove(KIDS_PIN_LOCK_UNTIL_KEY)
             .putBoolean(KIDS_MODE_ENABLED_KEY, true)
             .apply()
         return true
     }
 
     fun verifyKidsPin(pin: String): Boolean {
+        val normalized = pin.trim()
+        if (!isValidKidsPin(normalized)) return false
+        val now = System.currentTimeMillis()
+        if (preferences.getLong(KIDS_PIN_LOCK_UNTIL_KEY, 0L) > now) return false
         val saved = preferences.getString(KIDS_PIN_HASH_KEY, null) ?: return false
-        return java.security.MessageDigest.isEqual(
-            saved.toByteArray(Charsets.UTF_8),
-            pinDigest(pin.trim()).toByteArray(Charsets.UTF_8),
-        )
+        val valid = verifyPinHash(normalized, saved)
+        if (valid) {
+            preferences.edit()
+                .putString(KIDS_PIN_HASH_KEY, if (saved.startsWith(PIN_HASH_PREFIX)) saved else createPinHash(normalized))
+                .putInt(KIDS_PIN_FAILED_ATTEMPTS_KEY, 0)
+                .remove(KIDS_PIN_LOCK_UNTIL_KEY)
+                .apply()
+            return true
+        }
+        val attempts = preferences.getInt(KIDS_PIN_FAILED_ATTEMPTS_KEY, 0) + 1
+        val editor = preferences.edit()
+        if (attempts >= KIDS_PIN_MAX_ATTEMPTS) {
+            editor.putInt(KIDS_PIN_FAILED_ATTEMPTS_KEY, 0)
+                .putLong(KIDS_PIN_LOCK_UNTIL_KEY, now + KIDS_PIN_LOCK_MILLIS)
+        } else editor.putInt(KIDS_PIN_FAILED_ATTEMPTS_KEY, attempts)
+        editor.apply()
+        return false
     }
 
     fun changeKidsPin(currentPin: String, newPin: String): Boolean {
         if (!verifyKidsPin(currentPin)) return false
         val normalized = newPin.trim()
-        if (normalized.length !in 4..8 || normalized.any { !it.isDigit() }) return false
-        preferences.edit().putString(KIDS_PIN_HASH_KEY, pinDigest(normalized)).apply()
+        if (!isValidKidsPin(normalized)) return false
+        preferences.edit().putString(KIDS_PIN_HASH_KEY, createPinHash(normalized)).apply()
         return true
     }
 
@@ -328,10 +347,42 @@ class PlayerPreferences(context: Context) {
         ?.let { array -> (0 until array.length()).map { array.optString(it) }.filter(String::isNotBlank).toSet() }
         .orEmpty()
 
-    private fun pinDigest(pin: String): String {
-        val bytes = java.security.MessageDigest.getInstance("SHA-256")
-            .digest(pin.toByteArray(Charsets.UTF_8))
-        return bytes.joinToString("") { "%02x".format(it) }
+    private fun isValidKidsPin(pin: String): Boolean =
+        pin.length in 4..8 && pin.all { it in '0'..'9' }
+
+    private fun createPinHash(pin: String): String {
+        val salt = ByteArray(PIN_SALT_BYTES)
+        java.security.SecureRandom().nextBytes(salt)
+        val hash = derivePinHash(pin, salt)
+        return PIN_HASH_PREFIX +
+            android.util.Base64.encodeToString(salt, android.util.Base64.NO_WRAP) + ":" +
+            android.util.Base64.encodeToString(hash, android.util.Base64.NO_WRAP)
+    }
+
+    private fun verifyPinHash(pin: String, stored: String): Boolean {
+        if (!stored.startsWith(PIN_HASH_PREFIX)) {
+            val legacy = java.security.MessageDigest.getInstance("SHA-256")
+                .digest(pin.toByteArray(Charsets.UTF_8))
+                .joinToString("") { "%02x".format(it) }
+            return java.security.MessageDigest.isEqual(
+                stored.toByteArray(Charsets.UTF_8), legacy.toByteArray(Charsets.UTF_8)
+            )
+        }
+        return runCatching {
+            val parts = stored.removePrefix(PIN_HASH_PREFIX).split(':')
+            require(parts.size == 2)
+            val salt = android.util.Base64.decode(parts[0], android.util.Base64.NO_WRAP)
+            val expected = android.util.Base64.decode(parts[1], android.util.Base64.NO_WRAP)
+            java.security.MessageDigest.isEqual(expected, derivePinHash(pin, salt))
+        }.getOrDefault(false)
+    }
+
+    private fun derivePinHash(pin: String, salt: ByteArray): ByteArray {
+        val spec = javax.crypto.spec.PBEKeySpec(pin.toCharArray(), salt, PIN_HASH_ITERATIONS, 256)
+        return try {
+            javax.crypto.SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256")
+                .generateSecret(spec).encoded
+        } finally { spec.clearPassword() }
     }
 
     /** Selected playback engine: exoplayer (default) or mpv. */
@@ -479,6 +530,13 @@ class PlayerPreferences(context: Context) {
         const val FAVORITES_KEY = "favorite_ids"
         const val KIDS_MODE_ENABLED_KEY = "kids_mode_enabled"
         const val KIDS_PIN_HASH_KEY = "kids_pin_sha256"
+        const val KIDS_PIN_FAILED_ATTEMPTS_KEY = "kids_pin_failed_attempts"
+        const val KIDS_PIN_LOCK_UNTIL_KEY = "kids_pin_lock_until"
+        const val PIN_HASH_PREFIX = "pbkdf2_sha256$"
+        const val PIN_HASH_ITERATIONS = 120_000
+        const val PIN_SALT_BYTES = 16
+        const val KIDS_PIN_MAX_ATTEMPTS = 5
+        const val KIDS_PIN_LOCK_MILLIS = 60_000L
         const val KIDS_ALLOW_ITEM_IDS_KEY = "kids_allow_item_ids"
         const val KIDS_BLOCK_ITEM_IDS_KEY = "kids_block_item_ids"
         const val NEXT_CHANNEL_NUMBER_KEY = "next_channel_number"

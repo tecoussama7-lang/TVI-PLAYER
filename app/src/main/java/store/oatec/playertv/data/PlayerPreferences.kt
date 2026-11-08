@@ -187,6 +187,28 @@ class PlayerPreferences(context: Context) {
         return history.mapNotNull(byId::get).filter { progress(it.id) > MIN_RESUME_POSITION_MS }
     }
 
+    /**
+     * Keep the active lineup numbered 1..N while preserving its current user-defined order.
+     * Removed playlist entries no longer leave gaps in the receiver channel numbers.
+     */
+    @Synchronized
+    fun normalizeChannelNumbers(knownChannelIds: List<String>) {
+        val ids = knownChannelIds.distinct()
+        if (ids.isEmpty()) {
+            preferences.edit().putInt(NEXT_CHANNEL_NUMBER_KEY, 1).apply()
+            return
+        }
+        val ordered = ids.map { it to channelNumber(it) }.sortedBy { it.second }
+        val editor = preferences.edit()
+        ordered.forEachIndexed { index, (id, currentNumber) ->
+            val sequentialNumber = index + 1
+            if (currentNumber != sequentialNumber) {
+                editor.putInt("channel_number:$id", sequentialNumber)
+            }
+        }
+        editor.putInt(NEXT_CHANNEL_NUMBER_KEY, ids.size + 1).apply()
+    }
+
     @Synchronized
     fun channelNumber(channelId: String): Int {
         val key = "channel_number:$channelId"

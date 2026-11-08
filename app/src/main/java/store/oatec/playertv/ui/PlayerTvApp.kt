@@ -3392,10 +3392,24 @@ private fun CategoryNavigation(
     modifier: Modifier = Modifier,
 ) {
     if (vertical) {
+        val distinctCategories = remember(categories) { categories.distinct() }
+        val categoryListState = rememberLazyListState()
+        LaunchedEffect(distinctCategories, selected) {
+            val selectedIndex = distinctCategories.indexOf(selected)
+            if (selectedIndex >= 0 &&
+                categoryListState.layoutInfo.visibleItemsInfo.none { it.index == selectedIndex }
+            ) {
+                categoryListState.animateScrollToItem(selectedIndex)
+            }
+        }
         Column(modifier.background(Color(0xFF111B2B), RoundedCornerShape(12.dp)).padding(6.dp)) {
             Text("CATEGORIES", color = TextMuted, fontSize = 9.sp, fontWeight = FontWeight.ExtraBold, modifier = Modifier.padding(start = 4.dp, bottom = 7.dp))
-            LazyColumn(verticalArrangement = Arrangement.spacedBy(7.dp), contentPadding = PaddingValues(bottom = 10.dp)) {
-                items(categories.distinct(), key = { "nav:$it" }) { category ->
+            LazyColumn(
+                state = categoryListState,
+                verticalArrangement = Arrangement.spacedBy(7.dp),
+                contentPadding = PaddingValues(bottom = 10.dp),
+            ) {
+                items(distinctCategories, key = { "nav:$it" }) { category ->
                     CategoryNavigationItem(category, selected == category, accent) { onSelect(category) }
                 }
             }

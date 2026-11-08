@@ -2926,11 +2926,11 @@ private fun HomeDashboard(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 val cards = listOf(
-                    HomeCardData(Section.LIVE, "TV LIVE", "Chaînes en direct", "▣", "LIVE TV", listOf(Color(0xFF193348), Color(0xFF07121C))),
-                    HomeCardData(Section.MOVIES, "FILM", "Films à la demande", "▰", "CINÉMA", listOf(Color(0xFF4A351D), Color(0xFF100D0A))),
-                    HomeCardData(Section.SERIES, "SÉRIES", "Séries & épisodes", "▤", "SÉRIES", listOf(Color(0xFF263746), Color(0xFF0A0D12))),
-                    HomeCardData(Section.DOWNLOADS, "DOWNLOADS", "Regarder hors ligne", "⬇", "OFFLINE", listOf(Color(0xFF244536), Color(0xFF08140F))),
-                    HomeCardData(Section.SETTINGS, "PARAMÈTRES", "Préférences & sources", "⚙", "OATEC", listOf(Color(0xFF3C2B13), Color(0xFF080A0D))),
+                    HomeCardData(Section.LIVE, "TV LIVE", "Chaînes en direct", "📺", "LIVE TV", listOf(Color(0xFF123D5C), Color(0xFF07121C))),
+                    HomeCardData(Section.MOVIES, "FILM", "Films à la demande", "🎬", "CINÉMA", listOf(Color(0xFF173D69), Color(0xFF100D0A))),
+                    HomeCardData(Section.SERIES, "SÉRIES", "Séries & épisodes", "🎞️", "SÉRIES", listOf(Color(0xFF273E60), Color(0xFF0A0D12))),
+                    HomeCardData(Section.DOWNLOADS, "DOWNLOADS", "Regarder hors ligne", "⬇️", "OFFLINE", listOf(Color(0xFF164A53), Color(0xFF08140F))),
+                    HomeCardData(Section.SETTINGS, "PARAMÈTRES", "Préférences & sources", "⚙️", "OATEC", listOf(Color(0xFF3C2B13), Color(0xFF080A0D))),
                 )
                 cards.forEachIndexed { index, card ->
                     val active = card.section == selectedHomeCard

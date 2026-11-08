@@ -5070,7 +5070,6 @@ private fun PlaybackDialog(
             confirmButton = { TextButton(onClick = { showQualityDialog = false }) { Text(appText("Done", LocalAppLanguage.current)) } },
         )
     }
-    }
 }
 
 @Composable

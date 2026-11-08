@@ -2,6 +2,8 @@ package store.oatec.playertv.data
 
 import android.content.Context
 import android.os.Build
+import android.provider.Settings
+import java.security.MessageDigest
 import java.net.HttpURLConnection
 import java.net.URL
 import java.util.UUID
@@ -31,7 +33,7 @@ class AppEntitlementRepository(context: Context) {
     /** Creates the Standard trial once on the server, then always returns the server record. */
     suspend fun startOrGetStandardTrial(): ServerTrialStatus = withContext(Dispatchers.IO) {
         val payload = JSONObject()
-            .put("device_id", deviceId())
+            .put("device_id", standardTrialDeviceId())
             .put("device_name", (Build.MANUFACTURER + " " + Build.MODEL).trim().take(255))
             .put("platform", "android")
             .put("app_version", "1.0.0")
@@ -45,7 +47,7 @@ class AppEntitlementRepository(context: Context) {
 
     /** Reads the authoritative Standard entitlement without creating or extending a trial. */
     suspend fun getStandardTrialStatus(): ServerTrialStatus = withContext(Dispatchers.IO) {
-        val encodedId = java.net.URLEncoder.encode(deviceId(), "UTF-8")
+        val encodedId = java.net.URLEncoder.encode(standardTrialDeviceId(), "UTF-8")
         val response = requestJson(
             method = "GET",
             path = "/entitlement/status?device_id=$encodedId",
@@ -105,6 +107,24 @@ class AppEntitlementRepository(context: Context) {
             return json
         } finally {
             connection.disconnect()
+        }
+    }
+
+    /**
+     * Stable identifier for Standard licensing. Android ID survives clearing this app's data,
+     * unlike the app-local UUID used by the existing Premium activation flow.
+     */
+    private fun standardTrialDeviceId(): String {
+        val androidId = Settings.Secure.getString(appContext.contentResolver, Settings.Secure.ANDROID_ID).orEmpty()
+        if (androidId.isNotBlank()) {
+            val digest = MessageDigest.getInstance("SHA-256")
+                .digest((appContext.packageName + ":" + androidId).toByteArray(Charsets.UTF_8))
+                .joinToString("") { "%02x".format(it) }
+            return "std-$digest"
+        }
+        val prefs = appContext.getSharedPreferences("oatec_standard_trial", Context.MODE_PRIVATE)
+        return prefs.getString("device_id", null) ?: UUID.randomUUID().toString().also {
+            prefs.edit().putString("device_id", it).apply()
         }
     }
 

@@ -11,6 +11,7 @@ on:
       - feature/kids-mode-category-discovery
       - security-hardening-non-provider
       - feat/oatec-standard-user
+      - feat/standard-device-identity
   workflow_dispatch:
 
 permissions:

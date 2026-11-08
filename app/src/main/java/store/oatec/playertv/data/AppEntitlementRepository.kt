@@ -27,6 +27,11 @@ data class ServerTrialStatus(
     val serverTime: String?,
 )
 
+data class StandardDeviceIdentity(
+    val id: String,
+    val key: String,
+)
+
 class AppEntitlementRepository(context: Context) {
     private val appContext = context.applicationContext
 
@@ -43,6 +48,24 @@ class AppEntitlementRepository(context: Context) {
             body = payload.toString(),
         )
         parseStandardStatus(response)
+    }
+
+    /** Retrieves the stable website credentials for this Standard Player device. */
+    suspend fun getStandardDeviceIdentity(): StandardDeviceIdentity = withContext(Dispatchers.IO) {
+        val response = requestJson(
+            method = "POST",
+            path = "/standard/identity",
+            body = JSONObject().put("device_id", standardTrialDeviceId()).toString(),
+        )
+        if (response.optString("mode") != "standard") {
+            throw IllegalStateException("Unexpected device identity mode returned by the server.")
+        }
+        val id = response.optString("id").trim()
+        val key = response.optString("key").trim()
+        if (id.isBlank() || key.isBlank()) {
+            throw IllegalStateException("The server did not return the Standard device credentials.")
+        }
+        StandardDeviceIdentity(id = id, key = key)
     }
 
     /** Reads the authoritative Standard entitlement without creating or extending a trial. */

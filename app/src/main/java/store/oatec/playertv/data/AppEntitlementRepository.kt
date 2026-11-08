@@ -68,6 +68,21 @@ class AppEntitlementRepository(context: Context) {
         StandardDeviceIdentity(id = id, key = key)
     }
 
+    /** Retrieves the M3U URL linked to this device through the OATEC website. */
+    suspend fun getStandardPlaylistUrl(): String? = withContext(Dispatchers.IO) {
+        val identity = getStandardDeviceIdentity()
+        val response = requestJson(
+            method = "POST",
+            path = "/standard/playlist/get",
+            body = JSONObject()
+                .put("id", identity.id)
+                .put("key", identity.key)
+                .toString(),
+        )
+        if (!response.optBoolean("configured", false)) return@withContext null
+        response.optString("m3u_url").trim().takeIf { it.isNotBlank() }
+    }
+
     /** Reads the authoritative Standard entitlement without creating or extending a trial. */
     suspend fun getStandardTrialStatus(): ServerTrialStatus = withContext(Dispatchers.IO) {
         val encodedId = java.net.URLEncoder.encode(standardTrialDeviceId(), "UTF-8")

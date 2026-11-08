@@ -625,6 +625,14 @@ private fun PlayerTvAppContent(
     var kidsExitPinError by remember { mutableStateOf("") }
     var numberInput by rememberSaveable { mutableStateOf("") }
 
+    var selectedChannelId by rememberSaveable { mutableStateOf("") }
+    var epgPrograms by remember(activeSourceId) { mutableStateOf<List<EpgProgram>>(emptyList()) }
+    var epgStatus by remember(activeSourceId) { mutableStateOf("") }
+    var epgClock by remember { mutableStateOf(System.currentTimeMillis()) }
+    val scope = rememberCoroutineScope()
+    val currentSection = Section.entries.firstOrNull { it.name == section } ?: Section.LIVE
+    val sectionHistory = remember { mutableStateListOf<Section>() }
+
     // Receiver-style numeric tuning: wait briefly so multi-digit channel numbers can be entered.
     LaunchedEffect(numberInput, currentSection) {
         if (numberInput.isNotBlank() && currentSection == Section.LIVE) {
@@ -647,13 +655,6 @@ private fun PlayerTvAppContent(
         preferences.normalizeChannelNumbers((catalog.liveChannels + preferences.customChannels()).map { it.id })
         preferenceRevision++
     }
-    var selectedChannelId by rememberSaveable { mutableStateOf("") }
-    var epgPrograms by remember(activeSourceId) { mutableStateOf<List<EpgProgram>>(emptyList()) }
-    var epgStatus by remember(activeSourceId) { mutableStateOf("") }
-    var epgClock by remember { mutableStateOf(System.currentTimeMillis()) }
-    val scope = rememberCoroutineScope()
-    val currentSection = Section.entries.firstOrNull { it.name == section } ?: Section.LIVE
-    val sectionHistory = remember { mutableStateListOf<Section>() }
 
     fun navigateTo(target: Section) {
         val current = Section.entries.firstOrNull { it.name == section } ?: Section.LIVE

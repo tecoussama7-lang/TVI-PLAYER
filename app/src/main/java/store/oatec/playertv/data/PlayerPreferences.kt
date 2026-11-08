@@ -106,14 +106,21 @@ class PlayerPreferences(context: Context) {
     @Synchronized
     fun moveChannelToNumber(channelId: String, number: Int, knownChannelIds: List<String>): Boolean {
         if (number < 1 || channelId !in knownChannelIds) return false
-        val assignments = knownChannelIds.distinct().associateWith(::channelNumber)
-        val previousNumber = assignments[channelId] ?: return false
-        val occupiedChannel = assignments.entries.firstOrNull { (id, assignedNumber) ->
-            id != channelId && assignedNumber == number
-        }?.key
-        val editor = preferences.edit().putInt("channel_number:$channelId", number)
-        occupiedChannel?.let { editor.putInt("channel_number:$it", previousNumber) }
-        editor.apply()
+        val ordered = knownChannelIds.distinct()
+            .map { it to channelNumber(it) }
+            .sortedBy { it.second }
+            .map { it.first }
+            .toMutableList()
+        val currentIndex = ordered.indexOf(channelId)
+        if (currentIndex < 0) return false
+        ordered.removeAt(currentIndex)
+        ordered.add((number - 1).coerceIn(0, ordered.size), channelId)
+
+        val editor = preferences.edit()
+        ordered.forEachIndexed { index, id ->
+            editor.putInt("channel_number:$id", index + 1)
+        }
+        editor.putInt(NEXT_CHANNEL_NUMBER_KEY, ordered.size + 1).apply()
         return true
     }
 

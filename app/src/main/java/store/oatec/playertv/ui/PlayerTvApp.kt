@@ -4030,6 +4030,8 @@ private fun MoviePreviewOverlay(
                             settings.mediaPlaybackRequiresUserGesture = false
                             settings.allowFileAccess = false
                             settings.allowContentAccess = false
+                        settings.allowUniversalAccessFromFileURLs = false
+                        settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_NEVER_ALLOW
                             settings.loadWithOverviewMode = true
                             settings.useWideViewPort = true
                             settings.setSupportZoom(false)
@@ -5864,6 +5866,7 @@ private fun searchYouTubeTrailer(entry: MediaEntry): String? {
 
 @Composable
 private fun YouTubeTrailerDialog(videoId: String, onDismiss: () -> Unit) {
+    if (!videoId.matches(Regex("[A-Za-z0-9_-]{11}"))) return
     var webViewRef by remember { mutableStateOf<WebView?>(null) }
     Dialog(
         onDismissRequest = onDismiss,
@@ -5900,6 +5903,7 @@ private fun YouTubeTrailerDialog(videoId: String, onDismiss: () -> Unit) {
 
 @Composable
 private fun KidsYouTubePlayerDialog(videoId: String, onDismiss: () -> Unit) {
+    if (!videoId.matches(Regex("[A-Za-z0-9_-]{11}"))) return
     var webViewRef by remember { mutableStateOf<WebView?>(null) }
     var customView by remember { mutableStateOf<android.view.View?>(null) }
     var customViewCallback by remember { mutableStateOf<android.webkit.WebChromeClient.CustomViewCallback?>(null) }

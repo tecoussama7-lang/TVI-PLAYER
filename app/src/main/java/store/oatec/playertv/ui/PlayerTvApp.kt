@@ -1717,6 +1717,7 @@ private fun PlayerTvAppContent(
                                 sourceStore.savePremiumCode(code)
                                 premiumCode = code
                             },
+                            standardModeActive = standardModeActive,
                             onExit = { (context as? Activity)?.finishAndRemoveTask() },
                         )
                     }
@@ -2252,6 +2253,7 @@ private fun SettingsScreen(
     onAddSourceInline: (PlayerSource) -> Unit,
     premiumCode: String,
     onSavePremiumCode: (String) -> Unit,
+    standardModeActive: Boolean,
     onExit: () -> Unit,
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -2263,6 +2265,23 @@ private fun SettingsScreen(
     var confirmClearHistory by remember { mutableStateOf(false) }
     var premiumCodeInput by remember(premiumCode) { mutableStateOf(premiumCode) }
     var premiumCodeSaved by remember { mutableStateOf(false) }
+    var standardIdentity by remember { mutableStateOf<store.oatec.playertv.data.StandardDeviceIdentity?>(null) }
+    var standardIdentityLoading by remember { mutableStateOf(false) }
+    var standardIdentityError by remember { mutableStateOf("") }
+    val standardIdentityRepository = remember { store.oatec.playertv.data.AppEntitlementRepository(context) }
+
+    fun loadStandardIdentity() {
+        if (!standardModeActive || standardIdentityLoading) return
+        standardIdentityLoading = true
+        standardIdentityError = ""
+        scope.launch {
+            runCatching { withContext(Dispatchers.IO) { standardIdentityRepository.getStandardDeviceIdentity() } }
+                .onSuccess { standardIdentity = it }
+                .onFailure { standardIdentityError = it.message ?: "تعذر تحميل بيانات الجهاز." }
+            standardIdentityLoading = false
+        }
+    }
+
     var kidsEnabled by remember { mutableStateOf(preferences.kidsModeEnabled()) }
     var showKidsPinDialog by remember { mutableStateOf(false) }
     var kidsPinInput by remember { mutableStateOf("") }
@@ -2377,6 +2396,10 @@ private fun SettingsScreen(
 
     LaunchedEffect(Unit) {
         cacheSizeBytes = withContext(Dispatchers.IO) { cacheBytes() }
+    }
+
+    LaunchedEffect(standardModeActive) {
+        if (standardModeActive && standardIdentity == null) loadStandardIdentity()
     }
 
     BoxWithConstraints(Modifier.fillMaxSize()) {
@@ -2830,6 +2853,39 @@ private fun SettingsScreen(
                         OutlinedButton(onClick = { onSleepTimerChanged(System.currentTimeMillis() + minutes * 60_000L) }, contentPadding = PaddingValues(horizontal = 9.dp, vertical = 6.dp)) { Text("${minutes}m") }
                     }
                     OutlinedButton(onClick = { onSleepTimerChanged(0L) }, contentPadding = PaddingValues(horizontal = 9.dp, vertical = 6.dp)) { Text("Off") }
+                }
+            }
+        }
+        if (standardModeActive) {
+            Surface(color = Panel, shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)), modifier = Modifier.width(settingsCardWidth).height(settingsCardHeight)) {
+                Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text("STANDARD PLAYER — WEBSITE ACCESS", color = Lime, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.2.sp)
+                    Text("استعمل هاد المعطيات فموقع OATEC باش تربط ملف M3U بهاد الجهاز.", color = TextMuted, fontSize = 12.sp)
+                    when {
+                        standardIdentityLoading -> Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            CircularProgressIndicator(Modifier.size(18.dp), color = Lime, strokeWidth = 2.dp)
+                            Text("جارٍ تحميل بيانات الجهاز...", color = TextMuted, fontSize = 12.sp)
+                        }
+                        standardIdentity != null -> {
+                            Text("ID", color = TextMuted, fontSize = 11.sp)
+                            SelectionContainer { Text(standardIdentity!!.id, color = TextMain, fontSize = 14.sp, fontWeight = FontWeight.Bold) }
+                            OutlinedButton(onClick = {
+                                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                                clipboard.setPrimaryClip(android.content.ClipData.newPlainText("OATEC Standard ID", standardIdentity!!.id))
+                            }) { Text("نسخ ID") }
+                            Text("KEY", color = TextMuted, fontSize = 11.sp)
+                            SelectionContainer { Text(standardIdentity!!.key, color = TextMain, fontSize = 13.sp, fontWeight = FontWeight.Bold) }
+                            OutlinedButton(onClick = {
+                                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                                clipboard.setPrimaryClip(android.content.ClipData.newPlainText("OATEC Standard Key", standardIdentity!!.key))
+                            }) { Text("نسخ Key") }
+                        }
+                        standardIdentityError.isNotBlank() -> Text(standardIdentityError, color = ErrorRed, fontSize = 11.sp)
+                    }
+                    if (!standardIdentityLoading) {
+                        OutlinedButton(onClick = ::loadStandardIdentity) { Text("تحديث بيانات الجهاز") }
+                    }
+                    Text("خلي Key سري وما تشاركهش مع أي شخص.", color = TextMuted, fontSize = 10.sp)
                 }
             }
         }

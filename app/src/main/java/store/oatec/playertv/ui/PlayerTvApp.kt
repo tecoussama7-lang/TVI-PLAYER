@@ -14,6 +14,7 @@ import org.json.JSONObject
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import android.view.KeyEvent as AndroidKeyEvent
 import android.webkit.WebView
@@ -623,6 +624,29 @@ private fun PlayerTvAppContent(
     var kidsExitPinInput by remember { mutableStateOf("") }
     var kidsExitPinError by remember { mutableStateOf("") }
     var numberInput by rememberSaveable { mutableStateOf("") }
+
+    // Receiver-style numeric tuning: wait briefly so multi-digit channel numbers can be entered.
+    LaunchedEffect(numberInput, currentSection) {
+        if (numberInput.isNotBlank() && currentSection == Section.LIVE) {
+            val requestedNumber = numberInput.toIntOrNull()
+            delay(1200)
+            if (numberInput.toIntOrNull() == requestedNumber && requestedNumber != null) {
+                numberedChannels(catalog.liveChannels + preferences.customChannels(), preferences)
+                    .firstOrNull { it.second == requestedNumber }
+                    ?.first
+                    ?.let { channel ->
+                        selectedChannelId = channel.id
+                        selectedMedia = channel
+                    }
+                numberInput = ""
+            }
+        }
+    }
+
+    LaunchedEffect(catalog.liveChannels.map { it.id }, preferences.customChannels().map { it.id }) {
+        preferences.normalizeChannelNumbers((catalog.liveChannels + preferences.customChannels()).map { it.id })
+        preferenceRevision++
+    }
     var selectedChannelId by rememberSaveable { mutableStateOf("") }
     var epgPrograms by remember(activeSourceId) { mutableStateOf<List<EpgProgram>>(emptyList()) }
     var epgStatus by remember(activeSourceId) { mutableStateOf("") }
@@ -1344,17 +1368,17 @@ private fun PlayerTvAppContent(
                         AndroidKeyEvent.KEYCODE_7,
                         AndroidKeyEvent.KEYCODE_8,
                         AndroidKeyEvent.KEYCODE_9 -> {
-                            numberInput = (numberInput + (key.keyCode - AndroidKeyEvent.KEYCODE_0)).takeLast(4)
+                            numberInput = (numberInput + (key.keyCode - AndroidKeyEvent.KEYCODE_0)).takeLast(5)
                             true
                         }
                         in AndroidKeyEvent.KEYCODE_NUMPAD_0..AndroidKeyEvent.KEYCODE_NUMPAD_9 -> {
-                            numberInput = (numberInput + (key.keyCode - AndroidKeyEvent.KEYCODE_NUMPAD_0)).takeLast(4)
+                            numberInput = (numberInput + (key.keyCode - AndroidKeyEvent.KEYCODE_NUMPAD_0)).takeLast(5)
                             true
                         }
                         AndroidKeyEvent.KEYCODE_ENTER,
                         AndroidKeyEvent.KEYCODE_NUMPAD_ENTER -> {
                             numberInput.toIntOrNull()?.let { number ->
-                                val match = numberedChannels(catalog.liveChannels, preferences)
+                                val match = numberedChannels(catalog.liveChannels + preferences.customChannels(), preferences)
                                     .firstOrNull { (channel, channelNumber) -> channelNumber == number }
                                 match?.first?.let { selectedChannelId = it.id; selectedMedia = it }
                             }

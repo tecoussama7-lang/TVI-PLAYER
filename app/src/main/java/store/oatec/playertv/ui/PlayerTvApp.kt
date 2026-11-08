@@ -327,13 +327,13 @@ private fun appText(source: String, language: String): String {
     return translations[source]?.get(index) ?: source
 }
 
-private val Ink = Color(0xFF05070A)
-private val Panel = Color(0xFF0C1016)
-private val Raised = Color(0xFF111722)
-private val Lime = Color(0xFFE8B83E)
-private val GoldLight = Color(0xFFFFDA72)
-private val TextMain = Color(0xFFF7F7F5)
-private val TextMuted = Color(0xFF9DA5B1)
+private val Ink = Color(0xFF070B12)
+private val Panel = Color(0xFF101722)
+private val Raised = Color(0xFF182334)
+private val Lime = Color(0xFFF0B94B)
+private val GoldLight = Color(0xFFFFD98A)
+private val TextMain = Color(0xFFF7F8FC)
+private val TextMuted = Color(0xFFA7B2C2)
 private val ErrorRed = Color(0xFFFF8177)
 private const val CHANNEL_INFO_DURATION_MS = 5_000L
 private const val CATALOG_PAGE_SIZE = 100
@@ -1294,16 +1294,16 @@ private fun PlayerTvAppContent(
                 .drawBehind {
                     drawRect(
                         Brush.radialGradient(
-                            colors = listOf(Color(0x1AE8B83E), Color.Transparent),
-                            center = Offset(size.width * 0.1f, size.height * 0.1f),
-                            radius = size.maxDimension * 0.75f,
+                            colors = listOf(Color(0x24F0B94B), Color.Transparent),
+                            center = Offset(size.width * 0.08f, size.height * 0.08f),
+                            radius = size.maxDimension * 0.82f,
                         ),
                     )
                     drawRect(
                         Brush.radialGradient(
-                            colors = listOf(Color(0x12375B91), Color.Transparent),
-                            center = Offset(size.width * 0.9f, size.height * 0.25f),
-                            radius = size.maxDimension * 0.7f,
+                            colors = listOf(Color(0x1D315B8A), Color.Transparent),
+                            center = Offset(size.width * 0.92f, size.height * 0.22f),
+                            radius = size.maxDimension * 0.78f,
                         ),
                     )
                 }
@@ -3221,16 +3221,16 @@ private fun LiveScreen(
                 gridItems(channels, key = { it.id }) { item ->
                     val selected = selectedChannel?.id == item.id
                     Surface(
-                        color = if (selected) Raised else Panel, shape = RoundedCornerShape(10.dp),
-                        border = BorderStroke(if (selected) 2.dp else 1.dp, if (selected) Lime else Color.White.copy(alpha = 0.08f)),
-                        modifier = Modifier.fillMaxWidth().height(if (isWideScreen) 104.dp else 78.dp).combinedClickable(
+                        color = if (selected) Color(0xFF1C2B3E) else Color(0xFF111A27), shape = RoundedCornerShape(14.dp),
+                        border = BorderStroke(if (selected) 2.dp else 1.dp, if (selected) Lime else Color.White.copy(alpha = 0.10f)),
+                        modifier = Modifier.fillMaxWidth().height(if (isWideScreen) 112.dp else 82.dp).combinedClickable(
                             onClick = { selectedChannelId = item.id; previewRequested = true },
                             onLongClick = { channelActionsTarget = item },
                             onDoubleClick = { onPlay(item.copy(title = preferences.channelTitle(item.id, item.title))) },
                         ),
                     ) {
                         Row(Modifier.padding(if (isWideScreen) 10.dp else 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                            Box(Modifier.size(if (isWideScreen) 52.dp else 38.dp).background(Color.Black, RoundedCornerShape(7.dp)), contentAlignment = Alignment.Center) {
+                            Box(Modifier.size(if (isWideScreen) 56.dp else 40.dp).background(Color(0xFF080D15), RoundedCornerShape(9.dp)), contentAlignment = Alignment.Center) {
                                 if (item.logoUrl.isNotBlank()) AsyncImage(model = item.logoUrl, contentDescription = item.title, modifier = Modifier.fillMaxSize().padding(2.dp), contentScale = ContentScale.Fit)
                                 else Text(channelNumber(item, allLiveChannels, preferences).toString(), color = Lime, fontSize = 12.sp, fontWeight = FontWeight.Black)
                             }
@@ -3402,12 +3402,12 @@ private fun CategoryNavigation(
                 categoryListState.animateScrollToItem(selectedIndex)
             }
         }
-        Column(modifier.background(Color(0xFF111B2B), RoundedCornerShape(12.dp)).padding(6.dp)) {
-            Text("CATEGORIES", color = TextMuted, fontSize = 9.sp, fontWeight = FontWeight.ExtraBold, modifier = Modifier.padding(start = 4.dp, bottom = 7.dp))
+        Column(modifier.background(Color(0xE6101928), RoundedCornerShape(16.dp)).border(1.dp, Color.White.copy(alpha = 0.09f), RoundedCornerShape(16.dp)).padding(8.dp)) {
+            Text("CATEGORIES", color = GoldLight.copy(alpha = 0.82f), fontSize = 9.sp, fontWeight = FontWeight.ExtraBold, modifier = Modifier.padding(start = 5.dp, bottom = 9.dp))
             LazyColumn(
                 state = categoryListState,
-                verticalArrangement = Arrangement.spacedBy(7.dp),
-                contentPadding = PaddingValues(bottom = 10.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                contentPadding = PaddingValues(bottom = 12.dp),
             ) {
                 items(distinctCategories, key = { "nav:$it" }) { category ->
                     CategoryNavigationItem(category, selected == category, accent) { onSelect(category) }
@@ -3432,26 +3432,26 @@ private fun CategoryNavigationItem(label: String, selected: Boolean, accent: Col
         else -> Color.White.copy(alpha = 0.10f)
     }
     val background = when {
-        focused -> accent.copy(alpha = 0.34f)
-        selected -> accent.copy(alpha = 0.20f)
+        focused -> accent.copy(alpha = 0.42f)
+        selected -> accent.copy(alpha = 0.23f)
         else -> Color(0xFF1A2638)
     }
     Surface(
         color = background,
         contentColor = Color.White,
-        shape = RoundedCornerShape(11.dp),
+        shape = RoundedCornerShape(13.dp),
         border = BorderStroke(if (focused || selected) 2.dp else 1.dp, borderColor),
         modifier = Modifier.fillMaxWidth()
             .onFocusChanged { focused = it.isFocused }
             .focusable()
             .clickable(onClick = onClick),
     ) {
-        Row(Modifier.padding(horizontal = 7.dp, vertical = 9.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.padding(horizontal = 9.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
             if (selected) {
                 Box(Modifier.width(4.dp).height(22.dp).background(accent, RoundedCornerShape(3.dp)))
                 Spacer(Modifier.width(9.dp))
             }
-            Text(appText(label, LocalAppLanguage.current), color = Color.White, fontSize = 10.sp, fontWeight = if (selected || focused) FontWeight.ExtraBold else FontWeight.Medium, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+            Text(appText(label, LocalAppLanguage.current), color = Color.White, fontSize = 11.sp, fontWeight = if (selected || focused) FontWeight.ExtraBold else FontWeight.Medium, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
             if (focused) {
                 Spacer(Modifier.width(5.dp))
                 Text("›", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Black)
@@ -3701,8 +3701,8 @@ private fun PosterCard(
         ) {
             Surface(
                 color = Raised,
-                shape = RoundedCornerShape(10.dp),
-                border = if (focused) BorderStroke(2.dp, accent) else BorderStroke(1.dp, Color.White.copy(alpha = 0.07f)),
+                shape = RoundedCornerShape(15.dp),
+                border = if (focused) BorderStroke(3.dp, accent) else BorderStroke(1.dp, Color.White.copy(alpha = 0.10f)),
                 modifier = Modifier.fillMaxSize(),
             ) {
                 if (entry.logoUrl.isNotBlank()) AsyncImage(
@@ -3732,7 +3732,7 @@ private fun PosterCard(
                 )
             }
         }
-        Text(entry.title, color = TextMain, fontSize = if (isWideScreen) 14.sp else 11.sp, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 6.dp))
+        Text(entry.title, color = TextMain, fontSize = if (isWideScreen) 14.sp else 11.sp, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 8.dp))
         val subtitle = listOf(entry.year, entry.genre.ifBlank { entry.category }).firstOrNull { it.isNotBlank() }
         if (subtitle != null) Text(subtitle, color = TextMuted, fontSize = if (isWideScreen) 11.sp else 9.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }

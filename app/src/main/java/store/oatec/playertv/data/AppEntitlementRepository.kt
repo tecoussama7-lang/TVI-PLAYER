@@ -119,7 +119,7 @@ class AppEntitlementRepository(context: Context) {
         if (androidId.isNotBlank()) {
             val digest = MessageDigest.getInstance("SHA-256")
                 .digest((appContext.packageName + ":" + androidId).toByteArray(Charsets.UTF_8))
-                .joinToString("") { "%02x".format(it) }
+                .joinToString("") { byte -> "%02x".format(byte.toInt() and 0xff) }
             return "std-$digest"
         }
         val prefs = appContext.getSharedPreferences("oatec_standard_trial", Context.MODE_PRIVATE)

@@ -1732,6 +1732,7 @@ private fun PlayerTvAppContent(
                         Section.TRAILERS -> KinoCheckTrailersScreen(onPlay = { videoId -> selectedKidsYoutubeId = videoId })
                         Section.DOWNLOADS -> OfflineDownloadsScreen(store = offlineDownloadStore, onHome = { goBack() }, onPlay = { selectedMedia = it }, onMessage = { message = it })
                         Section.SOURCES -> SourcesScreen(
+                            standardModeActive = standardModeActive,
                             sources = sources,
                             activeId = activeSourceId,
                             busy = busy,
@@ -4661,6 +4662,7 @@ private fun SeriesScreen(
 
 @Composable
 private fun SourcesScreen(
+    standardModeActive: Boolean,
     sources: List<PlayerSource>,
     activeId: String,
     busy: Boolean,
@@ -4676,12 +4678,17 @@ private fun SourcesScreen(
                 Text(appText("Your IPTV sources", LocalAppLanguage.current), color = TextMain, fontSize = 22.sp, fontWeight = FontWeight.Bold)
                 Text(appText("Source access is provided by your IPTV provider.", LocalAppLanguage.current), color = TextMuted, fontSize = 12.sp)
             }
-            OutlinedButton(onClick = onImport) { Text(appText("Import M3U file", LocalAppLanguage.current)) }
-            Spacer(Modifier.width(8.dp))
-            Button(onClick = onAdd, colors = ButtonDefaults.buttonColors(containerColor = Lime, contentColor = Ink)) { Text(appText(appText("Add source", LocalAppLanguage.current), LocalAppLanguage.current)) }
+            if (!standardModeActive) {
+                OutlinedButton(onClick = onImport) { Text(appText("Import M3U file", LocalAppLanguage.current)) }
+                Spacer(Modifier.width(8.dp))
+                Button(onClick = onAdd, colors = ButtonDefaults.buttonColors(containerColor = Lime, contentColor = Ink)) { Text(appText(appText("Add source", LocalAppLanguage.current), LocalAppLanguage.current)) }
+            }
         }
         Spacer(Modifier.height(20.dp))
-        if (sources.isEmpty()) EmptyState("No sources added", "Add an M3U playlist or an Xtream-compatible account.")
+        if (sources.isEmpty()) EmptyState(
+            if (standardModeActive) "No playlist linked yet" else "No sources added",
+            if (standardModeActive) "Open https://oatec.store/standard-player to add your playlist." else "Add an M3U playlist or an Xtream-compatible account.",
+        )
         else LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             items(sources, key = { it.id }) { source ->
                 var focused by remember { mutableStateOf(false) }
@@ -4694,7 +4701,10 @@ private fun SourcesScreen(
                     Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
                             Text(source.name, color = TextMain, fontSize = 15.sp, fontWeight = FontWeight.Bold)
-                            Text("${source.type.name.replace('_', ' ')} | ${source.serverUrl}", color = TextMuted, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text(
+                                if (standardModeActive) "Playlist managed from oatec.store" else "${source.type.name.replace('_', ' ')} | ${source.serverUrl}",
+                                color = TextMuted, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                            )
                             if (source.serverUrl.startsWith("http://", true)) {
                                 Text(appText("Unencrypted HTTP source", LocalAppLanguage.current), color = ErrorRed, fontSize = 10.sp)
                             }

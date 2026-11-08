@@ -397,8 +397,7 @@ private fun activateOatecCode(context: Context, code: String): PlayerSource {
         val getPhpBase = if (isXtreamGetPhp) m3uUrl.substringBefore('?').substringBeforeLast('/') else ""
         when {
             sourceType == "xtream" && validXtream -> PlayerSource(
-                id = UUID.randomUUID().toString(),
-                name = "OATEC Subscription",
+                id = UUID.randomUUID().toString(),                name = "OATEC Subscription",
                 type = SourceType.XTREAM,
                 serverUrl = server,
                 username = username,
@@ -797,8 +796,7 @@ private fun PlayerTvAppContent(
                             selectedCategory = "All"
                         }
                         CatalogSection.MOVIES -> {
-                            movieCategories = categories
-                            selectedMovieCategory = "All"
+                            movieCategories = categories                            selectedMovieCategory = "All"
                         }
                         CatalogSection.SERIES -> {
                             seriesCategories = categories
@@ -1197,8 +1195,7 @@ private fun PlayerTvAppContent(
                 runCatching { searchYouTubeKidsTrending(Section.SERIES) }.getOrDefault(emptyList()),
             )
         }
-        kidsYoutubeMovies = trendingBySection.first
-        kidsYoutubeSeries = trendingBySection.second
+        kidsYoutubeMovies = trendingBySection.first        kidsYoutubeSeries = trendingBySection.second
     }
 
     val filePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
@@ -1597,8 +1594,7 @@ private fun PlayerTvAppContent(
                             selectedLanguage = appLanguage,
                             onLanguageChanged = onLanguageChanged,
                             uiScale = uiScale,
-                            onUiScaleChanged = onUiScaleChanged,
-                            highContrast = highContrast,
+                            onUiScaleChanged = onUiScaleChanged,                            highContrast = highContrast,
                             onHighContrastChanged = onHighContrastChanged,
                             focusHighlightEnabled = focusHighlight,
                             onFocusHighlightChanged = onFocusHighlightChanged,
@@ -1997,8 +1993,7 @@ private fun InitialSetupScreen(
                     Button(
                         onClick = {
                             val rawUrl = serverUrl.trim()
-                            val parsed = Uri.parse(rawUrl)
-                            val queryUser = parsed.getQueryParameter("username").orEmpty().trim()
+                            val parsed = Uri.parse(rawUrl)                            val queryUser = parsed.getQueryParameter("username").orEmpty().trim()
                             val queryPassword = parsed.getQueryParameter("password").orEmpty()
                             val isXtreamPlaylistUrl =
                                 parsed.lastPathSegment.equals("get.php", ignoreCase = true) &&
@@ -2397,8 +2392,7 @@ private fun SettingsScreen(
                                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
                                 )
                                 if (clearKidsPinError.isNotBlank()) Text(clearKidsPinError, color = Color(0xFFFF7777), fontSize = 12.sp)
-                            }
-                        },
+                            }                        },
                         confirmButton = {
                             TextButton(onClick = {
                                 if (preferences.clearKidsPin(clearKidsPinInput)) {
@@ -2797,8 +2791,7 @@ private fun HomeDashboard(
     compact: Boolean,
     sourceName: String?,
     onSelect: (Section) -> Unit,
-    onExit: () -> Unit,
-) {
+    onExit: () -> Unit,) {
     var selectedHomeCard by remember { mutableStateOf(Section.LIVE) }
     // Keep the home surface simple and cheap to render on Android TV devices.
     Box(Modifier.fillMaxSize().background(Ink)) {
@@ -3176,9 +3169,7 @@ private fun LiveScreen(
                 textStyle = MaterialTheme.typography.bodyMedium.copy(color = TextMain), shape = RoundedCornerShape(10.dp),
             )
         }
-        if (!isWideScreen) {
-            CategoryNavigation(categories, category, Lime, onCategory, vertical = false)
-        }
+        // Categories stay in a compact left rail on every screen size.
         // Keep channel-manager actions reachable on phones as well as TV/desktop layouts.
         if (!isWideScreen && selectedChannel != null) {
             val detail = selectedChannel!!
@@ -3197,8 +3188,7 @@ private fun LiveScreen(
                 TextButton(onClick = { onFavorite(detail) }, contentPadding = PaddingValues(horizontal = 7.dp, vertical = 2.dp)) {
                     Text(if (detail.id in preferences.favorites()) "★ المفضلة" else "☆ المفضلة", color = Lime, fontSize = 11.sp)
                 }
-                TextButton(onClick = { onOrganize(detail) }, contentPadding = PaddingValues(horizontal = 7.dp, vertical = 2.dp)) {
-                    Text(appText("ترتيب / تصنيف", LocalAppLanguage.current), color = TextMain, fontSize = 11.sp)
+                TextButton(onClick = { onOrganize(detail) }, contentPadding = PaddingValues(horizontal = 7.dp, vertical = 2.dp)) {                    Text(appText("ترتيب / تصنيف", LocalAppLanguage.current), color = TextMain, fontSize = 11.sp)
                 }
                 TextButton(onClick = { pendingDeleteChannel = detail }, contentPadding = PaddingValues(horizontal = 7.dp, vertical = 2.dp)) {
                     Text(appText("حذف", LocalAppLanguage.current), color = ErrorRed, fontSize = 11.sp)
@@ -3209,9 +3199,10 @@ private fun LiveScreen(
             busy && catalog.liveChannels.isEmpty() -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { LoadingState("Loading channels", catalogProgress, catalogLoadedItems) }
             channels.isEmpty() -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { EmptyState("No channels available", message.ifBlank { "Add or refresh an IPTV source to load channels." }) }
             else -> Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                if (isWideScreen) {
-                    CategoryNavigation(categories, category, Lime, onCategory, vertical = true, modifier = Modifier.width(190.dp).fillMaxHeight())
-                }
+                CategoryNavigation(
+                    categories, category, Lime, onCategory, vertical = true,
+                    modifier = Modifier.width((screenWidthDp * 0.10f).dp.coerceIn(82.dp, 190.dp)).fillMaxHeight()
+                )
                 LazyVerticalGrid(
                 columns = GridCells.Adaptive(minSize = when { screenWidthDp >= 1500 -> 230.dp; screenWidthDp >= 1000 -> 190.dp; screenWidthDp >= 700 -> 155.dp; screenWidthDp <= 360 -> 118.dp; else -> 132.dp }),
                 state = listState, modifier = Modifier.weight(1f),
@@ -3393,8 +3384,8 @@ private fun CategoryNavigation(
     modifier: Modifier = Modifier,
 ) {
     if (vertical) {
-        Column(modifier.background(Color(0xFF111B2B), RoundedCornerShape(16.dp)).padding(10.dp)) {
-            Text("CATEGORIES", color = TextMuted, fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, modifier = Modifier.padding(start = 8.dp, bottom = 10.dp))
+        Column(modifier.background(Color(0xFF111B2B), RoundedCornerShape(12.dp)).padding(6.dp)) {
+            Text("CATEGORIES", color = TextMuted, fontSize = 9.sp, fontWeight = FontWeight.ExtraBold, modifier = Modifier.padding(start = 4.dp, bottom = 7.dp))
             LazyColumn(verticalArrangement = Arrangement.spacedBy(7.dp), contentPadding = PaddingValues(bottom = 10.dp)) {
                 items(categories.distinct(), key = { "nav:$it" }) { category ->
                     CategoryNavigationItem(category, selected == category, accent) { onSelect(category) }
@@ -3433,12 +3424,12 @@ private fun CategoryNavigationItem(label: String, selected: Boolean, accent: Col
             .focusable()
             .clickable(onClick = onClick),
     ) {
-        Row(Modifier.padding(horizontal = 12.dp, vertical = 11.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.padding(horizontal = 7.dp, vertical = 9.dp), verticalAlignment = Alignment.CenterVertically) {
             if (selected) {
                 Box(Modifier.width(4.dp).height(22.dp).background(accent, RoundedCornerShape(3.dp)))
                 Spacer(Modifier.width(9.dp))
             }
-            Text(appText(label, LocalAppLanguage.current), color = Color.White, fontSize = 12.sp, fontWeight = if (selected || focused) FontWeight.ExtraBold else FontWeight.Medium, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+            Text(appText(label, LocalAppLanguage.current), color = Color.White, fontSize = 10.sp, fontWeight = if (selected || focused) FontWeight.ExtraBold else FontWeight.Medium, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
             if (focused) {
                 Spacer(Modifier.width(5.dp))
                 Text("›", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Black)
@@ -3571,13 +3562,16 @@ private fun MediaScreen(
         }
         if (message.isNotBlank()) Text(message, color = TextMuted, fontSize = 9.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
         Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(if (isWideScreen) 16.dp else 0.dp)) {
-            if (isWideScreen && shelves.size > 1) {
-                CategoryNavigation(shelves, selectedShelf, accent, { shelf -> selectedShelf = shelf; if (shelf in providerCategories) onCategory(shelf) }, vertical = true, modifier = Modifier.width(205.dp).fillMaxHeight())
+            if (shelves.size > 1) {
+                CategoryNavigation(
+                    shelves, selectedShelf, accent,
+                    { shelf -> selectedShelf = shelf; if (shelf in providerCategories) onCategory(shelf) },
+                    vertical = true,
+                    modifier = Modifier.width((screenWidthDp * 0.10f).dp.coerceIn(82.dp, 190.dp)).fillMaxHeight()
+                )
             }
             Column(Modifier.weight(1f).fillMaxHeight()) {
-                if (!isWideScreen && shelves.size > 1) {
-                    CategoryNavigation(shelves, selectedShelf, accent, { shelf -> selectedShelf = shelf; if (shelf in providerCategories) onCategory(shelf) }, vertical = false)
-                }
+                // Category navigation is kept on the left for Movies and Series.
         if (isMovies && search.isBlank() && selectedShelf == "All") {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(bottom = 8.dp)) {
                 listOf("4K", "UHD", "1080p", "HD").forEach { quality ->
@@ -3597,8 +3591,7 @@ private fun MediaScreen(
             ) {
                 rowShelves.forEachIndexed { index, (rowTitle, rowEntries) ->
                     if (rowEntries.isNotEmpty()) {
-                        item(key = "shelf-heading:$index:$rowTitle") {
-                            Text(rowTitle, color = Color.White, fontSize = if (screenWidthDp >= 1200) 23.sp else if (isWideScreen) 20.sp else 18.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 8.dp))
+                        item(key = "shelf-heading:$index:$rowTitle") {                            Text(rowTitle, color = Color.White, fontSize = if (screenWidthDp >= 1200) 23.sp else if (isWideScreen) 20.sp else 18.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 8.dp))
                         }
                         item(key = "shelf-row:$index:$rowTitle") {
                             LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(end = 12.dp)) {
@@ -3997,8 +3990,7 @@ private fun MediaDetailsDialog(
                         fontWeight = FontWeight.Bold,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
-                    )
-                    TextButton(onClick = onDismiss) { Text(appText("Close", LocalAppLanguage.current), color = GoldLight) }
+                    )                    TextButton(onClick = onDismiss) { Text(appText("Close", LocalAppLanguage.current), color = GoldLight) }
                 }
                 HorizontalDivider(color = TextMain.copy(alpha = 0.1f))
                 Row(
@@ -4397,8 +4389,7 @@ private fun AddSourceDialog(onDismiss: () -> Unit, onSave: (PlayerSource) -> Uni
                             epgUrl = epgUrl.trim(),
                         ),
                     )
-                }
-            }) { Text(appText("Save", LocalAppLanguage.current)) }
+                }            }) { Text(appText("Save", LocalAppLanguage.current)) }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text(appText("Cancel", LocalAppLanguage.current)) } },
     )
@@ -4797,8 +4788,7 @@ private fun PlaybackDialog(
                             controllerShowTimeoutMs = 3_500
                             controllerAutoShow = entry.kind != MediaKind.LIVE
                             setOnClickListener {
-                                if (entry.kind != MediaKind.LIVE) {
-                                    controlsVisible = true
+                                if (entry.kind != MediaKind.LIVE) {                                    controlsVisible = true
                                     showController()
                                 }
                             }
@@ -5197,8 +5187,7 @@ private fun OrganizeChannelDialog(
 private fun LoadingState(label: String, progress: Float? = null, loadedItems: Int = 0) {
     if (progress == null) {
         Column(Modifier.fillMaxWidth().padding(28.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            CircularProgressIndicator(color = Lime)
-            Text(label, color = TextMuted, fontSize = 13.sp)
+            CircularProgressIndicator(color = Lime)            Text(label, color = TextMuted, fontSize = 13.sp)
         }
         return
     }
@@ -5597,8 +5586,7 @@ private fun KidsDashboard(
                         }
                     }
                 }
-            }
-        }
+            }        }
     }
 }
 
@@ -5997,8 +5985,7 @@ private fun YouTubeKidsSearchDialog(onDismiss: () -> Unit) {
                     )
                     Button(
                         onClick = {
-                            submittedQuery = query.trim()
-                            val target = Uri.parse("https://m.youtube.com/").buildUpon()
+                            submittedQuery = query.trim()                            val target = Uri.parse("https://m.youtube.com/").buildUpon()
                                 .appendPath("search")
                                 .appendQueryParameter("q", submittedQuery)
                                 .build()

@@ -657,15 +657,23 @@ private fun PlayerTvAppContent(
         }
     }
 
-    LaunchedEffect(activeSourceId, catalog.liveChannels.size, preferences.customChannels().map { it.id }) {
+    LaunchedEffect(activeSourceId, loadedCatalogs.contains("$activeSourceId:LIVE")) {
         val sourceId = activeSourceId
-        val storedIds = if (sourceId.isBlank()) emptyList() else withContext(Dispatchers.IO) {
-            mediaCatalogStore.allIds(sourceId, CatalogSection.LIVE.name)
+        if (sourceId.isBlank() || "$sourceId:LIVE" !in loadedCatalogs) return@LaunchedEffect
+
+        // Reading the full channel directory and normalizing thousands of
+        // SharedPreferences keys must never run on Compose's main thread.
+        val mergedIds = withContext(Dispatchers.IO) {
+            val storedIds = mediaCatalogStore.allIds(sourceId, CatalogSection.LIVE.name)
+            val customIds = preferences.customChannels().map { it.id }
+            (storedIds + customIds).distinct().also { ids ->
+                preferences.normalizeChannelNumbers(ids)
+            }
         }
-        val mergedIds = (storedIds + catalog.liveChannels.map { it.id } + preferences.customChannels().map { it.id }).distinct()
-        allLiveChannelIds = mergedIds
-        preferences.normalizeChannelNumbers(mergedIds)
-        preferenceRevision++
+        if (sourceId == activeSourceId) {
+            allLiveChannelIds = mergedIds
+            preferenceRevision++
+        }
     }
 
     fun navigateTo(target: Section) {

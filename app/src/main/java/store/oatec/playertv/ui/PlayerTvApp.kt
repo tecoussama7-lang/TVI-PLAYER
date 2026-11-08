@@ -4277,6 +4277,7 @@ private fun SeriesScreen(
                     }
                 }
             }
+            }
         }
     }
 }
@@ -6032,7 +6033,6 @@ private fun YouTubeKidsSearchDialog(onDismiss: () -> Unit) {
                         if (webViewRef === view) webViewRef = null
                     },
                 )
-            }
             }
         }
     }

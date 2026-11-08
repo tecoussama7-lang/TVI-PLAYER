@@ -9,6 +9,7 @@ on:
       - feature/prompt-full-implementation
       - feature/isolated-category-cache
       - feature/kids-mode-category-discovery
+      - security-hardening-non-provider
   workflow_dispatch:
 
 permissions:

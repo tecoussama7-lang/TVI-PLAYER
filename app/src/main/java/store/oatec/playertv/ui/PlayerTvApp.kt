@@ -585,21 +585,6 @@ private fun PlayerTvAppContent(
     }
     val standardEntitlementRepository = remember { store.oatec.playertv.data.AppEntitlementRepository(context) }
     val standardModeActive = sources.isNotEmpty() && sources.none { it.name == "OATEC Subscription" }
-    var standardWelcomeIdentity by remember { mutableStateOf<store.oatec.playertv.data.StandardDeviceIdentity?>(null) }
-    var showStandardWelcomeDialog by remember { mutableStateOf(false) }
-    LaunchedEffect(standardModeActive) {
-        if (standardModeActive) {
-            runCatching { standardEntitlementRepository.getStandardDeviceIdentity() }
-                .onSuccess { identity ->
-                    standardWelcomeIdentity = identity
-                    val welcomePrefs = context.getSharedPreferences("oatec_standard_welcome", Context.MODE_PRIVATE)
-                    if (!welcomePrefs.getBoolean("shown", false)) {
-                        showStandardWelcomeDialog = true
-                        welcomePrefs.edit().putBoolean("shown", true).apply()
-                    }
-                }
-        }
-    }
     var standardTrialStatus by remember { mutableStateOf<store.oatec.playertv.data.ServerTrialStatus?>(null) }
     var standardTrialLoading by remember { mutableStateOf(false) }
     var standardTrialError by remember { mutableStateOf("") }
@@ -846,34 +831,6 @@ private fun PlayerTvAppContent(
 
     // Keep children inside Kids Mode when Back is pressed, including from LIVE.
     // A normal app cannot block Android Home/Recents without device kiosk/lock-task setup.
-    if (showStandardWelcomeDialog && standardWelcomeIdentity != null) {
-        val identity = standardWelcomeIdentity!!
-        AlertDialog(
-            onDismissRequest = { showStandardWelcomeDialog = false },
-            title = { Text("عرض تجريبي — Standard Player", color = GoldLight) },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text("مرحبا بك! هاد المعلومات خاصة بهاد الجهاز. استعملها فالموقع لربط رابط M3U.", color = TextMuted)
-                    Text("Device ID", color = TextMuted, fontSize = 11.sp)
-                    SelectionContainer { Text(identity.id, color = Color.White, fontWeight = FontWeight.Bold) }
-                    Text("Device Key", color = TextMuted, fontSize = 11.sp)
-                    SelectionContainer { Text(identity.key, color = Color.White, fontWeight = FontWeight.Bold) }
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        OutlinedButton(onClick = {
-                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-                            clipboard.setPrimaryClip(android.content.ClipData.newPlainText("Standard Device ID", identity.id))
-                        }) { Text("نسخ ID") }
-                        OutlinedButton(onClick = {
-                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-                            clipboard.setPrimaryClip(android.content.ClipData.newPlainText("Standard Device Key", identity.key))
-                        }) { Text("نسخ Key") }
-                    }
-                }
-            },
-            confirmButton = { TextButton(onClick = { showStandardWelcomeDialog = false }) { Text("متابعة") } },
-        )
-    }
-
     BackHandler(enabled = true) {
         if (kidsModeActive) {
             section = Section.HOME.name
@@ -2600,10 +2557,14 @@ private fun SettingsScreen(
                     Text(appText("SOURCES & PLAYLISTS", selectedLanguage), color = Lime, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.3.sp)
                     Text(appText("Add or update your IPTV playlist without leaving Settings.", selectedLanguage), color = TextMuted, fontSize = 11.sp)
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Button(onClick = { showInlineAddSource = true }, colors = ButtonDefaults.buttonColors(containerColor = Lime, contentColor = Ink)) {
-                            Text(appText("＋ Add M3U / Xtream", selectedLanguage), fontWeight = FontWeight.Bold)
+                        if (!standardModeActive) {
+                            Button(onClick = { showInlineAddSource = true }, colors = ButtonDefaults.buttonColors(containerColor = Lime, contentColor = Ink)) {
+                                Text(appText("＋ Add M3U / Xtream", selectedLanguage), fontWeight = FontWeight.Bold)
+                            }
+                            OutlinedButton(onClick = onManageSources) { Text(appText("All sources", selectedLanguage)) }
+                        } else {
+                            Text("Standard User: playlist management is available on oatec.store.", color = TextMuted, fontSize = 11.sp)
                         }
-                        OutlinedButton(onClick = onManageSources) { Text(appText("All sources", selectedLanguage)) }
                     }
                 }
             }
@@ -2973,11 +2934,12 @@ private fun SettingsScreen(
         if (standardModeActive) {
             Surface(color = Panel, shape = RoundedCornerShape(16.dp), border = BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)), modifier = Modifier.width(settingsCardWidth).height(settingsCardHeight)) {
                 Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text("STANDARD PLAYER — WEBSITE ACCESS", color = Lime, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.2.sp)
-                    Text("استعمل هاد المعطيات فموقع OATEC باش تربط رابط M3U بهاد الجهاز.", color = TextMuted, fontSize = 12.sp)
+                    Text("STANDARD PLAYER · FREE TRIAL — 7 DAYS", color = Lime, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.0.sp)
+                    Text("Device ID وKey ديال هاد الجهاز. استعملهم فصفحة OATEC لإضافة Playlist.", color = TextMuted, fontSize = 12.sp)
+                    Text("https://oatec.store/standard-player", color = GoldLight, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                     OutlinedButton(onClick = {
                         context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://oatec.store/standard-player")))
-                    }) { Text("فتح صفحة ربط M3U") }
+                    }) { Text("فتح صفحة إضافة M3U") }
                     when {
                         standardIdentityLoading -> Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                             CircularProgressIndicator(Modifier.size(18.dp), color = Lime, strokeWidth = 2.dp)

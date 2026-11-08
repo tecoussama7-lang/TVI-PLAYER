@@ -2005,6 +2005,21 @@ private fun InitialSetupScreen(
     var error by rememberSaveable { mutableStateOf("") }
     var activationBusy by rememberSaveable { mutableStateOf(false) }
     var standardTrialBusy by rememberSaveable { mutableStateOf(false) }
+    var standardIdentity by remember { mutableStateOf<store.oatec.playertv.data.StandardDeviceIdentity?>(null) }
+    var standardIdentityLoading by remember { mutableStateOf(false) }
+    var standardIdentityError by remember { mutableStateOf("") }
+    LaunchedEffect(entryScreen) {
+        if (entryScreen == "standard" && standardIdentity == null && !standardIdentityLoading) {
+            standardIdentityLoading = true
+            runCatching {
+                withContext(Dispatchers.IO) {
+                    store.oatec.playertv.data.AppEntitlementRepository(context).getStandardDeviceIdentity()
+                }
+            }.onSuccess { standardIdentity = it }
+                .onFailure { standardIdentityError = it.message ?: "تعذر تحميل بيانات الجهاز." }
+            standardIdentityLoading = false
+        }
+    }
     val activationScope = rememberCoroutineScope()
     val isXtream = sourceType == SourceType.XTREAM.name
     val accent = Color(0xFFE50920)
@@ -2088,7 +2103,7 @@ private fun InitialSetupScreen(
                             Text("◉", color = accent, fontSize = 22.sp, modifier = Modifier.align(Alignment.TopEnd))
                             Column(Modifier.align(Alignment.CenterEnd), horizontalAlignment = Alignment.End) {
                                 Text(appText("STANDARD PLAYER", LocalAppLanguage.current), color = Color.White, fontSize = if (compactLandscape) 18.sp else 24.sp, fontWeight = FontWeight.ExtraBold)
-                                Text(appText("M3U  •  XTREAM CODES", LocalAppLanguage.current), color = Color(0xFFAAAAAA), fontSize = if (compactLandscape) 9.sp else 11.sp, letterSpacing = 1.sp)
+                                Text("FREE TRIAL · 7 DAYS", color = Color(0xFFAAAAAA), fontSize = if (compactLandscape) 9.sp else 11.sp, letterSpacing = 1.sp)
                             }
                             Text("→", color = accent, fontSize = 24.sp, modifier = Modifier.align(Alignment.BottomStart))
                         }
@@ -2183,101 +2198,74 @@ private fun InitialSetupScreen(
         } else {
             Column(
                 Modifier.fillMaxSize().padding(horizontal = horizontalPadding, vertical = if (compactLandscape) 8.dp else 20.dp),
-                verticalArrangement = Arrangement.spacedBy(if (compactLandscape) 6.dp else 12.dp),
+                verticalArrangement = Arrangement.spacedBy(if (compactLandscape) 8.dp else 14.dp),
+                horizontalAlignment = Alignment.End,
             ) {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     OutlinedButton(onClick = { entryScreen = "welcome"; error = "" }) { Text("← رجوع") }
                     Spacer(Modifier.weight(1f))
                     Column(horizontalAlignment = Alignment.End) {
-                        Text(appText("STANDARD PLAYER", LocalAppLanguage.current), color = Color.White, fontSize = if (compactLandscape) 18.sp else 25.sp, fontWeight = FontWeight.Black)
-                        Text("اختار طريقة الاتصال بمصدر القنوات", color = Color(0xFFBDBDBD), fontSize = if (compactLandscape) 9.sp else 12.sp)
+                        Text("STANDARD USER", color = Color.White, fontSize = if (compactLandscape) 18.sp else 25.sp, fontWeight = FontWeight.Black)
+                        Text("FREE TRIAL · 7 DAYS", color = accent, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                     }
                 }
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    CategoryPill("Xtream Codes", isXtream) { sourceType = SourceType.XTREAM.name; error = "" }
-                    CategoryPill("M3U URL", !isXtream) { sourceType = SourceType.M3U.name; error = "" }
-                }
-                if (compactLandscape) {
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        SetupField(serverUrl, { serverUrl = it; error = "" }, if (isXtream) "Server URL" else "M3U playlist URL", Modifier.weight(1.6f), uri = true)
-                        SetupField(sourceName, { sourceName = it }, "Source name (optional)", Modifier.weight(1f))
-                    }
-                    if (isXtream) {
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            SetupField(username, { username = it; error = "" }, "Username", Modifier.weight(1f))
-                            SetupField(password, { password = it; error = "" }, "Password", Modifier.weight(1f), password = true)
-                        }
-                    }
-                } else {
-                    SetupField(sourceName, { sourceName = it }, "Source name (optional)", Modifier.fillMaxWidth())
-                    SetupField(serverUrl, { serverUrl = it; error = "" }, if (isXtream) "Server URL" else "M3U playlist URL", Modifier.fillMaxWidth(), uri = true)
-                    if (isXtream) {
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            SetupField(username, { username = it; error = "" }, "Username", Modifier.weight(1f))
-                            SetupField(password, { password = it; error = "" }, "Password", Modifier.weight(1f), password = true)
-                        }
-                    }
-                }
-                if (serverUrl.startsWith("http://", true)) {
-                    Text(appText("HTTP غير مشفر؛ استعمل HTTPS إلا كان متاح.", LocalAppLanguage.current), color = ErrorRed, fontSize = 9.sp)
-                }
-                if (error.isNotBlank()) Text(error, color = ErrorRed, fontSize = 11.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                Spacer(Modifier.weight(1f, fill = !compactLandscape))
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    OutlinedButton(
-                        onClick = {
-                            onComplete(
-                                "",
-                                PlayerSource(
-                                    id = "oatec-standard-playlist",
-                                    name = "OATEC Standard Playlist",
-                                    type = SourceType.M3U,
-                                    serverUrl = "",
-                                ),
-                            )
-                        },
-                        modifier = Modifier.weight(1f).height(if (compactLandscape) 42.dp else 48.dp),
-                    ) { Text("متابعة للربط من الموقع", fontSize = 11.sp) }
-                    Button(
-                        onClick = {
-                            val rawUrl = serverUrl.trim()
-                            val parsed = Uri.parse(rawUrl)
-                            val queryUser = parsed.getQueryParameter("username").orEmpty().trim()
-                            val queryPassword = parsed.getQueryParameter("password").orEmpty()
-                            val isXtreamPlaylistUrl =
-                                parsed.lastPathSegment.equals("get.php", ignoreCase = true) &&
-                                queryUser.isNotBlank() && queryPassword.isNotBlank()
-                            val resolvedSource = if (isXtreamPlaylistUrl) {
-                                val baseUrl = rawUrl.substringBefore('?').substringBeforeLast('/')
-                                PlayerSource(
-                                    id = UUID.randomUUID().toString(),
-                                    name = sourceName.trim().ifBlank { "Xtream source" },
-                                    type = SourceType.XTREAM,
-                                    serverUrl = baseUrl,
-                                    username = queryUser,
-                                    password = queryPassword,
-                                )
-                            } else {
-                                PlayerSource(
-                                    id = UUID.randomUUID().toString(),
-                                    name = sourceName.trim().ifBlank { if (isXtream) "Xtream source" else "M3U playlist" },
-                                    type = if (isXtream) SourceType.XTREAM else SourceType.M3U,
-                                    serverUrl = rawUrl,
-                                    username = username.trim(),
-                                    password = password,
-                                )
+                Text("استعمل Device ID وKey ديال هاد الجهاز باش تزيد رابط M3U من موقع OATEC.", color = Color(0xFFBDBDBD), fontSize = 13.sp)
+                Surface(
+                    modifier = Modifier.fillMaxWidth().weight(1f, fill = false),
+                    color = panel,
+                    shape = RoundedCornerShape(18.dp),
+                    border = BorderStroke(1.dp, Color(0xFF393939)),
+                ) {
+                    Column(
+                        Modifier.fillMaxWidth().padding(if (compactLandscape) 14.dp else 22.dp),
+                        verticalArrangement = Arrangement.spacedBy(if (compactLandscape) 7.dp else 11.dp),
+                        horizontalAlignment = Alignment.End,
+                    ) {
+                        when {
+                            standardIdentityLoading -> Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                CircularProgressIndicator(Modifier.size(18.dp), color = accent, strokeWidth = 2.dp)
+                                Text("جارٍ تحميل بيانات الجهاز...", color = Color(0xFFBDBDBD), fontSize = 12.sp)
                             }
-                            when {
-                                parsed.host.isNullOrBlank() || parsed.scheme !in setOf("http", "https") -> error = "دخل رابط HTTP أو HTTPS صحيح."
-                                isXtream && (username.isBlank() || password.isBlank()) -> error = "دخل Username وPassword ديال Xtream."
-                                isXtreamPlaylistUrl && (resolvedSource.serverUrl.isBlank() || resolvedSource.username.isBlank() || resolvedSource.password.isBlank()) -> error = "رابط Xtream M3U ناقص معلومات الدخول."
-                                else -> onComplete(premiumCode.trim(), resolvedSource)
+                            standardIdentity != null -> {
+                                Text("DEVICE ID", color = Color(0xFFAAAAAA), fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                SelectionContainer { Text(standardIdentity!!.id, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold) }
+                                OutlinedButton(onClick = {
+                                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                                    clipboard.setPrimaryClip(android.content.ClipData.newPlainText("OATEC Standard ID", standardIdentity!!.id))
+                                }) { Text("نسخ Device ID") }
+                                Text("DEVICE KEY", color = Color(0xFFAAAAAA), fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                SelectionContainer { Text(standardIdentity!!.key, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold) }
+                                OutlinedButton(onClick = {
+                                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                                    clipboard.setPrimaryClip(android.content.ClipData.newPlainText("OATEC Standard Key", standardIdentity!!.key))
+                                }) { Text("نسخ Key") }
                             }
-                        },
-                        modifier = Modifier.weight(1f).height(if (compactLandscape) 42.dp else 48.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = accent, contentColor = Color.White),
-                    ) { Text("اتصال وبدء الاستخدام", fontWeight = FontWeight.Bold, fontSize = if (compactLandscape) 11.sp else 14.sp) }
+                            standardIdentityError.isNotBlank() -> Text(standardIdentityError, color = ErrorRed, fontSize = 12.sp)
+                        }
+                        Text("صفحة إضافة Playlist:", color = Color(0xFFAAAAAA), fontSize = 11.sp)
+                        Text("https://oatec.store/standard-player", color = Color(0xFFFF7777), fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                        Button(
+                            onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://oatec.store/standard-player"))) },
+                            colors = ButtonDefaults.buttonColors(containerColor = accent, contentColor = Color.White),
+                        ) { Text("فتح صفحة إضافة M3U") }
+                        Text("خلي Device Key سري وما تشاركوش مع أي شخص.", color = Color(0xFF999999), fontSize = 10.sp)
+                    }
                 }
+                Button(
+                    onClick = {
+                        onComplete(
+                            "",
+                            PlayerSource(
+                                id = "oatec-standard-playlist",
+                                name = "OATEC Standard Playlist",
+                                type = SourceType.M3U,
+                                serverUrl = "",
+                            ),
+                        )
+                    },
+                    modifier = Modifier.fillMaxWidth().height(if (compactLandscape) 42.dp else 48.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = accent, contentColor = Color.White),
+                ) { Text("متابعة إلى التطبيق") }
             }
         }
     }

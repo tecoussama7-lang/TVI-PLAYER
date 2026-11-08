@@ -2207,9 +2207,19 @@ private fun InitialSetupScreen(
                 Spacer(Modifier.weight(1f, fill = !compactLandscape))
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     OutlinedButton(
-                        onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://oatec.store/"))) },
+                        onClick = {
+                            onComplete(
+                                "",
+                                PlayerSource(
+                                    id = "oatec-standard-playlist",
+                                    name = "OATEC Standard Playlist",
+                                    type = SourceType.M3U,
+                                    serverUrl = "",
+                                ),
+                            )
+                        },
                         modifier = Modifier.weight(1f).height(if (compactLandscape) 42.dp else 48.dp),
-                    ) { Text(appText("OATEC website", LocalAppLanguage.current), fontSize = 11.sp) }
+                    ) { Text("ربط M3U من الموقع", fontSize = 11.sp) }
                     Button(
                         onClick = {
                             val rawUrl = serverUrl.trim()

@@ -3617,6 +3617,7 @@ private fun MediaScreen(
         }
     }
 }
+}
 
 private fun mediaItemForStream(
     url: String,
@@ -4280,6 +4281,7 @@ private fun SeriesScreen(
             }
         }
     }
+}
 }
 
 @Composable

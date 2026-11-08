@@ -2,14 +2,13 @@ package store.oatec.playertv.data
 
 import android.content.Context
 import android.os.Build
+import java.net.HttpURLConnection
+import java.net.URL
 import java.util.UUID
+import org.json.JSONObject
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
-/**
- * Client-side model for the future OATEC licensing API.
- *
- * IMPORTANT: the local trial timestamp is a UX fallback only. It is not tamper-proof.
- * Production access decisions must come from the OATEC server and be signed/validated.
- */
 data class TrialStatus(
     val startedAtMillis: Long,
     val expiresAtMillis: Long,
@@ -18,34 +17,98 @@ data class TrialStatus(
     val isActive: Boolean get() = remainingMillis > 0L
 }
 
+data class ServerTrialStatus(
+    val active: Boolean,
+    val startedAt: String?,
+    val expiresAt: String?,
+    val remainingSeconds: Long,
+    val serverTime: String?,
+)
+
 class AppEntitlementRepository(context: Context) {
     private val appContext = context.applicationContext
-    private val prefs = appContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
-    /**
-     * Starts the 7-day trial exactly once on this installation.
-     * Server-side first-seen/device records must replace this local-only source of truth
-     * before public commercial release.
-     */
-    fun getOrStartTrial(nowMillis: Long = System.currentTimeMillis()): TrialStatus {
-        val savedStart = prefs.getLong(KEY_TRIAL_STARTED_AT, 0L)
-        val startedAt = if (savedStart > 0L) savedStart else nowMillis.also {
-            prefs.edit().putLong(KEY_TRIAL_STARTED_AT, it).apply()
-        }
-        // Prevent a simple device-clock rollback from extending the local UX trial.
-        // This is still not a server-grade entitlement decision.
-        val lastSeen = prefs.getLong(KEY_LAST_SEEN_AT, 0L)
-        val effectiveNow = maxOf(nowMillis, lastSeen)
-        if (effectiveNow > lastSeen) prefs.edit().putLong(KEY_LAST_SEEN_AT, effectiveNow).apply()
-        val expiresAt = startedAt + TRIAL_DURATION_MILLIS
-        return TrialStatus(
-            startedAtMillis = startedAt,
-            expiresAtMillis = expiresAt,
-            remainingMillis = (expiresAt - effectiveNow).coerceAtLeast(0L),
+    /** Creates the Standard trial once on the server, then always returns the server record. */
+    suspend fun startOrGetStandardTrial(): ServerTrialStatus = withContext(Dispatchers.IO) {
+        val payload = JSONObject()
+            .put("device_id", deviceId())
+            .put("device_name", (Build.MANUFACTURER + " " + Build.MODEL).trim().take(255))
+            .put("platform", "android")
+            .put("app_version", "1.0.0")
+        val response = requestJson(
+            method = "POST",
+            path = "/entitlement/standard-trial",
+            body = payload.toString(),
+        )
+        parseStandardStatus(response)
+    }
+
+    /** Reads the authoritative Standard entitlement without creating or extending a trial. */
+    suspend fun getStandardTrialStatus(): ServerTrialStatus = withContext(Dispatchers.IO) {
+        val encodedId = java.net.URLEncoder.encode(deviceId(), "UTF-8")
+        val response = requestJson(
+            method = "GET",
+            path = "/entitlement/status?device_id=$encodedId",
+            body = null,
+        )
+        val standard = response.optJSONObject("standard")
+            ?: throw IllegalStateException("The server did not return Standard trial status.")
+        ServerTrialStatus(
+            active = standard.optBoolean("active", false),
+            startedAt = standard.optString("started_at").takeIf { it.isNotBlank() && it != "null" },
+            expiresAt = standard.optString("expires_at").takeIf { it.isNotBlank() && it != "null" },
+            remainingSeconds = standard.optLong("remaining_seconds", 0L).coerceAtLeast(0L),
+            serverTime = response.optString("server_time").takeIf { it.isNotBlank() },
         )
     }
 
-    /** Stable per-installation identifier, shared with the existing Premium activation flow. */
+    private fun parseStandardStatus(response: JSONObject): ServerTrialStatus {
+        if (response.optString("mode") != "standard") {
+            throw IllegalStateException("Unexpected entitlement mode returned by the server.")
+        }
+        return ServerTrialStatus(
+            active = response.optBoolean("active", false),
+            startedAt = response.optString("started_at").takeIf { it.isNotBlank() && it != "null" },
+            expiresAt = response.optString("expires_at").takeIf { it.isNotBlank() && it != "null" },
+            remainingSeconds = response.optLong("remaining_seconds", 0L).coerceAtLeast(0L),
+            serverTime = response.optString("server_time").takeIf { it.isNotBlank() },
+        )
+    }
+
+    private fun requestJson(method: String, path: String, body: String?): JSONObject {
+        val connection = (URL(API_BASE_URL + path).openConnection() as HttpURLConnection).apply {
+            requestMethod = method
+            connectTimeout = 12000
+            readTimeout = 15000
+            useCaches = false
+            setRequestProperty("Accept", "application/json")
+            setRequestProperty("Cache-Control", "no-store")
+            if (body != null) {
+                doOutput = true
+                setRequestProperty("Content-Type", "application/json; charset=utf-8")
+            }
+        }
+        try {
+            if (body != null) {
+                connection.outputStream.use { it.write(body.toByteArray(Charsets.UTF_8)) }
+            }
+            val status = connection.responseCode
+            val stream = if (status in 200..299) connection.inputStream else connection.errorStream
+            val raw = stream?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }.orEmpty()
+            val json = runCatching { JSONObject(raw) }.getOrElse {
+                throw IllegalStateException("The licensing server returned an unreadable response.")
+            }
+            if (status !in 200..299 || !json.optBoolean("ok", false)) {
+                val reason = json.optString("error").ifBlank { "HTTP $status" }
+                throw IllegalStateException(reason)
+            }
+            return json
+        } finally {
+            connection.disconnect()
+        }
+    }
+
+    /** Stable per-installation identifier shared with the existing activation flow. */
     fun deviceId(): String {
         val activationPrefs = appContext.getSharedPreferences("oatec_activation", Context.MODE_PRIVATE)
         return activationPrefs.getString("device_id", null) ?: UUID.randomUUID().toString().also {
@@ -53,19 +116,8 @@ class AppEntitlementRepository(context: Context) {
         }
     }
 
-    fun activationDevicePayload(): Map<String, String> = mapOf(
-        "device_id" to deviceId(),
-        "device_name" to (Build.MANUFACTURER + " " + Build.MODEL).trim().take(255),
-        "platform" to "android",
-    )
-
     companion object {
         const val TRIAL_DURATION_MILLIS = 7L * 24L * 60L * 60L * 1000L
         const val API_BASE_URL = "https://admin.oatec.store/api/player"
-        const val ENTITLEMENT_STATUS_PATH = "/entitlement/status"
-        const val ENTITLEMENT_ACTIVATE_PATH = "/entitlement/activate"
-        private const val PREFS_NAME = "oatec_app_entitlement"
-        private const val KEY_TRIAL_STARTED_AT = "trial_started_at"
-        private const val KEY_LAST_SEEN_AT = "trial_last_seen_at"
     }
 }

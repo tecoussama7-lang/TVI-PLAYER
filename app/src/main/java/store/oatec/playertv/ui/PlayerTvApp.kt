@@ -2284,11 +2284,15 @@ private fun InitialSetupScreen(
                     ) {
                         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                             Text("الفترة التجريبية المجانية", color = Color(0xFFD6BD8A), fontSize = if (compactStandard) 9.sp else 11.sp, fontWeight = FontWeight.Bold)
-                            val trialDays = if (standardTrialRemainingSeconds > 0L) ((standardTrialRemainingSeconds + 86399L) / 86400L).toInt() else 0
+                            val trialDays = if (standardTrialRemainingSeconds > 0L) (standardTrialRemainingSeconds / 86400L).toInt() else 0
+                            val trialHours = ((standardTrialRemainingSeconds.coerceAtLeast(0L) % 86400L) / 3600L).toInt()
+                            val trialMinutes = ((standardTrialRemainingSeconds.coerceAtLeast(0L) % 3600L) / 60L).toInt()
+                            val trialSeconds = (standardTrialRemainingSeconds.coerceAtLeast(0L) % 60L).toInt()
+                            val trialClock = "%02d:%02d:%02d".format(trialHours, trialMinutes, trialSeconds)
                             val trialTimeText = when {
                                 standardTrialStatusLoading && standardTrialRemainingSeconds < 0L -> "جارٍ التحقق..."
                                 standardTrialRemainingSeconds < 0L -> "المدة غير متاحة"
-                                trialDays > 0 -> "متبقي " + trialDays + if (trialDays == 1) " يوم" else " أيام"
+                                standardTrialRemainingSeconds > 0L -> "متبقي " + trialDays + (if (trialDays == 1) " يوم" else " أيام") + " • " + trialClock
                                 else -> "انتهت الفترة التجريبية"
                             }
                             Text(trialTimeText, color = if (trialDays > 0) Color.White else Color(0xFFFFB4AB), fontSize = if (compactStandard) 14.sp else 17.sp, fontWeight = FontWeight.Bold)

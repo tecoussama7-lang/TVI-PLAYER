@@ -2029,7 +2029,24 @@ private fun InitialSetupScreen(
     var standardPlaylistChecking by remember { mutableStateOf(false) }
     var standardPlaylistMissing by remember { mutableStateOf(false) }
     var standardPlaylistFeedback by remember { mutableStateOf("") }
+    var standardTrialRemainingSeconds by rememberSaveable { mutableStateOf(-1L) }
+    var standardTrialStatusLoading by remember { mutableStateOf(false) }
+    var standardTrialStatusError by remember { mutableStateOf("") }
     LaunchedEffect(entryScreen) {
+        if (entryScreen == "standard") {
+            standardTrialStatusLoading = true
+            standardTrialStatusError = ""
+            runCatching {
+                withContext(Dispatchers.IO) {
+                    store.oatec.playertv.data.AppEntitlementRepository(context).getStandardTrialStatus()
+                }
+            }.onSuccess { status ->
+                standardTrialRemainingSeconds = status.remainingSeconds
+            }.onFailure { failure ->
+                standardTrialStatusError = failure.message ?: "تعذر تحديث مدة التجربة."
+            }
+            standardTrialStatusLoading = false
+        }
         if (entryScreen == "standard" && standardIdentity == null && !standardIdentityLoading) {
             standardIdentityLoading = true
             runCatching {
@@ -2039,6 +2056,12 @@ private fun InitialSetupScreen(
             }.onSuccess { standardIdentity = it }
                 .onFailure { standardIdentityError = it.message ?: "تعذر تحميل بيانات الجهاز." }
             standardIdentityLoading = false
+        }
+    }
+    LaunchedEffect(entryScreen, standardTrialRemainingSeconds) {
+        if (entryScreen == "standard" && standardTrialRemainingSeconds > 0L) {
+            delay(1000L)
+            standardTrialRemainingSeconds = (standardTrialRemainingSeconds - 1L).coerceAtLeast(0L)
         }
     }
     val activationScope = rememberCoroutineScope()
@@ -2111,7 +2134,10 @@ private fun InitialSetupScreen(
                                             store.oatec.playertv.data.AppEntitlementRepository(context).startOrGetStandardTrial()
                                         }
                                     }.onSuccess { trial ->
-                                        if (trial.active) entryScreen = "standard"
+                                        if (trial.active) {
+                                            standardTrialRemainingSeconds = trial.remainingSeconds
+                                            entryScreen = "standard"
+                                        }
                                         else error = "انتهت الفترة التجريبية المجانية لهذا الجهاز."
                                     }.onFailure { failure ->
                                         error = failure.message ?: "تعذر التحقق من التجربة. تحقق من اتصال الإنترنت."
@@ -2244,6 +2270,34 @@ private fun InitialSetupScreen(
                         letterSpacing = 1.8.sp,
                     )
                     Text("بيانات الجهاز", color = Color(0xFFB8C0CC), fontSize = if (compactStandard) 11.sp else 14.sp)
+                }
+                Surface(
+                    modifier = Modifier.widthIn(max = 640.dp).fillMaxWidth(),
+                    color = Color(0xFF241D10),
+                    shape = RoundedCornerShape(12.dp),
+                    border = BorderStroke(1.dp, Color(0xFFE7B95C).copy(alpha = 0.55f)),
+                ) {
+                    Row(
+                        Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = if (compactStandard) 8.dp else 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Text("الفترة التجريبية المجانية", color = Color(0xFFD6BD8A), fontSize = if (compactStandard) 9.sp else 11.sp, fontWeight = FontWeight.Bold)
+                            val trialDays = if (standardTrialRemainingSeconds > 0L) ((standardTrialRemainingSeconds + 86399L) / 86400L).toInt() else 0
+                            val trialTimeText = when {
+                                standardTrialStatusLoading && standardTrialRemainingSeconds < 0L -> "جارٍ التحقق..."
+                                standardTrialRemainingSeconds < 0L -> "المدة غير متاحة"
+                                trialDays > 0 -> "متبقي " + trialDays + if (trialDays == 1) " يوم" else " أيام"
+                                else -> "انتهت الفترة التجريبية"
+                            }
+                            Text(trialTimeText, color = if (trialDays > 0) Color.White else Color(0xFFFFB4AB), fontSize = if (compactStandard) 14.sp else 17.sp, fontWeight = FontWeight.Bold)
+                            if (standardTrialStatusError.isNotBlank()) {
+                                Text("تعذر تحديث العداد؛ آخر مدة مؤكدة معروضة.", color = Color(0xFFB8C0CC), fontSize = 9.sp)
+                            }
+                        }
+                        Text(if (standardTrialRemainingSeconds > 0L) "7 DAYS TRIAL" else "TRIAL", color = Color(0xFFE7B95C), fontSize = 9.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
+                    }
                 }
                 Surface(
                     modifier = Modifier.widthIn(max = 640.dp).fillMaxWidth(),

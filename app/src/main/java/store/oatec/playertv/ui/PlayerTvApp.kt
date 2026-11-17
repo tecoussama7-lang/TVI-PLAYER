@@ -2026,6 +2026,9 @@ private fun InitialSetupScreen(
     var standardIdentity by remember { mutableStateOf<store.oatec.playertv.data.StandardDeviceIdentity?>(null) }
     var standardIdentityLoading by remember { mutableStateOf(false) }
     var standardIdentityError by remember { mutableStateOf("") }
+    var standardPlaylistChecking by remember { mutableStateOf(false) }
+    var standardPlaylistMissing by remember { mutableStateOf(false) }
+    var standardPlaylistFeedback by remember { mutableStateOf("") }
     LaunchedEffect(entryScreen) {
         if (entryScreen == "standard" && standardIdentity == null && !standardIdentityLoading) {
             standardIdentityLoading = true
@@ -2215,93 +2218,246 @@ private fun InitialSetupScreen(
             }
         } else {
             Column(
-                Modifier.fillMaxSize().padding(horizontal = horizontalPadding, vertical = if (compactLandscape) 8.dp else 20.dp),
-                verticalArrangement = Arrangement.spacedBy(if (compactLandscape) 8.dp else 14.dp),
-                horizontalAlignment = Alignment.End,
+                Modifier.fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = horizontalPadding, vertical = if (compactLandscape) 10.dp else 22.dp),
+                verticalArrangement = Arrangement.SpaceBetween,
+                horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    OutlinedButton(onClick = { entryScreen = "welcome"; error = "" }) { Text("← رجوع") }
-                    Spacer(Modifier.weight(1f))
-                    Column(horizontalAlignment = Alignment.End) {
-                        Text("STANDARD USER", color = Color.White, fontSize = if (compactLandscape) 18.sp else 25.sp, fontWeight = FontWeight.Black)
-                        Text("FREE TRIAL · 7 DAYS", color = accent, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                    }
-                }
-                Text("استعمل Device ID وKey ديال هاد الجهاز باش تزيد رابط M3U من موقع OATEC.", color = Color(0xFFBDBDBD), fontSize = 13.sp)
-                Surface(
-                    modifier = Modifier.widthIn(max = 540.dp).fillMaxWidth().align(Alignment.CenterHorizontally),
-                    color = panel,
-                    shape = RoundedCornerShape(18.dp),
-                    border = BorderStroke(1.dp, Color(0xFF393939)),
+                Column(
+                    Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(if (compactLandscape) 10.dp else 16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    Column(
-                        Modifier.fillMaxWidth().padding(if (compactLandscape) 14.dp else 22.dp),
-                        verticalArrangement = Arrangement.spacedBy(if (compactLandscape) 7.dp else 11.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            "OATEC TVi-PLAYER",
+                            color = Color.White,
+                            fontSize = if (compactLandscape) 21.sp else 28.sp,
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = 1.2.sp,
+                        )
+                        Text(
+                            "STANDARD PLAYER",
+                            color = Color(0xFFE7B95C),
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 2.sp,
+                        )
+                    }
+                    Text(
+                        "بيانات الجهاز",
+                        color = Color.White,
+                        fontSize = if (compactLandscape) 16.sp else 19.sp,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    Surface(
+                        modifier = Modifier.widthIn(max = 640.dp).fillMaxWidth(),
+                        color = Color(0xFF111722),
+                        shape = RoundedCornerShape(20.dp),
+                        border = BorderStroke(1.dp, Color(0xFF8C713C).copy(alpha = 0.65f)),
                     ) {
-                        when {
-                            standardIdentityLoading -> Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                                CircularProgressIndicator(Modifier.size(18.dp), color = accent, strokeWidth = 2.dp)
-                                Text("جارٍ تحميل بيانات الجهاز...", color = Color(0xFFBDBDBD), fontSize = 12.sp)
-                            }
-                            standardIdentity != null -> {
-                                Text("DEVICE ID", color = Color(0xFFAAAAAA), fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                                Surface(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    color = Color(0xFF1B1B1B),
-                                    shape = RoundedCornerShape(12.dp),
-                                    border = BorderStroke(1.dp, Color(0xFF444444)),
+                        Column(
+                            Modifier.fillMaxWidth().padding(if (compactLandscape) 14.dp else 22.dp),
+                            verticalArrangement = Arrangement.spacedBy(if (compactLandscape) 9.dp else 13.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                        ) {
+                            Text("MAC ADDRESS / DEVICE ID", color = Color(0xFFD6BD8A), fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.8.sp)
+                            Surface(
+                                modifier = Modifier.fillMaxWidth(),
+                                color = Color(0xFF080D15),
+                                shape = RoundedCornerShape(12.dp),
+                                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.10f)),
+                            ) {
+                                Column(
+                                    Modifier.fillMaxWidth().padding(12.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.spacedBy(6.dp),
                                 ) {
-                                    Column(Modifier.fillMaxWidth().padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(7.dp)) {
-                                        SelectionContainer { Text(standardIdentity!!.id, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold, textAlign = androidx.compose.ui.text.style.TextAlign.Center) }
-                                        OutlinedButton(onClick = {
-                                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-                                            clipboard.setPrimaryClip(android.content.ClipData.newPlainText("OATEC Standard ID", standardIdentity!!.id))
-                                        }) { Text("نسخ Device ID") }
+                                    when {
+                                        standardIdentityLoading -> {
+                                            CircularProgressIndicator(Modifier.size(20.dp), color = Color(0xFFE7B95C), strokeWidth = 2.dp)
+                                            Text("جارٍ تحميل بيانات الجهاز...", color = Color(0xFFB8C0CC), fontSize = 12.sp)
+                                        }
+                                        standardIdentity != null -> {
+                                            SelectionContainer {
+                                                Text(
+                                                    standardIdentity!!.id,
+                                                    color = Color.White,
+                                                    fontSize = if (compactLandscape) 12.sp else 15.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                                    maxLines = 2,
+                                                    overflow = TextOverflow.Ellipsis,
+                                                )
+                                            }
+                                            OutlinedButton(
+                                                onClick = {
+                                                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                                                    clipboard.setPrimaryClip(android.content.ClipData.newPlainText("OATEC Standard ID", standardIdentity!!.id))
+                                                },
+                                            ) { Text("نسخ MAC / ID") }
+                                        }
+                                        standardIdentityError.isNotBlank() -> {
+                                            Text(standardIdentityError, color = ErrorRed, fontSize = 12.sp, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                                            OutlinedButton(
+                                                onClick = {
+                                                    if (!standardIdentityLoading) {
+                                                        standardIdentityLoading = true
+                                                        standardIdentityError = ""
+                                                        activationScope.launch {
+                                                            runCatching {
+                                                                withContext(Dispatchers.IO) {
+                                                                    store.oatec.playertv.data.AppEntitlementRepository(context).getStandardDeviceIdentity()
+                                                                }
+                                                            }.onSuccess { standardIdentity = it }
+                                                                .onFailure { standardIdentityError = it.message ?: "تعذر تحميل بيانات الجهاز." }
+                                                            standardIdentityLoading = false
+                                                        }
+                                                    }
+                                                },
+                                            ) { Text("إعادة تحميل بيانات الجهاز") }
+                                        }
                                     }
                                 }
-                                Text("DEVICE KEY", color = Color(0xFFAAAAAA), fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                                Surface(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    color = Color(0xFF1B1B1B),
-                                    shape = RoundedCornerShape(12.dp),
-                                    border = BorderStroke(1.dp, Color(0xFF444444)),
+                            }
+                            Text("KEY", color = Color(0xFFD6BD8A), fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.8.sp)
+                            Surface(
+                                modifier = Modifier.fillMaxWidth(),
+                                color = Color(0xFF080D15),
+                                shape = RoundedCornerShape(12.dp),
+                                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.10f)),
+                            ) {
+                                Column(
+                                    Modifier.fillMaxWidth().padding(12.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.spacedBy(6.dp),
                                 ) {
-                                    Column(Modifier.fillMaxWidth().padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(7.dp)) {
-                                        SelectionContainer { Text(standardIdentity!!.key, color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.Bold, textAlign = androidx.compose.ui.text.style.TextAlign.Center) }
-                                        OutlinedButton(onClick = {
-                                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-                                            clipboard.setPrimaryClip(android.content.ClipData.newPlainText("OATEC Standard Key", standardIdentity!!.key))
-                                        }) { Text("نسخ Key") }
+                                    if (standardIdentity != null) {
+                                        SelectionContainer {
+                                            Text(
+                                                standardIdentity!!.key,
+                                                color = Color.White,
+                                                fontSize = if (compactLandscape) 17.sp else 20.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                            )
+                                        }
+                                        OutlinedButton(
+                                            onClick = {
+                                                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                                                clipboard.setPrimaryClip(android.content.ClipData.newPlainText("OATEC Standard Key", standardIdentity!!.key))
+                                            },
+                                        ) { Text("نسخ Key") }
+                                    } else if (standardIdentityLoading) {
+                                        Text("...", color = Color(0xFFB8C0CC), fontSize = 18.sp)
+                                    } else {
+                                        Text("غير متاح حالياً", color = Color(0xFFB8C0CC), fontSize = 12.sp)
                                     }
                                 }
                             }
-                            standardIdentityError.isNotBlank() -> Text(standardIdentityError, color = ErrorRed, fontSize = 12.sp)
+                            Text(
+                                "أضف Playlist الخاصة بك من موقع OATEC باستعمال بيانات هذا الجهاز.",
+                                color = Color(0xFFB8C0CC),
+                                fontSize = if (compactLandscape) 11.sp else 13.sp,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                            )
+                            OutlinedButton(
+                                onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://oatec.store/standard-player"))) },
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFE7B95C)),
+                            ) { Text("فتح موقع OATEC لإضافة Playlist") }
+                            if (standardPlaylistFeedback.isNotBlank()) {
+                                Surface(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    color = if (standardPlaylistMissing) Color(0xFF2B2415) else Color(0xFF24191B),
+                                    shape = RoundedCornerShape(12.dp),
+                                    border = BorderStroke(1.dp, if (standardPlaylistMissing) Color(0xFFB68A3A) else ErrorRed.copy(alpha = 0.55f)),
+                                ) {
+                                    Text(
+                                        standardPlaylistFeedback,
+                                        modifier = Modifier.padding(12.dp),
+                                        color = Color.White,
+                                        fontSize = 12.sp,
+                                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                    )
+                                }
+                            }
                         }
-                        Text("صفحة إضافة Playlist:", color = Color(0xFFAAAAAA), fontSize = 11.sp)
-                        Text("https://oatec.store/standard-player", color = Color(0xFFFF7777), fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-                        Button(
-                            onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://oatec.store/standard-player"))) },
-                            colors = ButtonDefaults.buttonColors(containerColor = accent, contentColor = Color.White),
-                        ) { Text("فتح صفحة إضافة M3U") }
-                        Text("خلي Device Key سري وما تشاركوش مع أي شخص.", color = Color(0xFF999999), fontSize = 10.sp)
                     }
                 }
-                Button(
-                    onClick = {
-                        onComplete(
-                            "",
-                            PlayerSource(
-                                id = "oatec-standard-playlist",
-                                name = "OATEC Standard Playlist",
-                                type = SourceType.M3U,
-                                serverUrl = "",
-                            ),
-                        )
-                    },
-                    modifier = Modifier.fillMaxWidth().height(if (compactLandscape) 42.dp else 48.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = accent, contentColor = Color.White),
-                ) { Text("متابعة إلى التطبيق") }
+                Row(
+                    Modifier.widthIn(max = 640.dp).fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    OutlinedButton(
+                        onClick = { (context as? Activity)?.finish() },
+                        modifier = Modifier.weight(1f).height(if (compactLandscape) 44.dp else 52.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFD7DCE4)),
+                    ) { Text("خروج", fontWeight = FontWeight.Bold) }
+                    Button(
+                        onClick = {
+                            if (standardIdentity == null || standardPlaylistChecking) return@Button
+                            standardPlaylistChecking = true
+                            standardPlaylistFeedback = ""
+                            standardPlaylistMissing = false
+                            activationScope.launch {
+                                try {
+                                    val linkedUrl = withContext(Dispatchers.IO) {
+                                        store.oatec.playertv.data.AppEntitlementRepository(context).getStandardPlaylistUrl()
+                                    }
+                                    if (linkedUrl.isNullOrBlank()) {
+                                        standardPlaylistMissing = true
+                                        standardPlaylistFeedback = "لا توجد Playlist مرتبطة بهذا الجهاز. ارفع Playlist عبر الموقع ثم أعد المحاولة."
+                                    } else {
+                                        val playlistUri = runCatching { Uri.parse(linkedUrl) }.getOrNull()
+                                        val isXtreamGetPhp = playlistUri?.lastPathSegment.equals("get.php", ignoreCase = true)
+                                        val xtreamUsername = playlistUri?.getQueryParameter("username").orEmpty()
+                                        val xtreamPassword = playlistUri?.getQueryParameter("password").orEmpty()
+                                        val useXtream = isXtreamGetPhp &&
+                                            !playlistUri?.host.isNullOrBlank() &&
+                                            playlistUri?.scheme in setOf("http", "https") &&
+                                            xtreamUsername.isNotBlank() &&
+                                            xtreamPassword.isNotBlank()
+                                        val linkedSourceId = "oatec-standard-${UUID.nameUUIDFromBytes(linkedUrl.toByteArray())}"
+                                        val linkedSource = if (useXtream) {
+                                            PlayerSource(
+                                                id = linkedSourceId,
+                                                name = "OATEC Standard Playlist",
+                                                type = SourceType.XTREAM,
+                                                serverUrl = linkedUrl.substringBefore('?').substringBeforeLast('/'),
+                                                username = xtreamUsername,
+                                                password = xtreamPassword,
+                                            )
+                                        } else {
+                                            PlayerSource(
+                                                id = linkedSourceId,
+                                                name = "OATEC Standard Playlist",
+                                                type = SourceType.M3U,
+                                                serverUrl = linkedUrl,
+                                            )
+                                        }
+                                        onComplete("", linkedSource)
+                                    }
+                                } catch (failure: Exception) {
+                                    standardPlaylistMissing = false
+                                    standardPlaylistFeedback = "تعذر التحقق من Playlist. تأكد من اتصال الإنترنت ثم أعد المحاولة."
+                                } finally {
+                                    standardPlaylistChecking = false
+                                }
+                            }
+                        },
+                        modifier = Modifier.weight(1f).height(if (compactLandscape) 44.dp else 52.dp),
+                        enabled = !standardPlaylistChecking && standardIdentity != null,
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE7B95C), contentColor = Color(0xFF111722)),
+                    ) {
+                        if (standardPlaylistChecking) {
+                            CircularProgressIndicator(Modifier.size(18.dp), color = Color(0xFF111722), strokeWidth = 2.dp)
+                        } else {
+                            Text(if (standardPlaylistMissing) "إعادة المحاولة" else "استمرار", fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
             }
         }
     }

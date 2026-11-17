@@ -2245,10 +2245,16 @@ private fun InitialSetupScreen(
         } else {
             val compactPhone = configuration.screenWidthDp < 600
             val compactStandard = compactPhone || compactLandscape
+            val shortStandardScreen = configuration.screenHeightDp < 700
             Column(
                 Modifier.fillMaxSize()
-                    .padding(horizontal = if (compactStandard) 10.dp else 28.dp, vertical = if (compactStandard) 2.dp else 20.dp),
-                verticalArrangement = if (compactStandard) Arrangement.spacedBy(4.dp) else Arrangement.SpaceEvenly,
+                    .verticalScroll(rememberScrollState())
+                    .padding(
+                        horizontal = if (compactStandard) 8.dp else 28.dp,
+                        vertical = if (shortStandardScreen) 1.dp else if (compactStandard) 3.dp else 20.dp,
+                    ),
+                verticalArrangement = if (shortStandardScreen) Arrangement.spacedBy(2.dp)
+                    else if (compactStandard) Arrangement.spacedBy(4.dp) else Arrangement.SpaceEvenly,
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Column(

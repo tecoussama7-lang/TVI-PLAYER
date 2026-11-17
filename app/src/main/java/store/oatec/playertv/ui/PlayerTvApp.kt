@@ -2247,43 +2247,43 @@ private fun InitialSetupScreen(
             val compactStandard = compactPhone || compactLandscape
             Column(
                 Modifier.fillMaxSize()
-                    .padding(horizontal = if (compactStandard) 16.dp else 28.dp, vertical = if (compactStandard) 8.dp else 20.dp),
-                verticalArrangement = Arrangement.SpaceEvenly,
+                    .padding(horizontal = if (compactStandard) 10.dp else 28.dp, vertical = if (compactStandard) 2.dp else 20.dp),
+                verticalArrangement = if (compactStandard) Arrangement.spacedBy(4.dp) else Arrangement.SpaceEvenly,
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(2.dp),
+                    verticalArrangement = Arrangement.spacedBy(0.dp),
                 ) {
                     Text(
                         "OATEC TVi-PLAYER",
                         color = Color.White,
-                        fontSize = if (compactStandard) 19.sp else 28.sp,
+                        fontSize = if (compactStandard) 16.sp else 28.sp,
                         fontWeight = FontWeight.Black,
                         letterSpacing = 0.8.sp,
                     )
                     Text(
                         "STANDARD PLAYER",
                         color = Color(0xFFE7B95C),
-                        fontSize = if (compactStandard) 9.sp else 11.sp,
+                        fontSize = if (compactStandard) 8.sp else 11.sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 1.8.sp,
                     )
-                    Text("بيانات الجهاز", color = Color(0xFFB8C0CC), fontSize = if (compactStandard) 11.sp else 14.sp)
+                    Text("بيانات الجهاز", color = Color(0xFFB8C0CC), fontSize = if (compactStandard) 9.sp else 14.sp)
                 }
                 Surface(
                     modifier = Modifier.widthIn(max = 640.dp).fillMaxWidth(),
                     color = Color(0xFF241D10),
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(10.dp),
                     border = BorderStroke(1.dp, Color(0xFFE7B95C).copy(alpha = 0.55f)),
                 ) {
                     Row(
-                        Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = if (compactStandard) 8.dp else 12.dp),
+                        Modifier.fillMaxWidth().padding(horizontal = 9.dp, vertical = if (compactStandard) 5.dp else 12.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
                         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                            Text("الفترة التجريبية المجانية", color = Color(0xFFD6BD8A), fontSize = if (compactStandard) 9.sp else 11.sp, fontWeight = FontWeight.Bold)
+                            Text("الفترة التجريبية المجانية", color = Color(0xFFD6BD8A), fontSize = if (compactStandard) 8.sp else 11.sp, fontWeight = FontWeight.Bold)
                             val trialDays = if (standardTrialRemainingSeconds > 0L) (standardTrialRemainingSeconds / 86400L).toInt() else 0
                             val trialHours = ((standardTrialRemainingSeconds.coerceAtLeast(0L) % 86400L) / 3600L).toInt()
                             val trialMinutes = ((standardTrialRemainingSeconds.coerceAtLeast(0L) % 3600L) / 60L).toInt()
@@ -2295,7 +2295,7 @@ private fun InitialSetupScreen(
                                 standardTrialRemainingSeconds > 0L -> "متبقي " + trialDays + (if (trialDays == 1) " يوم" else " أيام") + " • " + trialClock
                                 else -> "انتهت الفترة التجريبية"
                             }
-                            Text(trialTimeText, color = if (trialDays > 0) Color.White else Color(0xFFFFB4AB), fontSize = if (compactStandard) 14.sp else 17.sp, fontWeight = FontWeight.Bold)
+                            Text(trialTimeText, color = if (trialDays > 0) Color.White else Color(0xFFFFB4AB), fontSize = if (compactStandard) 11.sp else 17.sp, fontWeight = FontWeight.Bold)
                             if (standardTrialStatusError.isNotBlank()) {
                                 Text("تعذر تحديث العداد؛ آخر مدة مؤكدة معروضة.", color = Color(0xFFB8C0CC), fontSize = 9.sp)
                             }
@@ -2306,12 +2306,12 @@ private fun InitialSetupScreen(
                 Surface(
                     modifier = Modifier.widthIn(max = 640.dp).fillMaxWidth(),
                     color = Color(0xFF111722),
-                    shape = RoundedCornerShape(if (compactStandard) 16.dp else 20.dp),
+                    shape = RoundedCornerShape(if (compactStandard) 12.dp else 20.dp),
                     border = BorderStroke(1.dp, Color(0xFF8C713C).copy(alpha = 0.65f)),
                 ) {
                     Column(
-                        Modifier.fillMaxWidth().padding(if (compactStandard) 12.dp else 22.dp),
-                        verticalArrangement = Arrangement.spacedBy(if (compactStandard) 9.dp else 14.dp),
+                        Modifier.fillMaxWidth().padding(if (compactStandard) 8.dp else 22.dp),
+                        verticalArrangement = Arrangement.spacedBy(if (compactStandard) 5.dp else 14.dp),
                     ) {
                         // Compact horizontal rows keep both credentials visible on a phone without scrolling.
                         Row(
@@ -2319,7 +2319,7 @@ private fun InitialSetupScreen(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
-                            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                                 Text("MAC ADDRESS / DEVICE ID", color = Color(0xFFD6BD8A), fontSize = 9.sp, fontWeight = FontWeight.Bold)
                                 if (standardIdentityLoading) {
                                     Text("جارٍ تحميل البيانات...", color = Color(0xFFB8C0CC), fontSize = 11.sp)
@@ -2328,7 +2328,7 @@ private fun InitialSetupScreen(
                                         Text(
                                             standardIdentity!!.id,
                                             color = Color.White,
-                                            fontSize = if (compactStandard) 11.sp else 15.sp,
+                                            fontSize = if (compactStandard) 10.sp else 15.sp,
                                             fontWeight = FontWeight.Bold,
                                             maxLines = 2,
                                             overflow = TextOverflow.Ellipsis,
@@ -2358,7 +2358,7 @@ private fun InitialSetupScreen(
                                     }
                                 },
                                 contentPadding = PaddingValues(horizontal = 10.dp, vertical = 3.dp),
-                                modifier = Modifier.height(36.dp),
+                                modifier = Modifier.height(if (compactStandard) 28.dp else 36.dp),
                             ) { Text(if (standardIdentity == null) "إعادة" else "نسخ", fontSize = 11.sp) }
                         }
                         HorizontalDivider(color = Color.White.copy(alpha = 0.10f))
@@ -2367,14 +2367,14 @@ private fun InitialSetupScreen(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
-                            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                                 Text("KEY", color = Color(0xFFD6BD8A), fontSize = 9.sp, fontWeight = FontWeight.Bold)
                                 if (standardIdentity != null) {
                                     SelectionContainer {
                                         Text(
                                             standardIdentity!!.key,
                                             color = Color.White,
-                                            fontSize = if (compactStandard) 15.sp else 20.sp,
+                                            fontSize = if (compactStandard) 13.sp else 20.sp,
                                             fontWeight = FontWeight.Bold,
                                             maxLines = 1,
                                             overflow = TextOverflow.Ellipsis,
@@ -2393,19 +2393,19 @@ private fun InitialSetupScreen(
                                 },
                                 enabled = standardIdentity != null,
                                 contentPadding = PaddingValues(horizontal = 10.dp, vertical = 3.dp),
-                                modifier = Modifier.height(36.dp),
+                                modifier = Modifier.height(if (compactStandard) 28.dp else 36.dp),
                             ) { Text("نسخ", fontSize = 11.sp) }
                         }
                         Text(
                             "استعمل هاد البيانات باش تربط Playlist من موقع OATEC.",
                             color = Color(0xFFB8C0CC),
-                            fontSize = if (compactStandard) 10.sp else 13.sp,
+                            fontSize = if (compactStandard) 9.sp else 13.sp,
                             textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                             modifier = Modifier.fillMaxWidth(),
                         )
                         OutlinedButton(
                             onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://oatec.store/standard-player"))) },
-                            modifier = Modifier.fillMaxWidth().height(if (compactStandard) 38.dp else 46.dp),
+                            modifier = Modifier.fillMaxWidth().height(if (compactStandard) 30.dp else 46.dp),
                             contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
                             colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFE7B95C)),
                         ) { Text("فتح موقع OATEC وإضافة Playlist", fontSize = if (compactStandard) 11.sp else 13.sp) }
@@ -2418,7 +2418,7 @@ private fun InitialSetupScreen(
                             ) {
                                 Text(
                                     standardPlaylistFeedback,
-                                    modifier = Modifier.padding(horizontal = 9.dp, vertical = 7.dp),
+                                    modifier = Modifier.padding(horizontal = 7.dp, vertical = 4.dp),
                                     color = Color.White,
                                     fontSize = 10.sp,
                                     textAlign = androidx.compose.ui.text.style.TextAlign.Center,
@@ -2434,7 +2434,7 @@ private fun InitialSetupScreen(
                 ) {
                     OutlinedButton(
                         onClick = { (context as? Activity)?.finish() },
-                        modifier = Modifier.weight(1f).height(if (compactStandard) 44.dp else 52.dp),
+                        modifier = Modifier.weight(1f).height(if (compactStandard) 34.dp else 52.dp),
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFD7DCE4)),
                     ) { Text("خروج", fontWeight = FontWeight.Bold) }
                     Button(
@@ -2494,7 +2494,7 @@ private fun InitialSetupScreen(
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE7B95C), contentColor = Color(0xFF111722)),
                     ) {
                         if (standardPlaylistChecking) CircularProgressIndicator(Modifier.size(18.dp), color = Color(0xFF111722), strokeWidth = 2.dp)
-                        else Text(if (standardPlaylistMissing) "إعادة المحاولة" else "استمرار", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                        else Text(if (standardPlaylistMissing) "إعادة المحاولة" else "استمرار", fontWeight = FontWeight.Bold, fontSize = if (compactStandard) 11.sp else 13.sp)
                     }
                 }
             }

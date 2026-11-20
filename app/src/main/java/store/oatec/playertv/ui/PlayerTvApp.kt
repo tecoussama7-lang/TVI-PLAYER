@@ -79,6 +79,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -1297,15 +1298,43 @@ private fun LiveScreen(
                 }
             }
         }
-        LazyRow(
-            Modifier.fillMaxWidth().padding(vertical = 15.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        Row(
+            Modifier.weight(1f).fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            items(distinctCategories, key = { it }) { item ->
-                CategoryPill(item, category == item) { onCategory(item) }
+            val categoryColors = listOf(
+                Color(0xFF43D19E), Color(0xFF62A8FF), Color(0xFFC084FC),
+                Color(0xFFFF9B71), Color(0xFF5DD6E8), Color(0xFFE879A8),
+            )
+            LazyColumn(
+                Modifier.weight(0.1f).fillMaxHeight().padding(vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(7.dp),
+                contentPadding = PaddingValues(vertical = 4.dp),
+            ) {
+                itemsIndexed(distinctCategories, key = { _, item -> item }) { index, item ->
+                    val selected = category == item
+                    val itemColor = categoryColors[index % categoryColors.size]
+                    Surface(
+                        color = if (selected) Lime else itemColor.copy(alpha = 0.16f),
+                        contentColor = if (selected) Ink else TextMain,
+                        shape = RoundedCornerShape(9.dp),
+                        border = BorderStroke(1.dp, if (selected) GoldLight else itemColor.copy(alpha = 0.55f)),
+                        modifier = Modifier.fillMaxWidth().focusable().clickable { onCategory(item) },
+                    ) {
+                        Text(
+                            item,
+                            color = if (selected) Ink else TextMain,
+                            fontSize = 8.sp,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 2.dp, vertical = 10.dp),
+                        )
+                    }
+                }
             }
-        }
-        Row(Modifier.weight(1f).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(22.dp)) {
+            Row(Modifier.weight(0.9f).fillMaxHeight(), horizontalArrangement = Arrangement.spacedBy(22.dp)) {
             Column(Modifier.weight(1.2f).fillMaxHeight()) {
                 Text("CHANNEL LINEUP", color = TextMuted, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp)
                 Spacer(Modifier.height(8.dp))
@@ -1385,6 +1414,7 @@ private fun LiveScreen(
                 Text("Number keys  Direct channel", color = TextMain, fontSize = 13.sp, modifier = Modifier.padding(top = 6.dp))
                 Text("OK  Play selected channel", color = TextMain, fontSize = 13.sp, modifier = Modifier.padding(top = 6.dp))
                 if (message.isNotBlank()) Text(message, color = TextMuted, fontSize = 11.sp, modifier = Modifier.padding(top = 15.dp))
+            }
             }
         }
     }

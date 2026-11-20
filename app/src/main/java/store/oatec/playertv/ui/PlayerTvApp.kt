@@ -3601,7 +3601,7 @@ private fun LiveScreen(
             else -> Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 CategoryNavigation(
                     categories, category, Lime, onCategory, vertical = true,
-                    modifier = Modifier.width((screenWidthDp * 0.10f).dp.coerceIn(82.dp, 190.dp)).fillMaxHeight()
+                    modifier = Modifier.fillMaxWidth(0.10f).fillMaxHeight()
                 )
                 LazyVerticalGrid(
                 columns = GridCells.Adaptive(minSize = when { screenWidthDp >= 1500 -> 230.dp; screenWidthDp >= 1000 -> 190.dp; screenWidthDp >= 700 -> 155.dp; screenWidthDp <= 360 -> 118.dp; else -> 132.dp }),
@@ -3818,13 +3818,15 @@ private fun CategoryNavigation(
 @Composable
 private fun CategoryNavigationItem(label: String, selected: Boolean, accent: Color, onClick: () -> Unit) {
     var focused by remember { mutableStateOf(false) }
+    // Blue marks the current remote-control focus; lime remains the selected category.
+    val focusAccent = Color(0xFF3B82F6)
     val borderColor = when {
-        focused -> Color.White
+        focused -> focusAccent
         selected -> accent
         else -> Color.White.copy(alpha = 0.10f)
     }
     val background = when {
-        focused -> accent.copy(alpha = 0.42f)
+        focused -> focusAccent.copy(alpha = 0.38f)
         selected -> accent.copy(alpha = 0.23f)
         else -> Color(0xFF1A2638)
     }

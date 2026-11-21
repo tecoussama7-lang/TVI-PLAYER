@@ -922,8 +922,8 @@ private fun PlayerTvAppContent(
         if (!force && loadKey in loadedCatalogs) return
         message = ""
         if (source.type == SourceType.XTREAM) {
-            // Import every provider category one at a time; each category is an
-            // independent SQLite transaction, keeping memory bounded on large lists.
+            // Fetch only the category directory at startup. The first category is
+            // loaded immediately; other categories are fetched on demand when selected.
             scope.launch {
                 activeLoadCount++
                 loadingCatalogKeys = loadingCatalogKeys + loadKey
@@ -941,48 +941,34 @@ private fun PlayerTvAppContent(
                         CatalogSection.LIVE -> {
                             liveCategories = categories
                             liveCategoryNames = categories.map { it.name }
-                            selectedCategory = "All"
+                            selectedCategory = categories.firstOrNull()?.name ?: "All"
                         }
                         CatalogSection.MOVIES -> {
                             movieCategories = categories
-                            selectedMovieCategory = "All"
+                            selectedMovieCategory = categories.firstOrNull()?.name ?: "All"
                         }
                         CatalogSection.SERIES -> {
                             seriesCategories = categories
-                            selectedSeriesCategory = "All"
+                            selectedSeriesCategory = categories.firstOrNull()?.name ?: "All"
                         }
                     }
                     if (categories.isEmpty()) {
                         loadedCatalogs = loadedCatalogs + loadKey
                         message = "No categories were returned by this provider."
-                        return@launch
+                    } else {
+                        // loadCategory checks SQLite first and downloads only this category.
+                        loadCategory(source, catalogSection, categories.first())
                     }
+                } catch (error: Exception) {
+                    if (source.id == activeSourceId) message = error.message ?: "Could not load provider categories."
+                } finally {
+                    loadingCatalogKeys = loadingCatalogKeys - loadKey
+                    activeLoadCount = (activeLoadCount - 1).coerceAtLeast(0)
+                    busy = activeLoadCount > 0
+                }
+            }
+            return
 
-                    val failures = mutableListOf<String>()
-                    var completed = 0
-                    for (category in categories) {
-                        if (source.id != activeSourceId) break
-                        val cached = withContext(Dispatchers.IO) {
-                            mediaCatalogStore.isCategoryCached(source.id, catalogSection.name, category.id)
-                        }
-                        if (!cached || force) {
-                            try {
-                                withContext(Dispatchers.IO) {
-                                    mediaCatalogStore.beginCategoryImport(source.id, catalogSection.name, category).use { session ->
-                                        repository.loadCategoryBatched(source, catalogSection, category) { batch ->
-                                            session.insertBatch(batch)
-                                            val batchSize = batch.size
-                                            scope.launch {
-                                                if (source.id == activeSourceId) {
-                                                    catalogLoadedItems += batchSize
-                                                    catalogProgress = (1f - kotlin.math.exp(-catalogLoadedItems / 9000f).toFloat()).coerceAtMost(0.95f)
-                                                }
-                                            }
-                                        }
-                                        session.commit()
-                                    }
-                                }
-                            } catch (error: Exception) {
                                 failures += category.name
                             }
                         }
@@ -1601,7 +1587,6 @@ private fun PlayerTvAppContent(
                             onCategory = { name ->
                                 if (selectedCategory != name) {
                                     selectedCategory = name
-                                    catalog = catalog.copy(liveChannels = emptyList())
                                     val category = liveCategories.firstOrNull { it.name == name }
                                     if (category != null && activeSource != null) loadCategory(activeSource, CatalogSection.LIVE, category)
                                     else if (name in setOf("All", "Favorites", "Hidden") && activeSource != null) {
@@ -1651,7 +1636,6 @@ private fun PlayerTvAppContent(
                                     val category = movieCategories.firstOrNull { it.name == name }
                                     if (category != null && activeSource != null) {
                                         selectedMovieCategory = name
-                                        catalog = catalog.copy(movies = emptyList())
                                         loadCategory(activeSource, CatalogSection.MOVIES, category)
                                     }
                                 }
@@ -1690,7 +1674,6 @@ private fun PlayerTvAppContent(
                                     val category = seriesCategories.firstOrNull { it.name == name }
                                     if (category != null && activeSource != null) {
                                         selectedSeriesCategory = name
-                                        catalog = catalog.copy(series = emptyList())
                                         loadCategory(activeSource, CatalogSection.SERIES, category)
                                     }
                                 }

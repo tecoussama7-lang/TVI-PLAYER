@@ -548,6 +548,9 @@ private fun PlayerTvAppContent(
     val offlineDownloadStore = remember { OfflineDownloadStore(context) }
     var premiumCode by remember { mutableStateOf(runCatching { sourceStore.loadPremiumCode() }.getOrNull().orEmpty()) }
     var kidsModeActive by remember { mutableStateOf(preferences.kidsModeEnabled()) }
+    var showQuickKidsPinDialog by rememberSaveable { mutableStateOf(false) }
+    var quickKidsPin by rememberSaveable { mutableStateOf("") }
+    var quickKidsPinError by rememberSaveable { mutableStateOf("") }
     var sleepTimerDeadline by remember { mutableStateOf(preferences.sleepTimerDeadline()) }
     var scheduleBlocked by remember { mutableStateOf(kidsModeActive && preferences.kidsScheduleEnabled() && !preferences.isWithinKidsSchedule()) }
     var scheduleOverrideUntil by remember { mutableStateOf(0L) }
@@ -1377,6 +1380,41 @@ private fun PlayerTvAppContent(
             onError = Ink,
         ),
     ) {
+        if (showQuickKidsPinDialog) {
+            AlertDialog(
+                onDismissRequest = { showQuickKidsPinDialog = false; quickKidsPin = ""; quickKidsPinError = "" },
+                title = { Text("تفعيل وضع الأطفال") },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("أنشئ رمز الوالدين من 4 إلى 8 أرقام لتفعيل وضع الأطفال وحماية الخروج منه.", color = TextMuted, fontSize = 12.sp)
+                        OutlinedTextField(
+                            value = quickKidsPin,
+                            onValueChange = { value -> if (value.length <= 8 && value.all(Char::isDigit)) quickKidsPin = value },
+                            label = { Text("رمز الوالدين") },
+                            singleLine = true,
+                            visualTransformation = PasswordVisualTransformation(),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                        )
+                        if (quickKidsPinError.isNotBlank()) Text(quickKidsPinError, color = ErrorRed, fontSize = 12.sp)
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = {
+                        if (preferences.setKidsPin(quickKidsPin)) {
+                            preferences.setKidsModeEnabled(true)
+                            kidsModeActive = true
+                            section = Section.HOME.name
+                            showQuickKidsPinDialog = false
+                            quickKidsPin = ""
+                            quickKidsPinError = ""
+                        } else quickKidsPinError = "دخل رمزاً صحيحاً من 4 إلى 8 أرقام."
+                    }) { Text("تفعيل") }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showQuickKidsPinDialog = false; quickKidsPin = ""; quickKidsPinError = "" }) { Text(appText("Cancel", LocalAppLanguage.current)) }
+                },
+            )
+        }
         if (scheduleBlocked) {
             AlertDialog(
                 onDismissRequest = { },
@@ -1537,6 +1575,17 @@ private fun PlayerTvAppContent(
                     compact = compactLandscape,
                     sourceName = activeSource?.name,
                     onSelect = { navigateTo(it) },
+                    onKidsMode = {
+                        if (preferences.hasKidsPin()) {
+                            preferences.setKidsModeEnabled(true)
+                            kidsModeActive = true
+                            section = Section.HOME.name
+                        } else {
+                            quickKidsPin = ""
+                            quickKidsPinError = ""
+                            showQuickKidsPinDialog = true
+                        }
+                    },
                     onExit = { (context as? Activity)?.finishAndRemoveTask() },
                 )
             } else {
@@ -3102,6 +3151,7 @@ private fun HomeDashboard(
     compact: Boolean,
     sourceName: String?,
     onSelect: (Section) -> Unit,
+    onKidsMode: () -> Unit,
     onExit: () -> Unit,
 ) {
     var selectedHomeCard by remember { mutableStateOf(Section.LIVE) }
@@ -3187,6 +3237,11 @@ private fun HomeDashboard(
                 }
                 Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(5.dp)) {
                     Text(appText("◉  WIFI", LocalAppLanguage.current), color = TextMain.copy(alpha = 0.8f), fontSize = if (compact) 9.sp else 13.sp)
+                    Button(
+                        onClick = onKidsMode,
+                        contentPadding = PaddingValues(horizontal = if (compact) 8.dp else 13.dp, vertical = 2.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF245B43), contentColor = Color.White),
+                    ) { Text("👶  Kids Mode", fontSize = if (compact) 9.sp else 12.sp, maxLines = 1) }
                     OutlinedButton(
                         onClick = { onSelect(Section.SETTINGS) },
                         contentPadding = PaddingValues(horizontal = if (compact) 8.dp else 13.dp, vertical = 2.dp),
@@ -3513,10 +3568,13 @@ private fun LiveScreen(
     var pendingDeleteChannel by remember { mutableStateOf<MediaEntry?>(null) }
     var channelActionsTarget by remember { mutableStateOf<MediaEntry?>(null) }
     var showAddChannelDialog by remember { mutableStateOf(false) }
+    var showCategoryOrderDialog by remember { mutableStateOf(false) }
     val categories = remember(availableCategories, allLiveChannels, preferenceRevision) {
-        (listOf("All") + preferences.customCategories() + listOf("Favorites", "Hidden") + AUTO_CHANNEL_CATEGORIES + availableCategories +
+        val names = (listOf("All") + preferences.customCategories() + listOf("Favorites", "Hidden") + AUTO_CHANNEL_CATEGORIES + availableCategories +
             allLiveChannels.map { preferences.categoryFor(it.id, automaticChannelCategory(it)) }
         ).filter(String::isNotBlank).distinct()
+        val fixed = names.filter { it in setOf("All", "Favorites", "Hidden") }
+        fixed + preferences.orderedCategories(names.filterNot { it in setOf("All", "Favorites", "Hidden") })
     }
     val listState = rememberLazyGridState()
     // A new category may contain fewer items than the previous one. Reset the
@@ -3542,6 +3600,7 @@ private fun LiveScreen(
             if (numberInput.isNotEmpty()) {
                 Text("CH $numberInput", color = Lime, fontSize = 14.sp, fontWeight = FontWeight.Black)
             }
+            OutlinedButton(onClick = { showCategoryOrderDialog = true }, contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)) { Text("↕ ترتيب التصنيفات", fontSize = 11.sp, maxLines = 1) }
             OutlinedButton(onClick = { showAddChannelDialog = true }, contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)) { Text(appText("＋ قناة", LocalAppLanguage.current), fontSize = 11.sp) }
             OutlinedTextField(
                 value = search, onValueChange = onSearch, modifier = Modifier.width(when { screenWidthDp >= 1200 -> 300.dp; screenWidthDp >= 700 -> 230.dp; else -> 145.dp }).heightIn(max = 54.dp),
@@ -3653,6 +3712,14 @@ private fun LiveScreen(
                 }
             }
         }
+    }
+    if (showCategoryOrderDialog) {
+        OrganizeCategoriesDialog(
+            categories = categories.filterNot { it in setOf("All", "Favorites", "Hidden") },
+            preferences = preferences,
+            onDismiss = { showCategoryOrderDialog = false },
+            onChanged = onChanged,
+        )
     }
     channelActionsTarget?.let { item ->
         AlertDialog(
@@ -5506,6 +5573,84 @@ private fun AddManualChannelDialog(
             }) { Text(appText("إضافة", LocalAppLanguage.current)) }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text(appText("إلغاء", LocalAppLanguage.current)) } },
+    )
+}
+
+@Composable
+private fun OrganizeCategoriesDialog(
+    categories: List<String>,
+    preferences: PlayerPreferences,
+    onDismiss: () -> Unit,
+    onChanged: () -> Unit,
+) {
+    val ordered = remember(categories) { preferences.orderedCategories(categories) }
+    var selectedCategory by rememberSaveable(categories) { mutableStateOf(ordered.firstOrNull().orEmpty()) }
+    var targetNumber by rememberSaveable(categories) {
+        mutableStateOf((ordered.indexOf(selectedCategory).takeIf { it >= 0 }?.plus(1) ?: 1).toString())
+    }
+    var error by remember { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("ترتيب التصنيفات بالأرقام") },
+        text = {
+            Column(
+                Modifier.fillMaxWidth().heightIn(max = 430.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text("اختار التصنيف، ومن بعد دخل الرقم الجديد ديالو. التصنيفات الأخرى غادي تتحرك تلقائياً.", color = TextMuted, fontSize = 11.sp)
+                LazyColumn(
+                    modifier = Modifier.fillMaxWidth().heightIn(max = 260.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    itemsIndexed(ordered, key = { _, name -> name }) { index, name ->
+                        Surface(
+                            color = if (selectedCategory == name) Color(0xFF203B35) else Raised,
+                            shape = RoundedCornerShape(8.dp),
+                            border = BorderStroke(1.dp, if (selectedCategory == name) Lime else Color.White.copy(alpha = 0.08f)),
+                            modifier = Modifier.fillMaxWidth().clickable {
+                                selectedCategory = name
+                                targetNumber = (index + 1).toString()
+                                error = ""
+                            },
+                        ) {
+                            Row(Modifier.padding(horizontal = 10.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Text((index + 1).toString().padStart(2, '0'), color = Lime, fontWeight = FontWeight.Bold)
+                                Spacer(Modifier.width(10.dp))
+                                Text(name, color = TextMain, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                Spacer(Modifier.weight(1f))
+                                if (selectedCategory == name) Text("✓", color = Lime, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+                }
+                OutlinedTextField(
+                    value = targetNumber,
+                    onValueChange = { targetNumber = it.filter(Char::isDigit).take(4); error = "" },
+                    label = { Text("الرقم الجديد") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                if (error.isNotBlank()) Text(error, color = ErrorRed, fontSize = 11.sp)
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = {
+                val number = targetNumber.toIntOrNull()
+                when {
+                    selectedCategory.isBlank() -> error = "اختار تصنيفاً أولاً."
+                    number == null || number < 1 -> error = "دخل رقماً صحيحاً."
+                    else -> {
+                        if (preferences.moveCategoryToNumber(selectedCategory, number, ordered)) {
+                            onChanged()
+                            onDismiss()
+                        } else error = "تعذر تغيير ترتيب التصنيف."
+                    }
+                }
+            }) { Text("حفظ الترتيب") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(appText("Cancel", LocalAppLanguage.current)) } },
     )
 }
 

@@ -911,6 +911,50 @@ private fun PlayerTvAppContent(
             }
         }
     }
+    fun loadAllCategories(source: PlayerSource, catalogSection: CatalogSection, categories: List<SourceCategory>) {
+        val sectionKey = "${source.id}:${catalogSection.name}"
+        scope.launch {
+            activeLoadCount++
+            loadingCatalogKeys = loadingCatalogKeys + sectionKey
+            busy = true
+            try {
+                for (category in categories) {
+                    if (source.id != activeSourceId) return@launch
+                    val cached = withContext(Dispatchers.IO) {
+                        mediaCatalogStore.isCategoryCached(source.id, catalogSection.name, category.id)
+                    }
+                    if (!cached) {
+                        withContext(Dispatchers.IO) {
+                            mediaCatalogStore.beginCategoryImport(source.id, catalogSection.name, category).use { session ->
+                                repository.loadCategoryBatched(source, catalogSection, category) { batch -> session.insertBatch(batch) }
+                                session.commit()
+                            }
+                        }
+                    }
+                }
+                val page = withContext(Dispatchers.IO) {
+                    mediaCatalogStore.page(source.id, catalogSection.name, limit = CATALOG_PAGE_SIZE, offset = 0) to
+                        mediaCatalogStore.count(source.id, catalogSection.name)
+                }
+                if (source.id == activeSourceId) {
+                    catalogPageOffsets = catalogPageOffsets + (sectionKey to page.first.size)
+                    when (catalogSection) {
+                        CatalogSection.LIVE -> if (selectedCategory == "All") catalog = catalog.copy(liveChannels = applyKidsModeFilter(page.first, preferences))
+                        CatalogSection.MOVIES -> if (selectedMovieCategory == "All") catalog = catalog.copy(movies = applyKidsModeFilter(page.first, preferences))
+                        CatalogSection.SERIES -> if (selectedSeriesCategory == "All") catalog = catalog.copy(series = applyKidsModeFilter(page.first, preferences))
+                    }
+                    loadedCatalogs = loadedCatalogs + sectionKey
+                    message = "${page.second} ${catalogSection.name.lowercase()} items loaded from all ${categories.size} categories."
+                }
+            } catch (error: Exception) {
+                if (source.id == activeSourceId) message = error.message ?: "Could not load all categories."
+            } finally {
+                loadingCatalogKeys = loadingCatalogKeys - sectionKey
+                activeLoadCount = (activeLoadCount - 1).coerceAtLeast(0)
+                busy = activeLoadCount > 0
+            }
+        }
+    }
     fun refresh(source: PlayerSource, requestedSection: Section = currentSection, force: Boolean = false) {
         val catalogSection = when (requestedSection) {
             Section.LIVE -> CatalogSection.LIVE
@@ -1550,7 +1594,9 @@ private fun PlayerTvAppContent(
                                     selectedCategory = name
                                     val category = liveCategories.firstOrNull { it.name == name }
                                     if (category != null && activeSource != null) loadCategory(activeSource, CatalogSection.LIVE, category)
-                                    else if (name in setOf("All", "Favorites", "Hidden") && activeSource != null) {
+                                    else if (name == "All" && activeSource != null) {
+                                        loadAllCategories(activeSource, CatalogSection.LIVE, liveCategories)
+                                    } else if (name in setOf("Favorites", "Hidden") && activeSource != null) {
                                         scope.launch {
                                             val allCached = withContext(Dispatchers.IO) { mediaCatalogStore.page(activeSource.id, CatalogSection.LIVE.name, limit = CATALOG_PAGE_SIZE) }
                                             catalog = catalog.copy(liveChannels = applyKidsModeFilter(allCached, preferences))
@@ -1584,15 +1630,7 @@ private fun PlayerTvAppContent(
                                 if (name == "All" && activeSource != null) {
                                     selectedMovieCategory = "All"
                                     catalog = catalog.copy(movies = emptyList())
-                                    scope.launch {
-                                        val page = withContext(Dispatchers.IO) {
-                                            mediaCatalogStore.page(activeSource.id, CatalogSection.MOVIES.name, limit = CATALOG_PAGE_SIZE)
-                                        }
-                                        if (activeSource.id == activeSourceId) {
-                                            catalogPageOffsets = catalogPageOffsets + ("${activeSource.id}:MOVIES" to page.size)
-                                            catalog = catalog.copy(movies = applyKidsModeFilter(page, preferences))
-                                        }
-                                    }
+                                    loadAllCategories(activeSource, CatalogSection.MOVIES, movieCategories)
                                 } else {
                                     val category = movieCategories.firstOrNull { it.name == name }
                                     if (category != null && activeSource != null) {
@@ -1622,15 +1660,7 @@ private fun PlayerTvAppContent(
                                 if (name == "All" && activeSource != null) {
                                     selectedSeriesCategory = "All"
                                     catalog = catalog.copy(series = emptyList())
-                                    scope.launch {
-                                        val page = withContext(Dispatchers.IO) {
-                                            mediaCatalogStore.page(activeSource.id, CatalogSection.SERIES.name, limit = CATALOG_PAGE_SIZE)
-                                        }
-                                        if (activeSource.id == activeSourceId) {
-                                            catalogPageOffsets = catalogPageOffsets + ("${activeSource.id}:SERIES" to page.size)
-                                            catalog = catalog.copy(series = applyKidsModeFilter(page, preferences))
-                                        }
-                                    }
+                                    loadAllCategories(activeSource, CatalogSection.SERIES, seriesCategories)
                                 } else {
                                     val category = seriesCategories.firstOrNull { it.name == name }
                                     if (category != null && activeSource != null) {

@@ -968,45 +968,6 @@ private fun PlayerTvAppContent(
                 }
             }
             return
-
-                                failures += category.name
-                            }
-                        }
-                        completed++
-                        catalogProgress = completed.toFloat() / categories.size.toFloat()
-                    }
-
-                    if (source.id == activeSourceId) {
-                        val result = withContext(Dispatchers.IO) {
-                            mediaCatalogStore.page(source.id, catalogSection.name, limit = CATALOG_PAGE_SIZE, offset = 0) to
-                                mediaCatalogStore.count(source.id, catalogSection.name)
-                        }
-                        val firstPage = result.first
-                        catalogPageOffsets = catalogPageOffsets + (loadKey to firstPage.size)
-                        catalog = when (catalogSection) {
-                            CatalogSection.LIVE -> catalog.copy(liveChannels = applyKidsModeFilter(firstPage, preferences))
-                            CatalogSection.MOVIES -> catalog.copy(movies = applyKidsModeFilter(firstPage, preferences))
-                            CatalogSection.SERIES -> catalog.copy(series = applyKidsModeFilter(firstPage, preferences))
-                        }
-                        if (failures.isEmpty() && completed == categories.size) {
-                            loadedCatalogs = loadedCatalogs + loadKey
-                            message = result.second.toString() + " " + catalogSection.name.lowercase() +
-                                " items loaded from all " + categories.size + " categories."
-                            catalogProgress = 1f
-                        } else {
-                            message = "Loaded available categories. Failed: " + failures.joinToString(", ") +
-                                ". Tap Refresh to retry."
-                        }
-                    }
-                } catch (error: Exception) {
-                    if (source.id == activeSourceId) message = error.message ?: "Could not load provider categories."
-                } finally {
-                    loadingCatalogKeys = loadingCatalogKeys - loadKey
-                    activeLoadCount = (activeLoadCount - 1).coerceAtLeast(0)
-                    busy = activeLoadCount > 0
-                }
-            }
-            return
         }
         message = ""
         catalogProgress = 0f

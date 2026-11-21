@@ -89,6 +89,30 @@ class PlayerPreferences(context: Context) {
         return true
     }
 
+    /** Returns category names in the user's saved numeric order without touching catalogue data. */
+    fun orderedCategories(categories: List<String>): List<String> =
+        categories.filter(String::isNotBlank).distinct().withIndex()
+            .sortedWith(compareBy<IndexedValue<String>> { preferences.getInt("category_order:${it.value}", Int.MAX_VALUE) }
+                .thenBy { it.index })
+            .map { it.value }
+
+    /** Move one category to a 1-based position and shift the other categories around it. */
+    @Synchronized
+    fun moveCategoryToNumber(category: String, number: Int, knownCategories: List<String>): Boolean {
+        if (number < 1 || category !in knownCategories) return false
+        val ordered = orderedCategories(knownCategories).toMutableList()
+        val currentIndex = ordered.indexOf(category)
+        if (currentIndex < 0) return false
+        ordered.removeAt(currentIndex)
+        ordered.add((number - 1).coerceIn(0, ordered.size), category)
+        val editor = preferences.edit()
+        ordered.forEachIndexed { index, name ->
+            editor.putInt("category_order:$name", index + 1)
+        }
+        editor.apply()
+        return true
+    }
+
     fun categoryFor(channelId: String, sourceCategory: String): String =
         preferences.getString("category:$channelId", null) ?: sourceCategory
 

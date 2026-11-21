@@ -3521,8 +3521,12 @@ private fun LiveScreen(
     onChanged: () -> Unit,
 ) {
     val allLiveChannels = remember(catalog.liveChannels, preferenceRevision) { catalog.liveChannels + preferences.customChannels() }
+    // Provider playlists can repeat the same stream ID inside a category.
+    // Lazy grids require unique item keys; duplicate IDs otherwise crash Compose
+    // as soon as that category is opened.
     val channels = remember(allLiveChannels, category, search, preferenceRevision) {
         visibleChannels(catalog.copy(liveChannels = allLiveChannels), category, search, preferences)
+            .distinctBy { it.id }
     }
     var selectedChannelId by rememberSaveable { mutableStateOf("") }
     val selectedChannel = channels.firstOrNull { it.id == selectedChannelId } ?: channels.firstOrNull()
@@ -3541,6 +3545,9 @@ private fun LiveScreen(
         ).filter(String::isNotBlank).distinct()
     }
     val listState = rememberLazyGridState()
+    // A new category may contain fewer items than the previous one. Reset the
+    // grid position before it lays out the replacement list.
+    LaunchedEffect(category) { listState.scrollToItem(0) }
     val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
     LaunchedEffect(lastVisible, channels.size) {
         if (channels.isNotEmpty() && lastVisible >= channels.size - 10) onLoadMore()
